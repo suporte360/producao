@@ -1,16 +1,20 @@
 ---
-Task ID: 1
+Task ID: 2
 Agent: main
-Task: Ajustar controle de material na fábrica — lógica de alerta por % restante, acumular entregas, registrar movimentação
+Task: Implementar controle de estoque com dois tipos (almoxarifado/fabrica) + materiais das OFs no dashboard
 
 Work Log:
-- Corrigido `mysql_db.py`: `adicionar_estoque()` agora acumula `qtd_inicial` (ON DUPLICATE KEY UPDATE `qtd_inicial = qtd_inicial + VALUES(qtd_inicial)`)
-- Alterado `get_estoque_interno()` e `get_estoque_kpis()`: filtro "baixo" agora usa <= 20% do entregue em vez de `qtd_minima`
-- Corrigido `app.py`: `api_estoque_adicionar()` agora registra movimentação em `estoque_movimentacao` ao entregar material
-- Atualizado `estoque.html`: lógica do badge "SEPARAR" usa `qtd <= qtdIni * 0.2`, removida referência a `qtd_minima` e `setor`
-- Atualizado `dashboard.html`: `carregarResumoEstoque()` remove filtro client-side redundante (backend já filtra), adicionado % no resumo
+- Adicionada coluna `tipo` (VARCHAR 20, default 'fabrica') na tabela estoque_interno via auto-migration no app.py
+- postgresql_db.py: adicionada funcao get_requisicoes_multiplas_ordens() para buscar materiais de varias OFs em uma query
+- mysql_db.py: atualizadas get_estoque_interno, get_estoque_kpis, adicionar_estoque, get_estoque_por_codigo, baixar_estoque_por_codigo, registrar_baixa_estoque com suporte a tipo
+- mysql_db.py: adicionadas mover_estoque_para_fabrica() e get_lotes_liberados_pendentes()
+- app.py: adicionado API /api/almoxarifado/materiais-pendentes (cruza OFs liberadas com estoque almoxarifado)
+- app.py: adicionado API /api/estoque/<id>/separar-fabrica (move do almoxarifado para fabrica)
+- app.py: _baixar_estoque_por_of agora so da baixa no tipo='fabrica'
+- dashboard.html: adicionada secao "Materiais p/ Separar" mostrando materiais de cada OF com status de estoque
+- estoque.html: reescrito com abas "Estoque Almoxarifado" e "Na Fabrica", modais separados
 
 Stage Summary:
-- 4 arquivos modificados: database/mysql_db.py, app.py, templates/almoxarifado/estoque.html, templates/almoxarifado/dashboard.html
-- Fluxo: Entregar Material → acumula total entregue → OF liberada abate → quando restou <=20% aparece "PRECISA SEPARAR"
-- Threshold de 20% é padrão provisório, usuário pediu para definir depois
+- 6 arquivos modificados: app.py, database/mysql_db.py, database/postgresql_db.py, templates/almoxarifado/estoque.html, templates/almoxarifado/dashboard.html, worklog.md
+- Fluxo: cadastrar material no almoxarifado com codigo ERP → ver materiais das OFs no dashboard → separar p/ fabrica → consumo automatico
+- Migration automatica: ao iniciar o Flask, se a coluna tipo nao existir, cria com DEFAULT 'fabrica' (registros existentes ficam como fabrica)
