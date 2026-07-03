@@ -66,22 +66,24 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 .workers-title{font-size:11px;color:#5a5a7a;text-transform:uppercase;letter-spacing:2px;margin-bottom:6px;display:flex;align-items:center;gap:8px}
 .workers-title .live-dot{width:8px;height:8px;border-radius:50%;background:#00e676;animation:livePulse 1.5s ease-in-out infinite;flex-shrink:0}
 .workers-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:8px}
-.worker-card{background:linear-gradient(145deg,rgba(22,33,62,.85),rgba(15,23,42,.9));border:1px solid rgba(0,230,118,.25);border-radius:12px;padding:12px 14px;margin-bottom:8px;animation:fadeInUp .5s ease-out both;position:relative;overflow:hidden}
+.worker-card{background:linear-gradient(145deg,rgba(22,33,62,.85),rgba(15,23,42,.9));border:1px solid rgba(0,230,118,.25);border-radius:12px;padding:10px 12px;margin-bottom:8px;animation:fadeInUp .5s ease-out both;position:relative;overflow:hidden}
 .worker-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#00e676,#00c853);border-radius:0 2px 2px 0}
 .worker-card:nth-child(1){animation-delay:.1s}
 .worker-card:nth-child(2){animation-delay:.2s}
 .worker-card:nth-child(3){animation-delay:.3s}
 .worker-card:nth-child(4){animation-delay:.4s}
 .worker-card:nth-child(5){animation-delay:.5s}
-.worker-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-.worker-name{font-size:16px;font-weight:700;color:#00e676;display:flex;align-items:center;gap:6px}
-.worker-name .w-icon{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#00e676,#00c853);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#000}
-.worker-time{font-size:11px;color:#7a7a9a}
-.worker-details{display:flex;gap:12px;flex-wrap:wrap}
-.worker-detail{font-size:12px;color:#aaa}
-.worker-detail strong{color:#e0e0e0}
-.worker-detail .lote-code{color:#f59e0b;font-weight:700}
-.worker-detail .peca-nome{color:#42a5f5;font-weight:600}
+.worker-row{display:flex;align-items:center;gap:8px;line-height:1.4}
+.worker-row+.worker-row{margin-top:4px}
+.worker-name{font-size:17px;font-weight:800;color:#00e676;flex-shrink:0;min-width:90px}
+.worker-time{font-size:11px;color:#7a7a9a;flex-shrink:0;margin-left:auto}
+.worker-sep{color:#2a2a5a;font-size:14px;flex-shrink:0}
+.worker-lote{font-size:15px;color:#f59e0b;font-weight:700;flex-shrink:0}
+.worker-lote-desc{font-size:13px;color:#999;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.worker-peca-code{font-size:14px;color:#42a5f5;font-weight:700;flex-shrink:0}
+.worker-peca-name{font-size:13px;color:#ccc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.worker-pecas-count{font-size:14px;color:#aaa;flex-shrink:0}
+.worker-pecas-count b{color:#e0e0e0}
 
 .no-workers{text-align:center;padding:10px 20px;color:#5a5a7a;font-size:13px}
 .no-workers .nw-icon{font-size:30px;margin-bottom:4px;opacity:.4}
@@ -158,10 +160,10 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 .lote-card.ativo{border-color:#00e676}
 .lote-card .lote-left{flex:1;min-width:0}
 .lote-card .lote-header{display:flex;align-items:baseline;gap:8px;margin-bottom:2px}
-.lote-card .lote-codigo{font-size:20px;font-weight:700;color:#f59e0b;flex-shrink:0}
-.lote-card .lote-desc-inline{font-size:14px;color:#aaa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
-.lote-card .lote-prod-row{font-size:15px;color:#ccc;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.lote-card .lote-info{display:flex;gap:14px;font-size:14px;color:#888;flex-wrap:wrap;margin-top:2px}
+.lote-card .lote-codigo{font-size:22px;font-weight:700;color:#f59e0b;flex-shrink:0}
+.lote-card .lote-desc-inline{font-size:15px;color:#aaa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.lote-card .lote-prod-row{font-size:16px;color:#ccc;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lote-card .lote-info{display:flex;gap:14px;font-size:15px;color:#888;flex-wrap:wrap;margin-top:2px}
 .lote-card .lote-qty{font-size:28px;font-weight:800;color:#fff;line-height:1.2;text-align:center;flex-shrink:0}
 .lote-card .lote-qty-label{font-size:11px;color:rgba(255,255,255,.8);text-transform:uppercase;letter-spacing:1px;text-align:center}
 .lote-card .lote-qty-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;background:rgba(33,150,243,.2);border:2px solid #42a5f5;border-radius:14px;padding:14px 18px;min-width:100px}
@@ -176,6 +178,9 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 .peca-card .peca-codigo{font-size:18px;font-weight:700;color:#e0e0e0}
 .peca-card .peca-nome{font-size:15px;color:#ccc;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .peca-card .peca-sub{font-size:12px;color:#7a7a9a;margin-top:2px;font-weight:700}
+.peca-card .peca-setores{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+.peca-card .peca-setor-tag{font-size:10px;padding:2px 7px;border-radius:6px;background:rgba(245,158,11,.12);color:#f59e0b;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.peca-card .peca-setor-tag.done{background:rgba(0,230,118,.12);color:#00e676}
 .peca-card .peca-qtd{font-size:28px;font-weight:800;color:#fff;line-height:1.2;text-align:center;flex-shrink:0}
 .peca-card .peca-qtd-label{font-size:10px;color:rgba(255,255,255,.8);text-transform:uppercase;letter-spacing:1px;text-align:center}
 .peca-card .peca-qtd-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;background:rgba(33,150,243,.2);border:2px solid #42a5f5;border-radius:12px;padding:10px 16px;min-width:80px}
@@ -618,6 +623,7 @@ function renderWorkers(ativos, data) {
         nome: a.usuario_nome,
         lote: a.lote,
         lote_desc: a.lote_desc || '',
+        setor: a.setor || '',
         pecas: [],
         data_inicio: a.data_inicio,
         pecas_count: a.pecas_count || 1
@@ -633,7 +639,6 @@ function renderWorkers(ativos, data) {
   var keys = Object.keys(grouped);
   for (i = 0; i < keys.length; i++) {
     var w = grouped[keys[i]];
-    var initials = w.nome.replace('serra', 'S').substring(0, 2).toUpperCase();
 
     /* Format time */
     var timeStr = '';
@@ -644,36 +649,36 @@ function renderWorkers(ativos, data) {
       }
     }
 
-    /* Pecas list */
-    var pecaList = '';
-    for (var j = 0; j < w.pecas.length; j++) {
-      var p = w.pecas[j];
-      var pNome = p.produto_nome ? esc(p.produto_nome) : esc(p.produto);
-      if (j > 0) pecaList += ' | ';
-      pecaList += '<span class="peca-nome">' + pNome + '</span>';
-    }
-
     /* Short lote description */
     var shortDesc = '';
     if (w.lote_desc) {
-      shortDesc = w.lote_desc.length > 40 ? w.lote_desc.substring(0, 40) + '...' : w.lote_desc;
+      shortDesc = w.lote_desc.length > 35 ? w.lote_desc.substring(0, 35) + '...' : w.lote_desc;
     }
 
+    /* First peca info */
+    var firstPeca = w.pecas[0] || {};
+    var pecaCode = firstPeca.produto || '';
+    var pecaName = firstPeca.produto_nome || '';
+
+    /* Row 1: Nome | Lote | Descricao do lote | Hora */
     html += '<div class="worker-card" style="animation-delay:' + (i * 0.1) + 's">'
-      + '<div class="worker-top">'
-      + '<div class="worker-name">'
-      + '<div class="w-icon">' + esc(initials) + '</div>'
-      + esc(w.nome)
-      + '</div>'
-      + '<div class="worker-time">Desde ' + esc(timeStr) + '</div>'
-      + '</div>'
-      + '<div class="worker-details">'
-      + '<div class="worker-detail">Lote: <span class="lote-code">' + esc(w.lote) + '</span></div>'
-      + '<div class="worker-detail">Pecas: <strong>' + w.pecas_count + '</strong></div>'
-      + '</div>'
-      + (shortDesc ? '<div class="worker-details" style="margin-top:4px"><div class="worker-detail" style="color:#7a7a9a;font-size:11px">' + esc(shortDesc) + '</div></div>' : '')
-      + '<div class="worker-details" style="margin-top:4px">' + pecaList + '</div>'
+      + '<div class="worker-row">'
+      + '<span class="worker-name">' + esc(w.nome) + '</span>'
+      + '<span class="worker-sep">|</span>'
+      + '<span class="worker-lote">' + esc(w.lote) + '</span>'
+      + (shortDesc ? '<span class="worker-sep">|</span><span class="worker-lote-desc">' + esc(shortDesc) + '</span>' : '')
+      + '<span class="worker-time">Desde ' + esc(timeStr) + '</span>'
       + '</div>';
+
+    /* Row 2: Pecas count | Peca code | Peca name */
+    html += '<div class="worker-row">'
+      + '<span class="worker-pecas-count">' + w.pecas_count + ' peca' + (w.pecas_count > 1 ? 's' : '') + '</span>'
+      + (pecaCode ? '<span class="worker-sep">|</span><span class="worker-peca-code">' + esc(pecaCode) + '</span>' : '')
+      + (pecaName ? '<span class="worker-sep">|</span><span class="worker-peca-name">' + esc(pecaName) + '</span>' : '')
+      + (w.setor ? '<span class="worker-sep">|</span><span style="font-size:12px;color:#f59e0b;font-weight:700">' + esc(w.setor) + '</span>' : '')
+      + '</div>';
+
+    html += '</div>';
   }
 
   grid.innerHTML = html;
@@ -818,6 +823,17 @@ function renderPecas(data) {
 
     var pNome = p.produto_nome ? esc(p.produto_nome) : '';
 
+    /* Build setor tags */
+    var setorTags = '';
+    if (p.setores && p.setores.length > 0) {
+      setorTags = '<div class="peca-setores">';
+      for (var s = 0; s < p.setores.length; s++) {
+        var isDone = isActive && isActive.setor === p.setores[s];
+        setorTags += '<span class="peca-setor-tag' + (isDone ? ' done' : '') + '">' + esc(p.setores[s]) + '</span>';
+      }
+      setorTags += '</div>';
+    }
+
     html += '<div class="' + cardClass + '"' + clickAction + '>'
       + '<div style="display:flex;align-items:center">'
       + checkIcon
@@ -825,6 +841,7 @@ function renderPecas(data) {
       + '<div class="peca-codigo">' + esc(p.codigo) + '</div>'
       + (pNome ? '<div class="peca-nome">' + pNome + '</div>' : '')
       + '<div class="peca-sub">' + tipoLabel + ' | OF ' + p.ordem + '</div>'
+      + setorTags
       + (isActive ? '<div class="peca-badge">' + esc(isActive.setor) + ' - ' + esc(isActive.usuario) + '</div>' : '')
       + '</div></div>'
       + '<div class="peca-qtd-wrap"><div class="peca-qtd">' + qtd + '</div><div class="peca-qtd-label">pecas</div></div>'
