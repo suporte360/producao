@@ -127,6 +127,17 @@ def init_db():
                 "INSERT INTO serralheria_usuarios (nome, setor, ativo) VALUES (%s, 'Serralheria', 1)",
                 (nome,)
             )
+    # Migration: add missing columns if table already existed
+    for col, col_def in [
+        ('setor', "VARCHAR(50) DEFAULT ''"),
+        ('of_numero', 'INT DEFAULT NULL'),
+        ('ordem_id', 'INT DEFAULT NULL'),
+    ]:
+        try:
+            db_query_one('SELECT ' + col + ' FROM serralheria_producao LIMIT 1')
+        except Exception:
+            db_execute('ALTER TABLE serralheria_producao ADD COLUMN ' + col + ' ' + col_def)
+
     print('[OK] Tabelas serralheria verificadas no MariaDB')
 
 
@@ -142,20 +153,18 @@ def api_kpis():
     """KPIs da serralheria: lotes ativos, pecas, total qtd, producoes."""
     try:
         total_lotes = _int(db_query_one(
-            "SELECT COUNT(*) as t FROM lotes_producao WHERE status IN ('liberado','em_producao')"
+            'SELECT COUNT(*) as t FROM lotes_producao'
         )['t'])
 
         total_pecas = _int(db_query_one("""
             SELECT COUNT(*) as t
-            FROM ordens_fabricacao of2
-            INNER JOIN lotes_producao lp ON of2.lote_ordem = lp.ordem
-            WHERE lp.status IN ('liberado','em_producao') AND of2.tipo = 'filho'
+            FROM ordens_fabricacao
+            WHERE tipo = 'filho'
         """)['t'])
 
         total_qtd = _int(db_query_one("""
-            SELECT COALESCE(SUM(lp.qtde_ordem), 0) as t
-            FROM lotes_producao lp
-            WHERE lp.status IN ('liberado','em_producao')
+            SELECT COALESCE(SUM(qtde_ordem), 0) as t
+            FROM lotes_producao
         """)['t'])
 
         em_andamento = _int(db_query_one(
@@ -184,19 +193,18 @@ def api_dashboard():
     try:
         # ── KPIs ──
         total_lotes = _int(db_query_one(
-            "SELECT COUNT(*) as t FROM lotes_producao WHERE status IN ('liberado','em_producao')"
+            'SELECT COUNT(*) as t FROM lotes_producao'
         )['t'])
 
         total_pecas = _int(db_query_one("""
             SELECT COUNT(*) as t
-            FROM ordens_fabricacao of2
-            INNER JOIN lotes_producao lp ON of2.lote_ordem = lp.ordem
-            WHERE lp.status IN ('liberado','em_producao') AND of2.tipo = 'filho'
+            FROM ordens_fabricacao
+            WHERE tipo = 'filho'
         """)['t'])
 
         total_qtd = _int(db_query_one("""
             SELECT COALESCE(SUM(qtde_ordem), 0) as t
-            FROM lotes_producao WHERE status IN ('liberado','em_producao')
+            FROM lotes_producao
         """)['t'])
 
         em_andamento = _int(db_query_one(
@@ -245,7 +253,6 @@ def api_dashboard():
         lotes_raw = db_query("""
             SELECT ordem, lote_codigo, descricao_produto, status, codigo_produto, qtde_ordem
             FROM lotes_producao
-            WHERE status IN ('liberado', 'em_producao')
             ORDER BY lote_codigo DESC
         """)
 
@@ -258,13 +265,19 @@ def api_dashboard():
                 WHERE lote_ordem = %s AND tipo = 'filho'
             """, (lp['ordem'],))
 
-            # OF pai (produto final S-)
+            # OF pai (produto final S-) - pode nao existir
             pai = db_query_one("""
                 SELECT codigo_produto, descricao_produto, qtde_ordem
                 FROM ordens_fabricacao
                 WHERE lote_ordem = %s AND tipo = 'pai'
                 LIMIT 1
             """, (lp['ordem'],))
+            if not pai:
+                # Fallback: pega primeira OF do lote
+                pai = db_query_one("""
+                    SELECT codigo_produto, descricao_produto, qtde_ordem
+                    FROM ordens_fabricacao WHERE lote_ordem = %s LIMIT 1
+                """, (lp['ordem'],))
 
             # Extract S- code and build product info
             s_code = _extract_s_code(lp['codigo_produto'])
@@ -321,7 +334,6 @@ def api_lotes():
         lotes_raw = db_query("""
             SELECT ordem, lote_codigo, descricao_produto, status, codigo_produto, qtde_ordem
             FROM lotes_producao
-            WHERE status IN ('liberado', 'em_producao')
             ORDER BY lote_codigo DESC
         """)
 
@@ -333,11 +345,16 @@ def api_lotes():
                 FROM ordens_fabricacao WHERE lote_ordem = %s AND tipo = 'filho'
             """, (lp['ordem'],))
 
-            # OF pai (S- product)
+            # OF pai (S- product) - pode nao existir
             pai = db_query_one("""
                 SELECT codigo_produto, descricao_produto, qtde_ordem
                 FROM ordens_fabricacao WHERE lote_ordem = %s AND tipo = 'pai' LIMIT 1
             """, (lp['ordem'],))
+            if not pai:
+                pai = db_query_one("""
+                    SELECT codigo_produto, descricao_produto, qtde_ordem
+                    FROM ordens_fabricacao WHERE lote_ordem = %s LIMIT 1
+                """, (lp['ordem'],))
 
             s_code = _extract_s_code(lp['codigo_produto'])
             if pai:
