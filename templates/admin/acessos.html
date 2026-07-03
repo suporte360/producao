@@ -1,0 +1,79 @@
+{% extends "admin/base.html" %}
+{% block title %}Controle de Acessos{% endblock %}
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-key me-2"></i>Controle de Acessos</h2>
+
+<div class="admin-card">
+    <h5 class="mb-3">Permissões por Role</h5>
+    <table class="table table-bordered">
+        <thead class="table-dark">
+            <tr>
+                <th>Funcionalidade</th>
+                <th>Admin</th>
+                <th>Gerente</th>
+                <th>Almoxarifado</th>
+                <th>Encarregado</th>
+                <th>Operador</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Dashboard</strong></td>
+                <td><i class="bi bi-check-circle-fill text-success"></i></td>
+                <td><i class="bi bi-check-circle-fill text-success"></i></td>
+                <td><i class="bi bi-check-circle-fill text-success"></i></td>
+                <td><i class="bi bi-check-circle-fill text-success"></i></td>
+                <td><i class="bi bi-check-circle-fill text-success"></i></td>
+            </tr>
+            <tr>
+                <td><strong>Kanban Board</strong></td>
+                <td><i class="bi bi-check-circle-fill text-success"></i></td>
+                <td><i class="bi bi-check-circle-fill text-success"></i></td>
+                <td><i class="bi bi-check-circle-fill text-success"></i></td>
+                <td><i class="bi bi-check-circle-fill text-success"></i></td>
+                <td><i class="bi bi-check-circle-fill text-success"></i></td>
+            </tr>
+            <tr>
+                <td><strong>Painel Admin</strong></td>
+                <td><i class="bi bi-check-circle-fill text-success"></i></td>
+                <td><i class="bi bi-x-circle-fill text-danger"></i></td>
+                <td><i class="bi bi-x-circle-fill text-danger"></i></td>
+                <td><i class="bi bi-x-circle-fill text-danger"></i></td>
+                <td><i class="bi bi-x-circle-fill text-danger"></i></td>
+            </tr>
+            <tr>
+                <td><strong>Gerenciar Usuários</strong></td>
+                <td><i class="bi bi-check-circle-fill text-success"></i></td>
+                <td><i class="bi bi-x-circle-fill text-danger"></i></td>
+                <td><i class="bi bi-x-circle-fill text-danger"></i></td>
+                <td><i class="bi bi-x-circle-fill text-danger"></i></td>
+                <td><i class="bi bi-x-circle-fill text-danger"></i></td>
+            </tr>
+            <tr>
+                <td><strong>Relatórios</strong></td>
+                <td><i class="bi bi-check-circle-fill text-success"></i></td>
+                <td><i class="bi bi-check-circle-fill text-success"></i></td>
+                <td><i class="bi bi-x-circle-fill text-danger"></i></td>
+                <td><i class="bi bi-x-circle-fill text-danger"></i></td>
+                <td><i class="bi bi-x-circle-fill text-danger"></i></td>
+            </tr>
+            <tr>
+                <td><strong>TV Almoxarifado</strong></td>
+                <td><i class="bi bi-check-circle-fill text-success"></i></td>
+                <td><i class="bi bi-check-circle-fill text-success"></i></td>
+                <td><i class="bi bi-check-circle-fill text-success"></i></td>
+                <td><i class="bi bi-x-circle-fill text-danger"></i></td>
+                <td><i class="bi bi-x-circle-fill text-danger"></i></td>
+            </tr>
+            <tr>
+                <td><strong>Aprovar Requisições</strong></td>
+                <td><i class="bi bi-check-circle-fill text-success"></i></td>
+                <td><i class="bi bi-check-circle-fill text-success"></i></td>
+                <td><i class="bi bi-check-circle-fill text-success"></i></td>
+                <td><i class="bi bi-x-circle-fill text-danger"></i></td>
+                <td><i class="bi bi-x-circle-fill text-danger"></i></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}{{ departamento.nome }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/prioridades.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h2>
+                <i class="fas {{ departamento.icone }}" style="color: {{ departamento.cor }};"></i> 
+                {{ departamento.nome }}
+            </h2>
+            <p class="text-muted">{{ departamento.descricao }}</p>
+        </div>
+    </div>
+
+    <!-- Estatísticas -->
+    {% if estatisticas %}
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-primary">{{ estatisticas.total_lotes }}</h3>
+                    <p class="mb-0">Total de Lotes</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-info">{{ estatisticas.lotes_importados }}</h3>
+                    <p class="mb-0">Importados</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-warning">{{ estatisticas.lotes_em_producao }}</h3>
+                    <p class="mb-0">Em Produção</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-success">{{ estatisticas.lotes_finalizados }}</h3>
+                    <p class="mb-0">Finalizados</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Legenda de Prioridades -->
+    <div class="legenda-prioridades">
+        <div class="legenda-item">
+            <div class="legenda-cor legenda-cor-alta"></div>
+            <span>Alta Prioridade</span>
+        </div>
+        <div class="legenda-item">
+            <div class="legenda-cor legenda-cor-media"></div>
+            <span>Média Prioridade</span>
+        </div>
+        <div class="legenda-item">
+            <div class="legenda-cor legenda-cor-baixa"></div>
+            <span>Baixa Prioridade</span>
+        </div>
+    </div>
+
+    <!-- Lista de Lotes -->
+    <div class="row">
+        <div class="col-md-12">
+            {% if lotes %}
+                {% for lote in lotes %}
+                <div class="card card-lote card-lote-{{ lote.prioridade }} mb-3">
+                    <div class="card-header card-header-prioridade card-header-prioridade-{{ lote.prioridade }}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>
+                                <strong>{{ lote.prioridade|upper }} PRIORIDADE</strong> - 
+                                Lote: {{ lote.lote_codigo }} | OF: {{ lote.ordem }}
+                            </span>
+                            {% if pode_definir_prioridades %}
+                            <form method="POST" action="{{ url_for('atualizar_prioridade', ordem=lote.ordem) }}" 
+                                  class="form-inline" style="margin: 0;">
+                                <select name="prioridade" class="form-control form-control-sm select-prioridade" 
+                                        onchange="this.form.submit()">
+                                    <option value="alta" {{ 'selected' if lote.prioridade == 'alta' else '' }}>Alta</option>
+                                    <option value="media" {{ 'selected' if lote.prioridade == 'media' else '' }}>Média</option>
+                                    <option value="baixa" {{ 'selected' if lote.prioridade == 'baixa' else '' }}>Baixa</option>
+                                </select>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Produto:</strong> {{ lote.produto }}</p>
+                                <p><strong>Quantidade:</strong> {{ lote.qtde_saldo|int }} UN</p>
+                                <p><strong>Data Abertura:</strong> {{ lote.data_abertura|formatar_data_br }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Previsão:</strong> {{ lote.data_previsao|formatar_data_br }}</p>
+                                <p><strong>Status:</strong> 
+                                    {% if lote.status == 'importado' %}
+                                        <span class="badge badge-info">Importado</span>
+                                    {% elif lote.status == 'em_producao' %}
+                                        <span class="badge badge-warning">Em Produção</span>
+                                    {% else %}
+                                        <span class="badge badge-success">Finalizado</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <a href="{{ url_for('detalhes_lote', ordem=lote.ordem) }}" class="btn btn-sm btn-primary">
+                                <i class="fas fa-eye"></i> Ver Detalhes
+                            </a>
+                            
+                            {% if pode_iniciar_producao and lote.status == 'importado' %}
+                            <form method="POST" action="{{ url_for('iniciar_lote', ordem=lote.ordem) }}" 
+                                  style="display: inline;">
+                                <button type="submit" class="btn btn-sm btn-success">
+                                    <i class="fas fa-play"></i> Iniciar Produção
+                                </button>
+                            </form>
+                            {% endif %}
+                            
+                            {% if pode_finalizar_producao and lote.status == 'em_producao' %}
+                            <form method="POST" action="{{ url_for('finalizar_lote', ordem=lote.ordem) }}" 
+                                  style="display: inline;">
+                                <button type="submit" class="btn btn-sm btn-danger">
+                                    <i class="fas fa-stop"></i> Finalizar Produção
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> Nenhum lote encontrado para este departamento.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <a href="{{ url_for('departamentos') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Voltar
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

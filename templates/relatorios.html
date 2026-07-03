@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Relatórios - {{ sistema_nome }}{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="card">
+        <div class="card-body">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <h1 class="mb-2"><i class="fas fa-chart-line text-primary"></i> Relatórios</h1>
+                    <p class="text-secondary mb-0">Análises e estatísticas de produção</p>
+                </div>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <a href="{{ url_for('kanban_board') }}" class="btn btn-secondary"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-file-alt"></i> Tipos de Relatórios Disponíveis
+        </div>
+        <div class="card-body">
+            <div class="main-menu">
+                <div class="menu-item">
+                    <i class="fas fa-clock"></i>
+                    <h3>Tempo por OF</h3>
+                    <p>Relatório de tempo gasto em cada ordem de fabricação</p>
+                    <span class="badge badge-primary">Em desenvolvimento</span>
+                </div>
+                
+                <div class="menu-item">
+                    <i class="fas fa-chart-bar"></i>
+                    <h3>Tempo por Processo</h3>
+                    <p>Análise de tempo médio por tipo de processo</p>
+                    <span class="badge badge-primary">Em desenvolvimento</span>
+                </div>
+                
+                <div class="menu-item">
+                    <i class="fas fa-industry"></i>
+                    <h3>Produtividade</h3>
+                    <p>Indicadores de produtividade por departamento</p>
+                    <span class="badge badge-primary">Em desenvolvimento</span>
+                </div>
+            </div>
+            
+            <div style="margin-top: 2rem; padding: 1rem; background: #f8fafc; border-radius: 8px;">
+                <p class="text-secondary mb-0">
+                    <i class="fas fa-info-circle"></i> 
+                    Os relatórios detalhados estão em desenvolvimento. Em breve você terá acesso a análises completas de tempo, produtividade e estatísticas de produção.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

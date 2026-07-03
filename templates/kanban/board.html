@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Quadro Kanban{% endblock %}
+{% block extra_css %}
+<style>
+    .kanban-col { min-height: 400px; background: #f8f9fa; border-radius: 12px; padding: 12px; transition: background 0.2s; }
+    .kanban-col.drag-over { background: #e3f2fd; }
+    .kanban-col-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; color: #fff; font-weight: 700; }
+    .kanban-card { background: #fff; border-radius: 10px; padding: 12px; margin-bottom: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); cursor: grab; border-left: 4px solid #ccc; transition: transform 0.15s, box-shadow 0.15s; }
+    .kanban-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .kanban-card.dragging { opacity: 0.5; }
+    .kanban-card.prioridade-urgente { border-left-color: #b71c1c; }
+    .kanban-card.prioridade-alta { border-left-color: #e53935; }
+    .kanban-card.prioridade-media { border-left-color: #f57f17; }
+    .kanban-card.prioridade-baixa { border-left-color: #388e3c; }
+    .card-produto { font-weight: 600; font-size: 0.88rem; margin-bottom: 4px; }
+    .card-meta { font-size: 0.75rem; color: #757575; }
+    .card-footer-row { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1><i class="bi bi-grid-3x3-gap me-2"></i>Quadro Kanban</h1>
+        {% if dept_filtro %}
+        <span class="badge bg-primary">Setor: {{ dept_filtro }}</span>
+        {% else %}
+        <span class="badge bg-secondary">Todos os Setores</span>
+        {% endif %}
+    </div>
+    <div class="d-flex gap-2">
+        <span class="badge bg-success fs-6"><i class="bi bi-check-circle me-1"></i>{{ concluidos_hoje }} concluidos hoje</span>
+        <a href="{{ url_for('kanban_tv') }}" class="btn btn-danger btn-sm" target="_blank">
+            <i class="bi bi-tv me-1"></i>TV
+        </a>
+    </div>
+</div>
+
+{% if role in ('admin', 'gerente', 'pcp') %}
+<div class="mb-3 d-flex gap-2 flex-wrap">
+    <a href="{{ url_for('kanban_board') }}" class="btn btn-sm {{ 'btn-dark' if not dept_filtro else 'btn-outline-secondary' }}">Todos</a>
+    {% for d in departamentos %}
+    <a href="{{ url_for('kanban_board') }}?dept={{ d.codigo }}"
+       class="btn btn-sm {{ 'btn-primary' if dept_filtro == d.codigo else 'btn-outline-secondary' }}">
+        {{ d.nome }}
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="row g-3">
+    {% set colunas = [('aguardando','Aguardando','#1565c0'),('em_producao','Em Producao','#f57f17'),('pausado','Pausado','#6d4c41'),('concluido','Concluido','#2e7d32')] %}
+    {% for etapa, label, cor in colunas %}
+    {% set cards_col = cards | selectattr('etapa', 'equalto', etapa) | list %}
+    <div class="col-12 col-md-6 col-xl-3">
+        <div class="kanban-col" id="col-{{ etapa }}" ondragover="allowDrop(event,'{{ etapa }}')" ondrop="drop(event,'{{ etapa }}')" ondragleave="dragLeave(event)">
+            <div class="kanban-col-header" style="background:{{ cor }}">
+                <span>{{ label }}</span>
+                <span class="badge bg-white text-dark">{{ cards_col|length }}</span>
+            </div>
+            {% for card in cards_col %}
+            <div class="kanban-card prioridade-{{ card.prioridade }}" id="card-{{ card.id }}" draggable="true" ondragstart="drag(event, {{ card.id }})">
+                <div class="card-produto">
+                    #{{ card.lote_ordem }}
+                    {% if card.lote_codigo %}<small class="text-muted"> &bull; {{ card.lote_codigo }}</small>{% endif %}
+                </div>
+                <div class="card-meta mb-1">{{ (card.descricao_produto or card.descricao_operacao or 'Produto')[:40] }}</div>
+                {% if card.descricao_operacao %}
+                <div class="card-meta"><i class="bi bi-tools me-1"></i>{{ card.descricao_operacao[:35] }}</div>
+                {% endif %}
+                <div class="card-footer-row">
+                    <div class="d-flex gap-1">
+                        <span class="badge badge-{{ card.prioridade }}" style="font-size:0.65rem">{{ card.prioridade|upper }}</span>
+                        {% if card.departamento %}
+                        <span class="badge bg-secondary" style="font-size:0.65rem">{{ card.departamento }}</span>
+                        {% endif %}
+                    </div>
+                    {% if card.data_previsao_erp %}
+                    <small class="text-muted">{{ card.data_previsao_erp|formatar_data }}</small>
+                    {% endif %}
+                </div>
+                {% if card.operador_nome %}
+                <div class="card-meta mt-1"><i class="bi bi-person me-1"></i>{{ card.operador_nome }}</div>
+                {% endif %}
+            </div>
+            {% else %}
+            <div class="text-center text-muted py-4" style="font-size:0.85rem">
+                <i class="bi bi-inbox d-block mb-1 opacity-25" style="font-size:1.5rem"></i>Nenhum card
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let draggedId = null;
+function drag(event, cardId) {
+    draggedId = cardId;
+    event.dataTransfer.setData('text/plain', cardId);
+    document.getElementById('card-' + cardId).classList.add('dragging');
+}
+function allowDrop(event, etapa) {
+    event.preventDefault();
+    event.currentTarget.classList.add('drag-over');
+}
+function dragLeave(event) { event.currentTarget.classList.remove('drag-over'); }
+function drop(event, etapa) {
+    event.preventDefault();
+    event.currentTarget.classList.remove('drag-over');
+    const cardId = event.dataTransfer.getData('text/plain') || draggedId;
+    if (!cardId) return;
+    document.getElementById('card-' + cardId)?.classList.remove('dragging');
+    fetch('/api/kanban/move', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({card_id:parseInt(cardId), etapa:etapa})})
+    .then(r => r.json())
+    .then(d => { if (d.success) setTimeout(() => location.reload(), 300); else alert('Erro: ' + d.error); })
+    .catch(() => alert('Erro de conexao'));
+}
+document.addEventListener('dragend', () => document.querySelectorAll('.kanban-card').forEach(c => c.classList.remove('dragging')));
+setInterval(() => location.reload(), 30000);
+</script>
+{% endblock %}

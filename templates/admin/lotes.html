@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Lotes de Producao{% endblock %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1><i class="bi bi-clipboard-data me-2"></i>Lotes de Producao</h1>
+        <nav aria-label="breadcrumb"><ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
+            <li class="breadcrumb-item active">Lotes</li>
+        </ol></nav>
+    </div>
+</div>
+
+<!-- FILTROS -->
+<div class="table-card mb-3 p-3">
+    <form method="GET" class="row g-2 align-items-end">
+        <div class="col-auto">
+            <label class="form-label fw-semibold mb-1">Status</label>
+            <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">Todos</option>
+                <option value="importado" {{ 'selected' if status_filtro=='importado' }}>Importado</option>
+                <option value="liberado" {{ 'selected' if status_filtro=='liberado' }}>Liberado</option>
+                <option value="em_producao" {{ 'selected' if status_filtro=='em_producao' }}>Em Producao</option>
+                <option value="finalizado" {{ 'selected' if status_filtro=='finalizado' }}>Finalizado</option>
+                <option value="cancelado" {{ 'selected' if status_filtro=='cancelado' }}>Cancelado</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <a href="{{ url_for('admin_lotes') }}" class="btn btn-sm btn-outline-secondary">Limpar</a>
+        </div>
+    </form>
+</div>
+
+<div class="table-card">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Ordem</th><th>Lote ERP</th><th>Produto</th><th>Qtd</th>
+                    <th>Prioridade</th><th>Status</th><th>Setor Atual</th>
+                    <th>Previsao</th><th>Progresso</th><th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for lote in lotes %}
+                {% set pct = ((lote.operacoes_concluidas or 0) / (lote.total_operacoes or 1) * 100)|int %}
+                <tr>
+                    <td><strong>#{{ lote.ordem }}</strong></td>
+                    <td><small class="text-muted">{{ lote.lote_codigo or '-' }}</small></td>
+                    <td>
+                        <span title="{{ lote.descricao_produto }}">
+                            {{ (lote.descricao_produto or '-')[:30] }}{% if lote.descricao_produto and lote.descricao_produto|length > 30 %}...{% endif %}
+                        </span>
+                    </td>
+                    <td>{{ lote.qtde_ordem|int }}</td>
+                    <td><span class="badge badge-{{ lote.prioridade }}">{{ lote.prioridade|upper }}</span></td>
+                    <td><span class="badge badge-{{ lote.status }}">{{ lote.status|replace('_',' ')|upper }}</span></td>
+                    <td><small>{{ lote.departamento_atual or '-' }}</small></td>
+                    <td>
+                        {% if lote.data_previsao_erp %}
+                        <span class="{{ 'text-danger fw-bold' if lote.data_previsao_erp < now.date() and lote.status not in ('finalizado','cancelado') else '' }}">
+                            {{ lote.data_previsao_erp|formatar_data }}
+                        </span>
+                        {% else %}-{% endif %}
+                    </td>
+                    <td style="min-width:100px">
+                        {% if lote.total_operacoes %}
+                        <div class="progress" style="height:6px">
+                            <div class="progress-bar bg-success" style="width:{{ pct }}%"></div>
+                        </div>
+                        <small class="text-muted">{{ lote.operacoes_concluidas }}/{{ lote.total_operacoes }}</small>
+                        {% else %}
+                        <small class="text-muted">-</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('admin_lote_detalhe', ordem=lote.ordem) }}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="10" class="text-center text-muted py-5">
+                    <i class="bi bi-inbox fs-1 d-block mb-2 opacity-25"></i>
+                    Nenhum lote encontrado. Sincronize com o ERP.
+                </td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

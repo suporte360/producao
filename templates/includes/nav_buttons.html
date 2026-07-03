@@ -1,0 +1,31 @@
+<!-- NAVEGAÇÃO ENTRE TELAS -->
+<div class="nav-buttons mb-4 d-flex gap-2 flex-wrap">
+    {% if perfil in ['admin', 'gerente', 'encarregado', 'operador'] %}
+    <a href="{{ url_for('kanban_board') }}" class="btn btn-primary">
+        📊 Dashboard
+    </a>
+    <a href="{{ url_for('kanban_board') }}" class="btn btn-success">
+        📦 Lotes
+    </a>
+    {% endif %}
+    
+    {% if perfil in ['admin', 'almoxarifado', 'gerente'] %}
+    <a href="{{ url_for('tv_almoxarifado') }}" class="btn btn-warning">
+        🏭 Almoxarifado
+    </a>
+    {% endif %}
+    
+    <a href="{{ url_for('kanban_board') }}" class="btn btn-info">
+        🎛️ Kanban
+    </a>
+    
+    <a href="{{ url_for('kanban_tv') }}" target="_blank" class="btn btn-danger">
+        📺 TV Kanban
+    </a>
+    
+    {% if perfil in ['admin', 'almoxarifado', 'gerente'] %}
+    <a href="{{ url_for('tv_almoxarifado') }}" target="_blank" class="btn btn-secondary">
+        📺 TV Almoxarifado
+    </a>
+    {% endif %}
+</div>

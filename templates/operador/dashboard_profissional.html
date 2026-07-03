@@ -1,0 +1,515 @@
+{% extends "base_profissional.html" %}
+
+{% block title %}Meu Setor - Dashboard do Operador{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dept-badge {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: #fff;
+    }
+
+    .dept-almoxarifado { background: #06b6d4; }
+    .dept-corte { background: #f97316; }
+    .dept-solda { background: #ef4444; }
+    .dept-acabamento { background: #a855f7; }
+    .dept-montagem { background: #3b82f6; }
+    .dept-embalagem { background: #10b981; }
+
+    .operador-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: var(--white);
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        border-top: 4px solid var(--primary);
+    }
+
+    .stat-card.info { border-top-color: #0891b2; }
+    .stat-card.success { border-top-color: #059669; }
+    .stat-card.warning { border-top-color: #d97706; }
+    .stat-card.danger { border-top-color: #dc2626; }
+
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        font-size: 0.9rem;
+        color: var(--gray);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .operacoes-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .operacao-card {
+        background: var(--white);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+        border-left: 5px solid var(--primary);
+    }
+
+    .operacao-card:hover {
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+        transform: translateY(-4px);
+    }
+
+    .operacao-card-header {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+        color: var(--white);
+        padding: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .operacao-card-body {
+        padding: 1.5rem;
+    }
+
+    .operacao-titulo {
+        font-weight: 700;
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
+        color: var(--dark);
+    }
+
+    .operacao-meta {
+        font-size: 0.85rem;
+        color: var(--gray);
+        margin-bottom: 1rem;
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .operacao-meta-item {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .operacao-status {
+        display: inline-block;
+        padding: 0.35rem 0.75rem;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 1rem;
+    }
+
+    .status-pendente { background: #dbeafe; color: #1e40af; }
+    .status-em-andamento { background: #fed7aa; color: #92400e; }
+    .status-pausado { background: #e9d5ff; color: #6b21a8; }
+    .status-concluido { background: #dcfce7; color: #166534; }
+
+    .operacao-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+    }
+
+    .operacao-actions.full {
+        grid-template-columns: 1fr;
+    }
+
+    .btn-action {
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .btn-action:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-action.btn-iniciar {
+        background: #059669;
+        color: #fff;
+    }
+
+    .btn-action.btn-iniciar:hover {
+        background: #047857;
+    }
+
+    .btn-action.btn-pausar {
+        background: #d97706;
+        color: #fff;
+    }
+
+    .btn-action.btn-pausar:hover {
+        background: #b45309;
+    }
+
+    .btn-action.btn-retomar {
+        background: #0891b2;
+        color: #fff;
+    }
+
+    .btn-action.btn-retomar:hover {
+        background: #0e7490;
+    }
+
+    .btn-action.btn-finalizar {
+        background: #1e40af;
+        color: #fff;
+        grid-column: 1 / -1;
+    }
+
+    .btn-action.btn-finalizar:hover {
+        background: #1e3a8a;
+    }
+
+    .tempo-decorrido {
+        background: #f3f4f6;
+        padding: 0.75rem;
+        border-radius: 8px;
+        text-align: center;
+        margin-bottom: 1rem;
+        font-weight: 600;
+        color: var(--dark);
+    }
+
+    .tempo-decorrido i {
+        color: #d97706;
+        margin-right: 0.5rem;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--gray);
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    .empty-state p {
+        margin: 0;
+        font-size: 1.1rem;
+    }
+
+    @media (max-width: 768px) {
+        .operacoes-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .operador-stats {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .operacao-actions {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1>
+            <span class="dept-badge dept-{{ departamento | lower | replace(' ', '-') }}">
+                {{ departamento }}
+            </span>
+        </h1>
+        <p class="text-muted mb-0">Bem-vindo, <strong>{{ session.get('usuario_nome') }}</strong>! Aqui estão suas operações.</p>
+    </div>
+</div>
+
+<!-- ESTATÍSTICAS -->
+<div class="operador-stats">
+    <div class="stat-card info">
+        <div class="stat-number">{{ stats.pendentes }}</div>
+        <div class="stat-label">Pendentes</div>
+    </div>
+    <div class="stat-card warning">
+        <div class="stat-number">{{ stats.em_andamento }}</div>
+        <div class="stat-label">Em Andamento</div>
+    </div>
+    <div class="stat-card success">
+        <div class="stat-number">{{ stats.concluidas_hoje }}</div>
+        <div class="stat-label">Concluídas Hoje</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ stats.concluidas_mes }}</div>
+        <div class="stat-label">Concluídas no Mês</div>
+    </div>
+</div>
+
+<!-- OPERAÇÕES -->
+{% if operacoes %}
+<div class="operacoes-grid">
+    {% for op in operacoes %}
+    <div class="operacao-card">
+        <div class="operacao-card-header">
+            <div>
+                <strong>#{{ op.ordem }}</strong>
+                {% if op.codigo %}
+                <small class="ms-2">{{ op.codigo }}</small>
+                {% endif %}
+            </div>
+            <span class="badge bg-light text-dark">{{ op.prioridade | upper }}</span>
+        </div>
+        <div class="operacao-card-body">
+            <!-- TÍTULO -->
+            <div class="operacao-titulo">{{ op.descricao_produto or op.descricao_operacao or 'Operação' }}</div>
+
+            <!-- STATUS -->
+            <div class="operacao-status status-{{ op.status }}">
+                {% if op.status == 'pendente' %}
+                <i class="bi bi-hourglass-split me-1"></i>Pendente
+                {% elif op.status == 'em_andamento' %}
+                <i class="bi bi-play-circle me-1"></i>Em Andamento
+                {% elif op.status == 'pausado' %}
+                <i class="bi bi-pause-circle me-1"></i>Pausado
+                {% elif op.status == 'concluido' %}
+                <i class="bi bi-check-circle me-1"></i>Concluído
+                {% endif %}
+            </div>
+
+            <!-- METADADOS -->
+            <div class="operacao-meta">
+                {% if op.quantidade_total %}
+                <div class="operacao-meta-item">
+                    <i class="bi bi-box"></i>
+                    <span>{{ op.quantidade_total }} unidades</span>
+                </div>
+                {% endif %}
+                {% if op.data_inicio %}
+                <div class="operacao-meta-item">
+                    <i class="bi bi-calendar"></i>
+                    <span>{{ op.data_inicio | formatar_datetime }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- TEMPO DECORRIDO (se em andamento) -->
+            {% if op.status == 'em_andamento' and op.tempo_decorrido %}
+            <div class="tempo-decorrido">
+                <i class="bi bi-clock"></i>{{ op.tempo_decorrido }}
+            </div>
+            {% endif %}
+
+            <!-- BOTÕES DE AÇÃO -->
+            <div class="operacao-actions {% if op.status == 'concluido' %}full{% endif %}">
+                {% if op.status == 'pendente' %}
+                <button class="btn-action btn-iniciar" onclick="iniciarOp({{ op.id }})">
+                    <i class="bi bi-play-fill"></i>Iniciar
+                </button>
+                <button class="btn-action btn-finalizar" onclick="finalizarOp({{ op.id }})">
+                    <i class="bi bi-check-lg"></i>Finalizar Parcial
+                </button>
+
+                {% elif op.status == 'em_andamento' %}
+                <button class="btn-action btn-pausar" onclick="pausarOp({{ op.id }})">
+                    <i class="bi bi-pause-fill"></i>Pausar
+                </button>
+                <button class="btn-action btn-finalizar" onclick="finalizarOp({{ op.id }})">
+                    <i class="bi bi-check-lg"></i>Finalizar
+                </button>
+
+                {% elif op.status == 'pausado' %}
+                <button class="btn-action btn-retomar" onclick="retomarOp({{ op.id }})">
+                    <i class="bi bi-play-fill"></i>Retomar
+                </button>
+                <button class="btn-action btn-finalizar" onclick="finalizarOp({{ op.id }})">
+                    <i class="bi bi-check-lg"></i>Finalizar
+                </button>
+
+                {% else %}
+                <div class="alert alert-success mb-0">
+                    <i class="bi bi-check-circle me-1"></i>Operação concluída
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <i class="bi bi-inbox"></i>
+    <p>Nenhuma operação pendente no momento</p>
+</div>
+{% endif %}
+
+<!-- MODAIS -->
+
+<!-- Modal Pausar -->
+<div class="modal fade" id="modalPausar" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-pause-circle me-2"></i>Pausar Operação
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="motivoPausa" class="form-label">Motivo da Pausa</label>
+                    <select class="form-select" id="motivoPausa">
+                        <option value="">Selecione um motivo...</option>
+                        <option value="almoço">Almoço</option>
+                        <option value="banheiro">Banheiro</option>
+                        <option value="descanso">Descanso</option>
+                        <option value="manutencao">Manutenção</option>
+                        <option value="outro">Outro</option>
+                    </select>
+                </div>
+                <div class="mb-0">
+                    <label for="observacaoPausa" class="form-label">Observações (opcional)</label>
+                    <textarea class="form-control" id="observacaoPausa" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning" onclick="confirmarPausa()">
+                    <i class="bi bi-pause-fill me-1"></i>Confirmar Pausa
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Finalizar -->
+<div class="modal fade" id="modalFinalizar" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-check-circle me-2"></i>Finalizar Operação
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="qtdeProduzida" class="form-label">Quantidade Produzida</label>
+                    <input type="number" class="form-control" id="qtdeProduzida" placeholder="Ex: 50" min="0" step="1">
+                    <small class="text-muted">Deixe em branco para finalizar sem especificar quantidade</small>
+                </div>
+                <div class="mb-3">
+                    <label for="qtdeRefugada" class="form-label">Quantidade com Defeito/Refugo</label>
+                    <input type="number" class="form-control" id="qtdeRefugada" placeholder="Ex: 2" min="0" step="1" value="0">
+                </div>
+                <div class="mb-0">
+                    <label for="obsFinalizacao" class="form-label">Observações</label>
+                    <textarea class="form-control" id="obsFinalizacao" rows="3" placeholder="Descreva qualquer problema ou observação..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="confirmarFinalizacao()">
+                    <i class="bi bi-check-lg me-1"></i>Finalizar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let opIdAtual = null;
+
+function iniciarOp(id) {
+    if (!confirm('Iniciar esta operação?')) return;
+    apiOp('/api/apontamentos/tempo/iniciar', { operacao_id: id });
+}
+
+function pausarOp(id) {
+    opIdAtual = id;
+    new bootstrap.Modal(document.getElementById('modalPausar')).show();
+}
+
+function confirmarPausa() {
+    const motivo = document.getElementById('motivoPausa').value;
+    const observacao = document.getElementById('observacaoPausa').value;
+    bootstrap.Modal.getInstance(document.getElementById('modalPausar')).hide();
+    apiOp('/api/apontamentos/tempo/pausar', { 
+        operacao_id: opIdAtual, 
+        motivo: motivo,
+        observacao: observacao 
+    });
+}
+
+function retomarOp(id) {
+    if (!confirm('Retomar esta operação?')) return;
+    apiOp('/api/apontamentos/tempo/retomar', { operacao_id: id });
+}
+
+function finalizarOp(id) {
+    opIdAtual = id;
+    new bootstrap.Modal(document.getElementById('modalFinalizar')).show();
+}
+
+function confirmarFinalizacao() {
+    const qtde = parseFloat(document.getElementById('qtdeProduzida').value) || null;
+    const refugo = parseFloat(document.getElementById('qtdeRefugada').value) || 0;
+    const obs = document.getElementById('obsFinalizacao').value;
+    bootstrap.Modal.getInstance(document.getElementById('modalFinalizar')).hide();
+    apiOp('/api/apontamentos/tempo/finalizar', { 
+        operacao_id: opIdAtual, 
+        qtde_produzida: qtde, 
+        qtde_refugada: refugo, 
+        observacoes: obs 
+    });
+}
+
+function apiOp(url, data) {
+    fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) {
+            location.reload();
+        } else {
+            alert('Erro: ' + (d.error || 'Falha na operação'));
+        }
+    })
+    .catch(() => alert('Erro de conexão'));
+}
+
+// Auto-refresh a cada 60 segundos
+setTimeout(() => location.reload(), 60000);
+</script>
+{% endblock %}

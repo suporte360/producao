@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+{% block title %}Almoxarifado — Separação{% endblock %}
+{% block header_title %}
+  <span class="flex items-center gap-2">
+    <i class="fa-solid fa-warehouse text-cyan-500"></i>
+    <span class="hidden sm:inline">Almoxarifado</span>
+  </span>
+{% endblock %}
+
+{% block content %}
+
+{# ═══════════════ KPIs ═══════════════ #}
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#cffafe;color:#0891b2"><i class="fa-solid fa-boxes-stacked"></i></div>
+    <div>
+      <div class="kpi-num text-cyan-600" id="kpiMateriaisPend">0</div>
+      <div class="kpi-lbl">Materiais p/ Separar</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#f3e8ff;color:#7c3aed"><i class="fa-solid fa-bell"></i></div>
+    <div>
+      <div class="kpi-num text-purple-600">{{ requisicoes|length }}</div>
+      <div class="kpi-lbl">Requisições</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#fee2e2;color:#b91c1c"><i class="fa-solid fa-triangle-exclamation"></i></div>
+    <div>
+      <div class="kpi-num text-red-600" id="kpiMatSemEstoque">0</div>
+      <div class="kpi-lbl">Sem Estoque</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#dcfce7;color:#15803d"><i class="fa-solid fa-circle-check"></i></div>
+    <div>
+      <div class="kpi-num text-green-600">{{ aprovadas_hoje }}</div>
+      <div class="kpi-lbl">Entregues Hoje</div>
+    </div>
+  </div>
+</div>
+
+{# ═══════════════ MATERIAIS P/ SEPARAR (das OFs liberadas) ═══════════════ #}
+<section class="mb-5" id="secaoMateriaisOF">
+  <h2 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+    <span class="inline-block w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+    Materiais p/ Separar
+    <span class="ml-1 bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full text-[10px]" id="kpiMateriaisBadge">0</span>
+    <span class="ml-1 text-[10px] text-gray-400 font-normal normal-case">(materiais brutos das OFs liberadas)</span>
+  </h2>
+  <div id="listaMateriaisOF">
+    <div class="prodsys-card p-4 text-center">
+      <i class="fa-solid fa-rotate fa-spin text-gray-300 text-lg"></i>
+    </div>
+  </div>
+</section>
+
+{# ═══════════════ REQUISIÇÕES PENDENTES ═══════════════ #}
+{% if requisicoes %}
+<section class="mb-5">
+  <h2 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+    <span class="inline-block w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+    Requisições dos Setores — Pendentes
+    <span class="ml-1 bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full text-[10px]">{{ requisicoes|length }}</span>
+  </h2>
+
+  <div class="prodsys-card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+          <tr>
+            <th class="px-4 py-3 text-left">Req</th>
+            <th class="px-4 py-3 text-left">Material</th>
+            <th class="px-4 py-3 text-center">Qtd</th>
+            <th class="px-4 py-3 text-center">Setor Solicitante</th>
+            <th class="px-4 py-3 text-center">Prioridade</th>
+            <th class="px-4 py-3 text-center">Ações</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for r in requisicoes %}
+          <tr class="hover:bg-purple-50/30">
+            <td class="px-4 py-3">
+              <div class="font-bold text-gray-800">#{{ r.id }}</div>
+              <div class="text-[11px] text-gray-400">OP #{{ r.lote_ordem }}</div>
+            </td>
+            <td class="px-4 py-3">
+              <div class="font-medium text-gray-700">{{ r.material_descricao or '—' }}</div>
+              {% if r.descricao_produto %}<div class="text-[11px] text-gray-400 truncate max-w-[200px]">{{ r.descricao_produto }}</div>{% endif %}
+            </td>
+            <td class="px-4 py-3 text-center font-bold">{{ r.quantidade }} <span class="text-[10px] text-gray-400">{{ r.unidade_medida or 'UN' }}</span></td>
+            <td class="px-4 py-3 text-center">
+              {% if r.departamento_solicitante %}
+              <span class="chip-dept dept-{{ r.departamento_solicitante }}">{{ r.departamento_solicitante }}</span>
+              {% else %}<span class="text-gray-300">—</span>{% endif %}
+            </td>
+            <td class="px-4 py-3 text-center">
+              {% if r.prioridade_lote %}<span class="badge-priority {{ r.prioridade_lote|lower }}">{{ r.prioridade_lote|upper }}</span>{% endif %}
+            </td>
+            <td class="px-4 py-3">
+              <div class="flex items-center justify-center gap-1.5">
+                <button onclick="entregarRequisicao({{ r.id }})" title="Entregar"
+                  class="btn-touch btn-start text-xs px-3 py-2" style="min-height:36px">
+                  <i class="fa-solid fa-check"></i>Entregar
+                </button>
+                <button onclick="recusarRequisicao({{ r.id }})" title="Recusar"
+                  class="btn-touch btn-danger text-xs px-3 py-2" style="min-height:36px">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{# ═══════════════ MATERIAL NA FABRICA (resumo) ═══════════════ #}
+<section class="mb-5" id="secaoEstoque">
+  <div class="flex items-center justify-between mb-3">
+    <h2 class="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+      <span class="inline-block w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+      Material na Fabrica
+      <span id="kpiPrecisaSep" class="ml-1 bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full hidden">0 precisam separar</span>
+    </h2>
+    <a href="{{ url_for('estoque_interno') }}" class="text-xs text-blue-600 hover:underline font-bold">
+      Gerenciar <i class="fa-solid fa-arrow-right"></i>
+    </a>
+  </div>
+  <div id="listaEstoqueResumo" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+    <div class="prodsys-card p-4 text-center col-span-full">
+      <i class="fa-solid fa-rotate fa-spin text-gray-300 text-lg"></i>
+    </div>
+  </div>
+</section>
+
+{# ═══════════════ MODAL ENTREGAR REQUISIÇÃO ═══════════════ #}
+<div id="modalEntregarReq" class="prodsys-modal-backdrop hidden">
+  <div class="prodsys-modal">
+    <div class="flex items-center gap-3 mb-4">
+      <div class="w-14 h-14 rounded-2xl bg-green-100 flex items-center justify-center flex-shrink-0">
+        <i class="fa-solid fa-check text-green-600 text-2xl"></i>
+      </div>
+      <div>
+        <h3>Entregar Requisição?</h3>
+        <p class="mt-0.5" id="entregarMsg">Confirme a entrega do material ao setor solicitante.</p>
+      </div>
+    </div>
+    <div class="flex gap-3">
+      <button onclick="fecharModal('modalEntregarReq')" class="btn-touch btn-cancel flex-1">
+        <i class="fa-solid fa-xmark"></i>Cancelar
+      </button>
+      <button onclick="confirmarEntregarReq()" class="btn-touch btn-start flex-1">
+        <i class="fa-solid fa-check"></i>CONFIRMAR
+      </button>
+    </div>
+  </div>
+</div>
+
+{# ═══════════════ MODAL RECUSAR REQUISIÇÃO ═══════════════ #}
+<div id="modalRecusarReq" class="prodsys-modal-backdrop hidden">
+  <div class="prodsys-modal">
+    <div class="flex items-center gap-3 mb-4">
+      <div class="w-14 h-14 rounded-2xl bg-red-100 flex items-center justify-center flex-shrink-0">
+        <i class="fa-solid fa-xmark text-red-600 text-2xl"></i>
+      </div>
+      <div>
+        <h3>Recusar Requisição?</h3>
+        <p class="mt-0.5">O setor solicitante será notificado.</p>
+      </div>
+    </div>
+    <div class="flex gap-3">
+      <button onclick="fecharModal('modalRecusarReq')" class="btn-touch btn-cancel flex-1">
+        <i class="fa-solid fa-xmark"></i>Manter
+      </button>
+      <button onclick="confirmarRecusarReq()" class="btn-touch btn-danger flex-1">
+        <i class="fa-solid fa-ban"></i>RECUSAR
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="prodsys-toast hidden"></div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let reqAtual = null;
+
+function fecharModal(id) { document.getElementById(id).classList.remove('hidden'); document.getElementById(id).classList.add('hidden'); }
+
+function showToast(msg, tipo='success') {
+  const t = document.getElementById('toast');
+  t.className = 'prodsys-toast ' + tipo;
+  t.innerHTML = `<i class="fa-solid ${tipo==='success'?'fa-check-circle':'fa-exclamation-circle'}"></i> ${msg}`;
+  t.classList.remove('hidden');
+  setTimeout(()=>t.classList.add('hidden'), 3500);
+}
+
+{# ─── Requisições ─── #}
+function entregarRequisicao(id) {
+  reqAtual = id;
+  document.getElementById('entregarMsg').textContent = `Confirmar entrega da requisição #${id}?`;
+  document.getElementById('modalEntregarReq').classList.remove('hidden');
+}
+function confirmarEntregarReq() {
+  document.getElementById('modalEntregarReq').classList.add('hidden');
+  fetch(`/api/requisicoes/${reqAtual}/entregar`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'}
+  }).then(r => r.json())
+    .then(d => {
+      if (d.status === 'success') { showToast(`Requisição #${reqAtual} entregue!`); setTimeout(()=>location.reload(), 900); }
+      else showToast('Erro ao entregar', 'error');
+    }).catch(()=>showToast('Erro de conexão','error'));
+}
+function recusarRequisicao(id) {
+  reqAtual = id;
+  document.getElementById('modalRecusarReq').classList.remove('hidden');
+}
+function confirmarRecusarReq() {
+  document.getElementById('modalRecusarReq').classList.add('hidden');
+  fetch(`/api/requisicoes/${reqAtual}/recusar`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'}
+  }).then(r => r.json())
+    .then(d => {
+      if (d.status === 'success') { showToast(`Requisição #${reqAtual} recusada.`); setTimeout(()=>location.reload(), 900); }
+      else showToast('Erro ao recusar', 'error');
+    }).catch(()=>showToast('Erro de conexão','error'));
+}
+
+['modalEntregarReq','modalRecusarReq'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('click', function(e) {
+    if (e.target === this) this.classList.add('hidden');
+  });
+});
+
+// ════════════════ RESUMO MATERIAL NA FABRICA ════════════════
+function carregarResumoEstoque() {
+  fetch('/api/estoque?filtro=baixo&tipo=fabrica').then(r => r.json()).then(d => {
+    if (d.status !== 'success') return;
+    const itens = d.itens || [];
+    const badge = document.getElementById('kpiPrecisaSep');
+    if (itens.length > 0) {
+      badge.textContent = itens.length + ' precisam separar';
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
+    const el = document.getElementById('listaEstoqueResumo');
+    if (!itens.length) {
+      el.innerHTML = '<div class="prodsys-card p-4 text-center col-span-full text-sm text-green-600"><i class="fa-solid fa-circle-check mr-1"></i>Todos os materiais estao OK</div>';
+      return;
+    }
+    el.innerHTML = itens.slice(0, 6).map(item => {
+      const qtd = parseFloat(item.qtd_atual) || 0;
+      const qtdIni = parseFloat(item.qtd_inicial) || 0;
+      const sem = qtd <= 0;
+      const desc = (item.descricao||'—').replace(/'/g,"\\'");
+      const un = item.unidade || 'UN';
+      const pct = qtdIni > 0 ? Math.round((qtd / qtdIni) * 100) : 0;
+      return '<div class="prodsys-card border-l-4 ' + (sem ? 'border-red-500 bg-red-50/30' : 'border-amber-400 bg-amber-50/30') + ' px-3 py-2 flex items-center justify-between gap-2">' +
+        '<div class="min-w-0"><div class="font-bold text-sm text-gray-800 truncate">' + (item.descricao||'—') + '</div>' +
+        '<div class="text-[11px] text-gray-400">' + item.codigo + ' · ' + un + '</div></div>' +
+        '<div class="text-right flex-shrink-0"><div class="font-black text-lg ' + (sem?'text-red-600':'text-amber-600') + '">' + qtd.toFixed(1) + '</div>' +
+        '<div class="text-[10px] text-gray-400">de ' + qtdIni.toFixed(1) + (pct > 0 ? ' (' + pct + '%)' : '') + '</div></div></div>';
+    }).join('');
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  carregarResumoEstoque();
+  carregarMateriaisOF();
+});
+
+// ════════════════ MATERIAIS DAS OFs ════════════════
+function carregarMateriaisOF() {
+  fetch('/api/almoxarifado/materiais-pendentes').then(r => r.json()).then(d => {
+    if (d.status !== 'success') return;
+    const ofs = d.ofs || [];
+    const el = document.getElementById('listaMateriaisOF');
+
+    // Atualiza KPIs
+    let totalMats = 0;
+    let semEstoque = 0;
+    ofs.forEach(of => {
+      totalMats += of.materiais.length;
+      of.materiais.forEach(m => { if (!m.tem_no_estoque) semEstoque++; });
+    });
+    document.getElementById('kpiMateriaisPend').textContent = totalMats;
+    document.getElementById('kpiMatSemEstoque').textContent = semEstoque;
+    document.getElementById('kpiMateriaisBadge').textContent = totalMats;
+
+    if (!ofs.length) {
+      el.innerHTML = '<div class="prodsys-card p-4 text-center text-sm text-gray-400"><i class="fa-solid fa-circle-check text-green-400 mr-1"></i>Nenhuma OF liberada pendente de materiais brutos.</div>';
+      return;
+    }
+    el.innerHTML = ofs.map(of => {
+      const prioridadeCor = {urgente:'border-red-500',alta:'border-orange-400',media:'border-yellow-400'};
+      const borda = prioridadeCor[of.prioridade] || 'border-indigo-300';
+      const matsHtml = of.materiais.map(m => {
+        const ok = m.tem_no_estoque;
+        const statusIcon = ok
+          ? '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded-full"><i class="fa-solid fa-check"></i>' + m.qtd_disponivel.toFixed(2) + ' ' + m.unidade + '</span>'
+          : '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full"><i class="fa-solid fa-minus"></i>sem estoque</span>';
+        return '<div class="flex items-center justify-between gap-2 py-1.5 border-b border-gray-50 last:border-0">' +
+          '<div class="min-w-0 flex-1"><div class="text-xs font-medium text-gray-700 truncate" title="' + (m.descricao||'').replace(/"/g,'&quot;') + '">' + (m.descricao || m.codigo) + '</div>' +
+          '<div class="text-[10px] text-gray-400">' + m.codigo + ' · precisa: ' + m.qtd_necessaria.toFixed(4) + ' ' + m.unidade + '</div></div>' +
+          statusIcon + '</div>';
+      }).join('');
+      return '<div class="prodsys-card border-l-4 ' + borda + ' overflow-hidden mb-3">' +
+        '<div class="px-4 py-2.5 bg-gray-50/50 flex items-center justify-between">' +
+          '<div class="min-w-0 flex-1"><div class="flex items-center gap-2"><span class="text-xs font-bold text-blue-700">OF #' + of.ordem + '</span>' +
+          (of.prioridade ? '<span class="badge-priority ' + of.prioridade + '">' + of.prioridade.toUpperCase() + '</span>' : '') +
+          '</div><div class="text-sm font-black text-gray-800 truncate">' + (of.produto || '—') + '</div></div>' +
+          '<div class="text-xs text-gray-400 flex-shrink-0">' + (of.materiais.length) + ' materiais</div></div>' +
+        '<div class="px-4">' + matsHtml + '</div></div>';
+    }).join('');
+  }).catch(() => {
+    document.getElementById('listaMateriaisOF').innerHTML = '<div class="prodsys-card p-4 text-center text-sm text-red-400">Erro ao carregar materiais.</div>';
+  });
+}
+</script>
+{% endblock %}

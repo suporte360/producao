@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Logs — SALUTEM{% endblock %}
+{% block header_title %}
+  <span class="flex items-center gap-2">
+    <i class="fa-solid fa-clock-rotate-left text-amber-500"></i>
+    <span class="hidden sm:inline">Logs</span>
+  </span>
+{% endblock %}
+
+{% block content %}
+<div class="prodsys-card overflow-hidden">
+  <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+    <i class="fa-solid fa-list text-amber-500"></i>
+    <h3 class="text-sm font-bold text-gray-700">Últimas Ações do Sistema</h3>
+    <span class="ml-auto bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-xs font-bold">{{ logs|length }} registros</span>
+  </div>
+  <div class="overflow-x-auto max-h-[70vh] overflow-y-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider sticky top-0">
+        <tr>
+          <th class="px-4 py-2.5 text-left">Data/Hora</th>
+          <th class="px-4 py-2.5 text-left">Usuário</th>
+          <th class="px-4 py-2.5 text-left">Ação</th>
+          <th class="px-4 py-2.5 text-left">Descrição</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-50">
+        {% for log in logs %}
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-2.5 text-xs text-gray-500 whitespace-nowrap">{{ log.data_hora }}</td>
+          <td class="px-4 py-2.5 font-medium text-gray-700">{{ log.usuario_nome or 'Sistema' }}</td>
+          <td class="px-4 py-2.5"><code class="bg-gray-100 text-blue-700 px-1.5 py-0.5 rounded text-xs">{{ log.acao }}</code></td>
+          <td class="px-4 py-2.5 text-xs text-gray-600">{{ log.descricao or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="px-4 py-8 text-center text-gray-400 text-sm">Nenhum log registrado.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

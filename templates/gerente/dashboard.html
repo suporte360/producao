@@ -1,0 +1,451 @@
+{% extends "base.html" %}
+{% block title %}Painel Gerencial — SALUTEM{% endblock %}
+{% block header_title %}
+  <span class="flex items-center gap-2">
+    <i class="fa-solid fa-chart-line text-blue-600"></i>
+    <span class="hidden sm:inline">Painel Gerencial</span>
+  </span>
+{% endblock %}
+
+{% block content %}
+{% set k = dados.kpis %}
+
+{# ═══════════════ ALERTA DE ATRASOS ═══════════════ #}
+{% if k.atrasados > 0 %}
+<div class="mb-4 rounded-xl border-l-4 border-red-500 bg-red-50 px-4 py-3 flex items-center gap-3 anim-flash-attention">
+  <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+    <i class="fa-solid fa-triangle-exclamation text-red-600 text-lg"></i>
+  </div>
+  <div class="flex-1 min-w-0">
+    <div class="font-black text-red-800 text-sm">⚠ {{ k.atrasados }} OP(s) ATRASADA(S)</div>
+    <div class="text-xs text-red-700">Verifique a lista abaixo e priorize a liberação</div>
+  </div>
+  <a href="#atrasados" class="btn-touch btn-danger text-xs px-3 py-2" style="min-height:auto">
+    Ver lista <i class="fa-solid fa-arrow-down"></i>
+  </a>
+</div>
+{% endif %}
+
+{# ═══════════════ KPIs PRINCIPAIS ═══════════════ #}
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-5">
+
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#dbeafe;color:#1d4ed8"><i class="fa-solid fa-layer-group"></i></div>
+    <div>
+      <div class="kpi-num text-blue-700">{{ k.total_lotes }}</div>
+      <div class="kpi-lbl">Total OPs</div>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#fef3c7;color:#a16207"><i class="fa-solid fa-hourglass-start"></i></div>
+    <div>
+      <div class="kpi-num text-amber-600">{{ k.aguardando_liberacao + k.aguardando_inicio }}</div>
+      <div class="kpi-lbl">Aguardando</div>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#fed7aa;color:#c2410c"><i class="fa-solid fa-gear"></i></div>
+    <div>
+      <div class="kpi-num text-orange-500">{{ k.em_producao }}</div>
+      <div class="kpi-lbl">Em Produção</div>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#dcfce7;color:#15803d"><i class="fa-solid fa-circle-check"></i></div>
+    <div>
+      <div class="kpi-num text-green-600">{{ k.concluidos_hoje }}</div>
+      <div class="kpi-lbl">Finaliz. Hoje</div>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#fee2e2;color:#b91c1c"><i class="fa-solid fa-triangle-exclamation"></i></div>
+    <div>
+      <div class="kpi-num text-red-600">{{ k.atrasados }}</div>
+      <div class="kpi-lbl">Atrasados</div>
+    </div>
+  </div>
+
+</div>
+
+{# ═══════════════ GRÁFICOS + STATUS ═══════════════ #}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
+
+  {# Produção últimos 7 dias #}
+  <div class="prodsys-card p-4 lg:col-span-2">
+    <h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+      <i class="fa-solid fa-chart-column text-blue-500"></i>
+      Produção — Últimos 7 dias
+      <span class="ml-auto text-xs font-normal text-gray-400">OPs finalizadas por dia</span>
+    </h3>
+    <div style="height:240px"><canvas id="chart7dias"></canvas></div>
+  </div>
+
+  {# Prioridades #}
+  <div class="prodsys-card p-4">
+    <h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+      <i class="fa-solid fa-flag text-purple-500"></i>
+      Prioridades em aberto
+    </h3>
+    <div class="space-y-3">
+      {% set prios = [
+        ('urgente', k.urgentes, '#dc2626', 'fa-bolt'),
+        ('alta',    k.altas,    '#ea580c', 'fa-arrow-up'),
+        ('media',   (k.aguardando_liberacao + k.aguardando_inicio + k.em_producao) - k.urgentes - k.altas, '#ca8a04', 'fa-equals'),
+        ('baixa',   0, '#16a34a', 'fa-arrow-down')
+      ] %}
+      {% for nome, total, cor, icon in prios %}
+      <div>
+        <div class="flex items-center justify-between mb-1">
+          <span class="text-xs font-bold text-gray-600 flex items-center gap-1.5">
+            <i class="fa-solid {{ icon }}" style="color:{{ cor }}"></i>
+            {{ nome|upper }}
+          </span>
+          <span class="text-sm font-black" style="color:{{ cor }}">{{ total }}</span>
+        </div>
+        <div class="h-2 rounded-full bg-gray-100 overflow-hidden">
+          {% set pct = (total * 100 / (k.total_lotes or 1))|round if k.total_lotes else 0 %}
+          <div class="h-full rounded-full transition-all" style="width:{{ pct }}%;background:{{ cor }}"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="mt-4 pt-3 border-t border-gray-100">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold text-gray-500 uppercase">Pausados</span>
+        <span class="text-sm font-black text-amber-600">{{ k.pausados }}</span>
+      </div>
+      <div class="flex items-center justify-between mt-1">
+        <span class="text-xs font-bold text-gray-500 uppercase">No mês</span>
+        <span class="text-sm font-black text-green-600">{{ k.concluidos_mes }}</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{# ═══════════════ STATUS POR SETOR ═══════════════ #}
+<div class="prodsys-card p-4 mb-5">
+  <h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+    <i class="fa-solid fa-industry text-blue-500"></i>
+    Status por Setor
+    <span class="ml-auto text-xs font-normal text-gray-400">Carga atual de operações</span>
+  </h3>
+
+  {% if dados.por_setor %}
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="text-xs uppercase tracking-wider text-gray-500 border-b border-gray-100">
+        <tr>
+          <th class="px-3 py-2 text-left">Setor</th>
+          <th class="px-3 py-2 text-center">Pendentes</th>
+          <th class="px-3 py-2 text-center">Em Andamento</th>
+          <th class="px-3 py-2 text-center">Pausados</th>
+          <th class="px-3 py-2 text-center">Concl. Hoje</th>
+          <th class="px-3 py-2 text-center">Total</th>
+          <th class="px-3 py-2 text-left" style="min-width:120px">Carga</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-50">
+        {% for s in dados.por_setor %}
+        {% set total_ativas = (s.pendentes or 0) + (s.em_andamento or 0) + (s.pausados or 0) %}
+        {% set max_carga = (dados.por_setor | map(attribute='total_ops') | max) or 1 %}
+        <tr class="hover:bg-gray-50">
+          <td class="px-3 py-2.5">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full" style="background:{{ s.cor_hex }}"></span>
+              <div>
+                <div class="font-bold text-gray-800 text-sm">{{ s.nome_departamento }}</div>
+                <div class="text-[10px] text-gray-400 uppercase tracking-wider">{{ s.departamento }}</div>
+              </div>
+            </div>
+          </td>
+          <td class="px-3 py-2.5 text-center">
+            {% if s.pendentes %}<span class="font-bold text-blue-600">{{ s.pendentes }}</span>{% else %}<span class="text-gray-300">—</span>{% endif %}
+          </td>
+          <td class="px-3 py-2.5 text-center">
+            {% if s.em_andamento %}<span class="font-bold text-orange-500">{{ s.em_andamento }}</span>{% else %}<span class="text-gray-300">—</span>{% endif %}
+          </td>
+          <td class="px-3 py-2.5 text-center">
+            {% if s.pausados %}<span class="font-bold text-amber-600">{{ s.pausados }}</span>{% else %}<span class="text-gray-300">—</span>{% endif %}
+          </td>
+          <td class="px-3 py-2.5 text-center">
+            {% if s.concluidas_hoje %}<span class="font-bold text-green-600">{{ s.concluidas_hoje }}</span>{% else %}<span class="text-gray-300">—</span>{% endif %}
+          </td>
+          <td class="px-3 py-2.5 text-center font-black text-gray-700">{{ s.total_ops }}</td>
+          <td class="px-3 py-2.5">
+            <div class="flex items-center gap-2">
+              <div class="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden">
+                {% set carga_pct = (s.total_ops * 100 / max_carga)|round if max_carga else 0 %}
+                <div class="h-full rounded-full" style="width:{{ carga_pct }}%;background:{{ s.cor_hex }}"></div>
+              </div>
+              <span class="text-[10px] text-gray-400 w-8 text-right">{{ carga_pct }}%</span>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="text-center py-6 text-gray-400 text-sm">Nenhum dado de setor disponível</div>
+  {% endif %}
+</div>
+
+{# ═══════════════ GRID 2 COLUNAS: EM PRODUÇÃO + PRÓXIMAS ═══════════════ #}
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
+
+  {# EM PRODUÇÃO AGORA #}
+  <div class="prodsys-card overflow-hidden">
+    <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-orange-50 to-transparent">
+      <h3 class="text-sm font-bold text-gray-700 flex items-center gap-2">
+        <span class="relative flex h-2.5 w-2.5">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-orange-500"></span>
+        </span>
+        Em Produção Agora
+      </h3>
+      <span class="bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full text-xs font-bold">{{ dados.em_producao|length }}</span>
+    </div>
+    <div class="divide-y divide-gray-50 max-h-80 overflow-y-auto">
+      {% if dados.em_producao %}
+      {% for l in dados.em_producao %}
+      <a href="{{ url_for('admin_lote_detalhe', ordem=l.ordem) }}" class="block px-4 py-3 hover:bg-orange-50 transition">
+        <div class="flex items-center justify-between gap-2 mb-1">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="text-xs font-bold text-blue-700 flex-shrink-0">OP #{{ l.ordem }}</span>
+            {% if l.lote_codigo %}<span class="text-[10px] text-gray-400 flex-shrink-0">· {{ l.lote_codigo }}</span>{% endif %}
+            {% if l.prioridade %}<span class="badge-priority {{ l.prioridade|lower }} flex-shrink-0">{{ l.prioridade|upper }}</span>{% endif %}
+          </div>
+          {% if l.departamento_atual %}<span class="text-[10px] text-gray-400 flex-shrink-0">{{ l.departamento_atual }}</span>{% endif %}
+        </div>
+        <div class="text-sm font-bold text-gray-800 truncate">{{ l.descricao_produto or 'Produto' }}</div>
+        <div class="text-[11px] text-gray-400 mt-0.5">
+          <i class="fa-solid fa-boxes-stacked mr-1"></i>{{ l.qtde_ordem|round(0) }} peças
+          {% if l.data_inicio_producao %} · <i class="fa-regular fa-clock mx-1"></i>início {{ l.data_inicio_producao|formatar_data_br }}{% endif %}
+        </div>
+      </a>
+      {% endfor %}
+      {% else %}
+      <div class="px-4 py-8 text-center text-gray-400 text-sm">
+        <i class="fa-solid fa-circle-pause text-2xl mb-2 block"></i>
+        Nenhuma OP em produção no momento
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {# PRÓXIMAS OPs A INICIAR #}
+  <div class="prodsys-card overflow-hidden">
+    <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-blue-50 to-transparent">
+      <h3 class="text-sm font-bold text-gray-700 flex items-center gap-2">
+        <i class="fa-solid fa-list-ol text-blue-500"></i>
+        Próximas OPs a Iniciar
+      </h3>
+      <span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-bold">{{ dados.proximas_ops|length }}</span>
+    </div>
+    <div class="divide-y divide-gray-50 max-h-80 overflow-y-auto">
+      {% if dados.proximas_ops %}
+      {% for l in dados.proximas_ops %}
+      <a href="{{ url_for('admin_lote_detalhe', ordem=l.ordem) }}" class="block px-4 py-3 hover:bg-blue-50 transition">
+        <div class="flex items-center justify-between gap-2 mb-1">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="text-xs font-bold text-blue-700 flex-shrink-0">OP #{{ l.ordem }}</span>
+            {% if l.lote_codigo %}<span class="text-[10px] text-gray-400 flex-shrink-0">· {{ l.lote_codigo }}</span>{% endif %}
+            {% if l.prioridade %}<span class="badge-priority {{ l.prioridade|lower }} flex-shrink-0">{{ l.prioridade|upper }}</span>{% endif %}
+          </div>
+          {% if l.data_previsao_erp %}
+          {% set atrasada = l.data_previsao_erp < now.date() if l.data_previsao_erp else false %}
+          <span class="text-[10px] flex-shrink-0 {{ 'text-red-600 font-bold' if atrasada else 'text-gray-400' }}">
+            {% if atrasada %}<i class="fa-solid fa-circle-exclamation mr-0.5"></i>{% endif %}
+            {{ l.data_previsao_erp|formatar_data_br }}
+          </span>
+          {% endif %}
+        </div>
+        <div class="text-sm font-bold text-gray-800 truncate">{{ l.descricao_produto or 'Produto' }}</div>
+        <div class="text-[11px] text-gray-400 mt-0.5">
+          <i class="fa-solid fa-boxes-stacked mr-1"></i>{{ l.qtde_ordem|round(0) }} peças
+          · <span class="badge-status {{ l.status }}">{{ l.status|replace('_',' ')|title }}</span>
+        </div>
+      </a>
+      {% endfor %}
+      {% else %}
+      <div class="px-4 py-8 text-center text-gray-400 text-sm">
+        <i class="fa-solid fa-circle-check text-2xl mb-2 block text-green-400"></i>
+        Nenhuma OP aguardando início
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+{# ═══════════════ ALERTAS DE ATRASO ═══════════════ #}
+{% if dados.atrasados %}
+<section id="atrasados" class="prodsys-card overflow-hidden mb-5 border-l-4 border-red-500">
+  <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between bg-red-50">
+    <h3 class="text-sm font-bold text-red-800 flex items-center gap-2">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+      OPs Atrasadas — Ação Necessária
+    </h3>
+    <span class="bg-red-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">{{ dados.atrasados|length }}</span>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="text-xs uppercase tracking-wider text-gray-500 bg-gray-50 border-b border-gray-100">
+        <tr>
+          <th class="px-3 py-2 text-left">OP</th>
+          <th class="px-3 py-2 text-left">Produto</th>
+          <th class="px-3 py-2 text-center">Qtd</th>
+          <th class="px-3 py-2 text-center">Prioridade</th>
+          <th class="px-3 py-2 text-center">Previsão</th>
+          <th class="px-3 py-2 text-center">Status</th>
+          <th class="px-3 py-2 text-center">Setor Atual</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-50">
+        {% for l in dados.atrasados %}
+        {% set dias_atraso = (now.date() - l.data_previsao_erp).days if l.data_previsao_erp else 0 %}
+        <tr class="hover:bg-red-50">
+          <td class="px-3 py-2.5">
+            <a href="{{ url_for('admin_lote_detalhe', ordem=l.ordem) }}" class="font-bold text-blue-700 hover:underline">#{{ l.ordem }}</a>
+            {% if l.lote_codigo %}<div class="text-[10px] text-gray-400">{{ l.lote_codigo }}</div>{% endif %}
+          </td>
+          <td class="px-3 py-2.5 text-gray-700 max-w-[200px] truncate">{{ l.descricao_produto or '—' }}</td>
+          <td class="px-3 py-2.5 text-center font-semibold">{{ l.qtde_ordem|round(0) }}</td>
+          <td class="px-3 py-2.5 text-center">
+            {% if l.prioridade %}<span class="badge-priority {{ l.prioridade|lower }}">{{ l.prioridade|upper }}</span>{% endif %}
+          </td>
+          <td class="px-3 py-2.5 text-center">
+            <div class="font-bold text-red-600">{{ l.data_previsao_erp|formatar_data_br }}</div>
+            <div class="text-[10px] text-red-500">{{ dias_atraso }} dia(s)</div>
+          </td>
+          <td class="px-3 py-2.5 text-center">
+            <span class="badge-status {{ l.status }}">{{ l.status|replace('_',' ')|title }}</span>
+          </td>
+          <td class="px-3 py-2.5 text-center text-xs">
+            {% if l.departamento_atual %}
+            <span class="chip-dept dept-{{ l.departamento_atual }}">{{ l.departamento_atual }}</span>
+            {% else %}<span class="text-gray-300">—</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+{# Atalhos rápidos #}
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+  <a href="{{ url_for('dashboard_pcp') }}" class="prodsys-card p-4 hover:shadow-lg transition text-center">
+    <i class="fa-solid fa-diagram-project text-2xl text-blue-500 mb-1.5"></i>
+    <div class="text-sm font-bold text-gray-700">PCP — Ordens</div>
+    <div class="text-[11px] text-gray-400">Gerenciar OPs</div>
+  </a>
+  <a href="{{ url_for('kanban_board') }}" class="prodsys-card p-4 hover:shadow-lg transition text-center">
+    <i class="fa-solid fa-table-columns text-2xl text-purple-500 mb-1.5"></i>
+    <div class="text-sm font-bold text-gray-700">Kanban</div>
+    <div class="text-[11px] text-gray-400">Board visual</div>
+  </a>
+  <a href="{{ url_for('kanban_tv') }}" target="_blank" class="prodsys-card p-4 hover:shadow-lg transition text-center">
+    <i class="fa-solid fa-tv text-2xl text-cyan-500 mb-1.5"></i>
+    <div class="text-sm font-bold text-gray-700">TV Kanban</div>
+    <div class="text-[11px] text-gray-400">Painel chão</div>
+  </a>
+  <a href="{{ url_for('tv_almoxarifado') }}" target="_blank" class="prodsys-card p-4 hover:shadow-lg transition text-center">
+    <i class="fa-solid fa-box-open text-2xl text-teal-500 mb-1.5"></i>
+    <div class="text-sm font-bold text-gray-700">TV Almoxarifado</div>
+    <div class="text-[11px] text-gray-400">Separação</div>
+  </a>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ─── Chart.js: Produção últimos 7 dias ─── */
+(function() {
+  const dados = {{ dados.por_dia | tojson | safe if dados.por_dia else '[]' }};
+  const ctx = document.getElementById('chart7dias');
+  if (!ctx) return;
+
+  // Gera últimos 7 dias (preenche faltantes com 0)
+  const hoje = new Date();
+  const labels = [];
+  const valores = [];
+  const pecas = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(hoje);
+    d.setDate(d.getDate() - i);
+    const iso = d.toISOString().slice(0,10);
+    const label = d.toLocaleDateString('pt-BR', {weekday:'short', day:'2-digit'});
+    labels.push(label);
+    const encontrado = dados.find(x => {
+      const dia = x.dia;
+      if (!dia) return false;
+      const dStr = typeof dia === 'string' ? dia.slice(0,10) : new Date(dia).toISOString().slice(0,10);
+      return dStr === iso;
+    });
+    valores.push(encontrado ? (encontrado.total || 0) : 0);
+    pecas.push(encontrado ? Math.round(encontrado.pecas || 0) : 0);
+  }
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'OPs finalizadas',
+        data: valores,
+        backgroundColor: 'rgba(37, 99, 235, 0.85)',
+        borderColor: 'rgba(37, 99, 235, 1)',
+        borderWidth: 1,
+        borderRadius: 6,
+        maxBarThickness: 50
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0f172a',
+          titleFont: { size: 12, weight: 'bold' },
+          bodyFont: { size: 12 },
+          padding: 10,
+          callbacks: {
+            label: function(ctx) {
+              const idx = ctx.dataIndex;
+              return [
+                `OPs: ${ctx.parsed.y}`,
+                `Peças: ${pecas[idx] || 0}`
+              ];
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { stepSize: 1, font: { size: 11 } },
+          grid: { color: '#f1f5f9' }
+        },
+        x: {
+          ticks: { font: { size: 11 } },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+})();
+
+/* ─── Auto refresh 5 min ─── */
+setTimeout(() => location.reload(), 300000);
+</script>
+{% endblock %}

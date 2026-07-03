@@ -1,0 +1,128 @@
+{% extends 'base_admin.html' %}
+
+{% block title %}Estoque - Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>📦 Controle de Estoque</h1>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNovoItem">
+        ➕ Novo Item
+    </button>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card kpi-card primary">
+            <div class="kpi-label">📦 Total Itens</div>
+            <div class="kpi-value">{{ estoque|length }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card kpi-card success">
+            <div class="kpi-label">✅ Em Estoque</div>
+            <div class="kpi-value">{{ estoque|selectattr('quantidade', 'gt', 0)|list|length }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card kpi-card warning">
+            <div class="kpi-label">⚠️ Estoque Baixo</div>
+            <div class="kpi-value">{{ estoque|selectattr('quantidade', 'lt', 10)|list|length }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card kpi-card danger">
+            <div class="kpi-label">❌ Esgotado</div>
+            <div class="kpi-value">{{ estoque|selectattr('quantidade', 'eq', 0)|list|length }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Material</th>
+                    <th>Categoria</th>
+                    <th>Quantidade</th>
+                    <th>Mínimo</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in estoque %}
+                <tr>
+                    <td>{{ item.id }}</td>
+                    <td>{{ item.material }}</td>
+                    <td>{{ item.categoria|default('-') }}</td>
+                    <td>{{ item.quantidade }}</td>
+                    <td>{{ item.quantidade_minima|default(0) }}</td>
+                    <td>
+                        {% if item.quantidade == 0 %}
+                            <span class="badge bg-danger">ESGOTADO</span>
+                        {% elif item.quantidade < item.quantidade_minima %}
+                            <span class="badge bg-warning">BAIXO</span>
+                        {% else %}
+                            <span class="badge bg-success">OK</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="editarEstoque({{ item.id }})">✏️</button>
+                        <button class="btn btn-sm btn-danger" onclick="excluirEstoque({{ item.id }})">🗑️</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal Novo Item -->
+<div class="modal fade" id="modalNovoItem" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Novo Item</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_estoque') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label>Material</label>
+                        <input type="text" name="material" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Categoria</label>
+                        <input type="text" name="categoria" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label>Quantidade</label>
+                        <input type="number" name="quantidade" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Quantidade Mínima</label>
+                        <input type="number" name="quantidade_minima" class="form-control" value="10">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function editarEstoque(id) { alert('Editar item: ' + id); }
+function excluirEstoque(id) {
+    if(confirm('Excluir este item?')) {
+        fetch(`/admin/estoque/excluir/${id}`, { method: 'DELETE' })
+            .then(r => r.json())
+            .then(data => { alert(data.mensagem); location.reload(); });
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,389 @@
+{% extends "base.html" %}
+
+{% block title %}Detalhes da OF {{ ordem }} - {{ sistema_nome }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.of-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+.of-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+.info-box {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+    border-left: 4px solid #667eea;
+}
+.info-box label {
+    font-size: 0.875rem;
+    color: #6c757d;
+    font-weight: 600;
+    display: block;
+    margin-bottom: 0.25rem;
+}
+.info-box .value {
+    font-size: 1.1rem;
+    color: #212529;
+    font-weight: 500;
+}
+.prioridade-badge {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 1rem;
+}
+.prioridade-alta {
+    background: #dc3545;
+    color: white;
+}
+.prioridade-media {
+    background: #ffc107;
+    color: #000;
+}
+.prioridade-baixa {
+    background: #28a745;
+    color: white;
+}
+.materiais-table, .operacoes-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+.materiais-table th, .operacoes-table th {
+    background: #667eea;
+    color: white;
+    padding: 0.75rem;
+    text-align: left;
+    font-weight: 600;
+}
+.materiais-table td, .operacoes-table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #dee2e6;
+}
+.materiais-table tr:hover, .operacoes-table tr:hover {
+    background: #f8f9fa;
+}
+.status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+.status-pendente {
+    background: #ffc107;
+    color: #000;
+}
+.status-andamento {
+    background: #17a2b8;
+    color: white;
+}
+.status-concluido {
+    background: #28a745;
+    color: white;
+}
+.btn-group-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 1.5rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- Cabeçalho da OF -->
+    <div class="of-header">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <h1 style="margin: 0; font-size: 2rem;">
+                    <i class="fas fa-file-alt"></i> Ordem de Fabricação {{ ordem }}
+                </h1>
+                <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">
+                    Lote: {{ lote.lote_codigo }} | Status: {{ lote.status|upper }}
+                </p>
+            </div>
+            <div>
+                {% if lote.prioridade %}
+                <span class="prioridade-badge prioridade-{{ lote.prioridade }}">
+                    {% if lote.prioridade == 'alta' %}🔴{% elif lote.prioridade == 'media' %}🟡{% else %}🟢{% endif %}
+                    {{ lote.prioridade|upper }} PRIORIDADE
+                </span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Informações Principais -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-info-circle"></i> Informações da Ordem
+        </div>
+        <div class="card-body">
+            <div class="of-info-grid">
+                <div class="info-box">
+                    <label>Número da OF:</label>
+                    <div class="value">{{ ordem }}</div>
+                </div>
+                <div class="info-box">
+                    <label>Lote de Produção:</label>
+                    <div class="value">{{ lote.lote_codigo }}</div>
+                </div>
+                <div class="info-box">
+                    <label>Quantidade a Produzir:</label>
+                    <div class="value">{{ lote.qtde_saldo|int }} UN {{ lote.unidade_medida or 'UN' }}</div>
+                </div>
+                <div class="info-box">
+                    <label>Departamento:</label>
+                    <div class="value">{{ lote.departamento_atual or 'Não definido' }}</div>
+                </div>
+                <div class="info-box">
+                    <label>Pedido:</label>
+                    <div class="value">{{ lote.data_pedido|formatar_data_br or "-" }}</div>
+                </div>
+                <div class="info-box">
+                    <label>Data de Abertura:</label>
+                    <div class="value">{{ lote.data_abertura|formatar_data_br }}</div>
+                </div>
+                <div class="info-box">
+                    <label>Previsão Entrega:</label>
+                    <div class="value">{{ lote.data_previsao|formatar_data_br }}</div>
+                </div>
+                <div class="info-box">
+                    <label>Iniciado por:</label>
+                    <div class="value">{{ lote.usuario_inicio or '-' }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- O QUE VAI FAZER -->
+    <div class="card" style="border-left: 5px solid #28a745;">
+        <div class="card-header" style="background: #28a745; color: white;">
+            <i class="fas fa-hammer"></i> <strong>O QUE VAI FAZER</strong>
+        </div>
+        <div class="card-body">
+            <div style="background: #f0f8f5; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem;">
+                <div style="font-size: 1.5rem; font-weight: 700; color: #28a745; margin-bottom: 0.5rem;">
+                    <i class="fas fa-check-circle"></i> Produzir {{ lote.qtde_saldo|int }} UN {{ lote.unidade_medida or 'UN' }}
+                </div>
+                <div style="font-size: 1.2rem; color: #212529; font-weight: 600; margin-bottom: 1rem;">
+                    {{ lote.produto }}
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                    <div class="info-box">
+                        <label>Código do Produto</label>
+                        <div class="value">{{ lote.codigo_produto or '-' }}</div>
+                    </div>
+                    <div class="info-box">
+                        <label>Quantidade Total</label>
+                        <div class="value">{{ lote.qtde_saldo|int }} UN {{ lote.unidade_medida or 'UN' }}</div>
+                    </div>
+                    <div class="info-box">
+                        <label>Departamento Atual</label>
+                        <div class="value">{{ lote.departamento_atual or 'Não definido' }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Materiais Necessários -->
+    <div class="card" style="border-left: 5px solid #17a2b8;">
+        <div class="card-header" style="background: #17a2b8; color: white;">
+            <i class="fas fa-cubes"></i> <strong>MATERIAIS NECESSÁRIOS</strong>
+        </div>
+        <div class="card-body">
+            {% if materiais %}
+            <div style="background: #e7f5f8; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                <div style="font-size: 1.1rem; font-weight: 600; color: #17a2b8; margin-bottom: 0.5rem;">
+                    <i class="fas fa-info-circle"></i> Para fazer {{ lote.qtde_saldo|int }} UN {{ lote.unidade_medida or 'UN' }} de {{ lote.produto }}, você vai precisar de:
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="materiais-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 100px;">Quantidade</th>
+                            <th style="width: 80px;">Unidade</th>
+                            <th style="width: 150px;">Código</th>
+                            <th>Nome do Material</th>
+                            <th style="width: 120px;">Status</th>
+                            {% if pode_finalizar_producao %}
+                                <th style="width: 150px;">Ações</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for material in materiais %}
+                        <tr style="{% if material.requisitado %}background: #d4edda;{% endif %}">
+                            <td>
+                                <div style="font-size: 1.2rem; font-weight: 700; color: #17a2b8;">
+                                    {{ material.quantidade|floatformat(4) }}
+                                </div>
+                            </td>
+                            <td><strong>{{ material.unidade_medida or 'UN' }}</strong></td>
+                            <td><code style="background: #f8f9fa; padding: 0.25rem 0.5rem; border-radius: 4px;">{{ material.produto or material.req_codigo }}</code></td>
+                            <td>
+                                <div style="font-weight: 600; color: #212529;">{{ material.descricao or 'Descrição não disponível' }}</div>
+                                <div style="font-size: 0.875rem; color: #6c757d; margin-top: 0.25rem;">
+                                    <i class="fas fa-cube"></i> Lote ERP: {{ material.lote or '-' }}
+                                </div>
+                            </td>
+                            <td>
+                                {% if material.requisitado %}
+                                <span class="status-badge status-concluido">
+                                    <i class="fas fa-check-circle"></i> Requisitado
+                                </span>
+                                {% else %}
+                                <span class="status-badge status-pendente">
+                                    <i class="fas fa-clock"></i> Pendente
+                                </span>
+                                {% endif %}
+                            </td>
+                            {% if pode_finalizar_producao %}
+                            <td>
+                                {% if not material.requisitado %}
+                                <form method="POST" action="{{ url_for('marcar_requisicao', requisicao_id=material.id) }}" style="display: inline;">
+                                    <input type="hidden" name="status" value="true">
+                                    <button type="submit" class="btn btn-sm btn-success" title="Marcar como Requisitado">
+                                        <i class="fas fa-check"></i> Marcar
+                                    </button>
+                                </form>
+                                {% else %}
+                                <form method="POST" action="{{ url_for('marcar_requisicao', requisicao_id=material.id) }}" style="display: inline;">
+                                    <input type="hidden" name="status" value="false">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Marcar como Pendente">
+                                        <i class="fas fa-times"></i> Desmarcar
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div style="background: #fff3cd; padding: 1rem; border-radius: 8px; margin-top: 1rem; border-left: 4px solid #ffc107;">
+                <div style="font-weight: 600; color: #856404;">
+                    <i class="fas fa-exclamation-triangle"></i> <strong>Atenção:</strong> 
+                    Verifique se todos os materiais estão disponíveis no almoxarifado antes de iniciar a produção!
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> Nenhum material cadastrado para esta OF.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Operações/Processos -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-tasks"></i> Operações de Produção
+        </div>
+        <div class="card-body">
+            {% if processos %}
+            <div class="table-responsive">
+                <table class="operacoes-table">
+                    <thead>
+                        <tr>
+                            <th>Oper.</th>
+                            <th>Descrição da Operação</th>
+                            <th>Funcionário</th>
+                            <th>Data/Hora Início</th>
+                            <th>Data/Hora Término</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for processo in processos %}
+                        <tr>
+                            <td><strong>{{ processo.sequencia or processo.id }}</strong></td>
+                            <td>{{ processo.descricao_processo or processo.processo }}</td>
+                            <td>{{ processo.usuario_inicio or '-' }}</td>
+                            <td>{{ processo.data_inicio|formatar_data_hora_br if processo.data_inicio else '-' }}</td>
+                            <td>{{ processo.data_fim|formatar_data_hora_br if processo.data_fim else '-' }}</td>
+                            <td>
+                                {% if processo.status == 'finalizado' %}
+                                <span class="status-badge status-concluido">✓ Concluído</span>
+                                {% elif processo.status == 'em_andamento' %}
+                                <span class="status-badge status-andamento">⏳ Em Andamento</span>
+                                {% else %}
+                                <span class="status-badge status-pendente">⏸ Pendente</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> Nenhum processo cadastrado para esta OF.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Observações -->
+    {% if lote.observacoes %}
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-comment-alt"></i> Observações
+        </div>
+        <div class="card-body">
+            <p>{{ lote.observacoes }}</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Ações -->
+    <div class="card">
+        <div class="card-body">
+            <div class="btn-group-actions">
+                <a href="{{ url_for('kanban_board') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Voltar para Lotes
+                </a>
+                
+                {% if pode_iniciar_producao and lote.status == 'importado' %}
+                <form method="POST" action="{{ url_for('iniciar_lote', ordem=ordem) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-play"></i> Iniciar Produção
+                    </button>
+                </form>
+                {% endif %}
+                
+                {% if pode_finalizar_producao and lote.status == 'em_producao' %}
+                <form method="POST" action="{{ url_for('finalizar_lote', ordem=ordem) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-stop"></i> Finalizar Produção
+                    </button>
+                </form>
+                {% endif %}
+                
+                <button onclick="window.print()" class="btn btn-info">
+                    <i class="fas fa-print"></i> Imprimir
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style media="print">
+.sidebar, .btn, .card-header, .navbar, .btn-group-actions { display: none !important; }
+.of-header { background: #667eea !important; -webkit-print-color-adjust: exact; }
+</style>
+{% endblock %}

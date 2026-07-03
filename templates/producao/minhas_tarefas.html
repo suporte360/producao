@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Minhas Tarefas{% endblock %}
+{% block content %}
+<h2>Minhas Tarefas de Produção</h2>
+
+<div class="row mt-4">
+    {% for tarefa in tarefas %}
+    <div class="col-md-4 mb-3">
+        <div class="card border-primary">
+            <div class="card-header d-flex justify-content-between">
+                <strong>{{ tarefa.lote_id }}</strong>
+                <span class="badge bg-{{ 'warning' if tarefa.etapa == 'pausado' else 'primary' }}">{{ tarefa.etapa|upper }}</span>
+            </div>
+            <div class="card-body">
+                <p class="card-text">Produto: {{ tarefa.produto_nome or 'N/A' }}</p>
+                <p class="card-text">Início: {{ tarefa.data_inicio }}</p>
+                {% if tarefa.etapa == 'producao' %}
+                <button class="btn btn-warning btn-sm w-100" onclick="moverCard({{ tarefa.id }}, 'pausado')">Pausar</button>
+                <button class="btn btn-success btn-sm w-100 mt-2" onclick="moverCard({{ tarefa.id }}, 'concluido')">Concluir</button>
+                {% elif tarefa.etapa == 'pausado' %}
+                <button class="btn btn-primary btn-sm w-100" onclick="moverCard({{ tarefa.id }}, 'producao')">Retomar</button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12">
+        <div class="alert alert-info">Você não possui tarefas ativas no momento.</div>
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+function moverCard(id, etapa) {
+    fetch('/api/kanban/move', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({card_id: id, etapa: etapa})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if(data.success) location.reload();
+        else alert('Erro: ' + data.error);
+    });
+}
+</script>
+{% endblock %}

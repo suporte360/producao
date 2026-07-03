@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Encarregado - Painel</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    {% include 'navbar.html' %}
+    <div class="container mt-5">
+        <h1>🔧 Painel Encarregado</h1>
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <h3>📦 Meus Lotes</h3>
+                    <a href="{{ url_for('kanban_board') }}" class="btn btn-info">Ver Lotes</a>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <h3>📺 TV Almoxarifado</h3>
+                    <a href="{{ url_for('tv_almoxarifado') }}" class="btn btn-danger">Abrir TV</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

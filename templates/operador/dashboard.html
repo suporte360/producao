@@ -1,0 +1,599 @@
+{% extends "base.html" %}
+{% block title %}{{ usuario_departamento }} — Produção{% endblock %}
+{% block header_title %}
+  <span class="flex items-center gap-2">
+    {% set cor_dept = {'ALMOXARIFADO':'bg-cyan-600','CORTE':'bg-orange-500','SOLDA':'bg-red-500','ACABAMENTO':'bg-purple-500','MONTAGEM':'bg-blue-600','EMBALAGEM':'bg-green-600','SERRALHERIA':'bg-yellow-600','PINTURA':'bg-pink-500'} %}
+    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-white text-xs font-bold {{ cor_dept.get(usuario_departamento, 'bg-slate-600') }}">
+      <i class="fa-solid fa-industry mr-1.5"></i>{{ usuario_departamento }}
+    </span>
+    <span class="hidden sm:inline">Minha Produção</span>
+  </span>
+{% endblock %}
+
+{% block content %}
+
+<!-- KPIs compactos -->
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-4">
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#dbeafe;color:#1d4ed8"><i class="fa-solid fa-hourglass-start"></i></div>
+    <div>
+      <div class="kpi-num text-blue-600">{{ stats.pendentes }}</div>
+      <div class="kpi-lbl">Aguardando</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#fed7aa;color:#c2410c"><i class="fa-solid fa-gear"></i></div>
+    <div>
+      <div class="kpi-num text-orange-500">{{ stats.em_andamento }}</div>
+      <div class="kpi-lbl">Em Andamento</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#dcfce7;color:#15803d"><i class="fa-solid fa-circle-check"></i></div>
+    <div>
+      <div class="kpi-num text-green-600">{{ stats.concluidas_hoje }}</div>
+      <div class="kpi-lbl">Concluídas Hoje</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#f1f5f9;color:#475569"><i class="fa-solid fa-calendar-check"></i></div>
+    <div>
+      <div class="kpi-num text-slate-600">{{ stats.concluidas_mes }}</div>
+      <div class="kpi-lbl">No Mês</div>
+    </div>
+  </div>
+</div>
+
+{% if lotes_departamento %}
+
+{# ─────────────── EM PRODUÇÃO AGORA ─────────────── #}
+{# Operação em andamento (status op_status = em_andamento) #}
+{% set em_andamento = lotes_departamento | selectattr('op_status', 'equalto', 'em_andamento') | list %}
+{% if em_andamento %}
+<section class="mb-5">
+  <h2 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+    <span class="relative flex h-2.5 w-2.5">
+      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+      <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+    </span>
+    EM PRODUÇÃO AGORA
+    <span class="ml-1 bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-[10px]">{{ em_andamento|length }}</span>
+  </h2>
+
+  <div class="grid grid-cols-1 xl:grid-cols-2 gap-3 sm:gap-4">
+    {% for lote in em_andamento %}
+    <article class="prodsys-card-lg border-l-4 border-green-500 overflow-hidden anim-pulse-glow">
+
+      <!-- Header do card -->
+      <div class="bg-gradient-to-r from-green-50 to-transparent px-4 sm:px-5 py-3 flex items-start justify-between gap-3">
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2 mb-1 flex-wrap">
+            <span class="text-xs font-bold text-blue-700">OP #{{ lote.ordem }}</span>
+            {% if lote.lote_codigo %}<span class="text-[11px] text-gray-400">· Lote {{ lote.lote_codigo }}</span>{% endif %}
+            {% if lote.prioridade %}
+            {% set pbg = {'urgente':'bg-red-600','alta':'bg-orange-500','media':'bg-yellow-400 text-gray-900','baixa':'bg-green-500'} %}
+            <span class="badge-priority {{ lote.prioridade|lower }}">{{ lote.prioridade|upper }}</span>
+            {% endif %}
+          </div>
+          <h3 class="text-base sm:text-lg font-black text-gray-800 leading-tight">{{ lote.descricao_produto or 'Produto' }}</h3>
+          {% if lote.descricao_operacao %}
+          <p class="text-xs text-gray-500 mt-0.5">
+            <i class="fa-solid fa-gear mr-1"></i>{{ lote.descricao_operacao }}
+          </p>
+          {% endif %}
+        </div>
+        <span class="flex-shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black bg-green-600 text-white">
+          <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>EM PRODUÇÃO
+        </span>
+      </div>
+
+      <!-- Cronômetro + Qtd -->
+      <div class="bg-slate-900 px-4 sm:px-5 py-3 flex items-center gap-4">
+        <div class="flex-1 min-w-0">
+          <div class="text-[10px] text-slate-400 uppercase tracking-wider mb-0.5">Tempo em produção</div>
+          <div class="timer-display text-2xl sm:text-3xl text-green-400"
+               id="timer-{{ lote.op_id or lote.id or lote.ordem }}"
+               data-inicio="{{ lote.data_inicio.isoformat() if lote.data_inicio else '' }}">
+            00:00:00
+          </div>
+        </div>
+        <div class="text-right flex-shrink-0">
+          <div class="text-[10px] text-slate-400 mb-0.5">Qtd Total</div>
+          <div class="text-xl sm:text-2xl font-black text-white">{{ lote.quantidade or lote.qtde_ordem or '—' }}</div>
+        </div>
+      </div>
+
+      <!-- BOTÕES GIGANTES -->
+      <div class="p-3 sm:p-4 grid grid-cols-2 gap-2.5">
+        <button onclick="abrirPausar({{ lote.op_id or lote.id or lote.ordem }})"
+          class="btn-giant btn-pause">
+          <i class="fa-solid fa-pause"></i>
+          <span class="label">PAUSAR</span>
+        </button>
+        <button onclick="abrirFinalizar({{ lote.op_id or lote.id or lote.ordem }}, '{{ (lote.descricao_produto or 'Produto')|replace("'","\\'") }}', {{ lote.quantidade or lote.qtde_ordem or 0 }})"
+          class="btn-giant btn-finish">
+          <i class="fa-solid fa-flag-checkered"></i>
+          <span class="label">FINALIZAR</span>
+        </button>
+      </div>
+
+      <a href="{{ url_for('operador_lote_detalhe', ordem=lote.lote_ordem or lote.ordem) }}"
+         class="block text-center text-[11px] text-blue-600 hover:text-blue-800 hover:bg-blue-50 font-bold py-2 border-t border-gray-100 transition">
+        <i class="fa-solid fa-eye mr-1"></i>Ver detalhes completos
+      </a>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{# ─────────────── PAUSADOS ─────────────── #}
+{% set pausados = lotes_departamento | selectattr('op_status', 'equalto', 'pausado') | list %}
+{% if pausados %}
+<section class="mb-5">
+  <h2 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+    <span class="inline-block w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+    PAUSADOS
+    <span class="ml-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-[10px]">{{ pausados|length }}</span>
+  </h2>
+
+  <div class="grid grid-cols-1 xl:grid-cols-2 gap-3 sm:gap-4">
+    {% for lote in pausados %}
+    <article class="prodsys-card-lg border-l-4 border-amber-400 overflow-hidden">
+      <div class="px-4 sm:px-5 py-3">
+        <div class="flex items-center gap-2 mb-1 flex-wrap">
+          <span class="text-xs font-bold text-blue-700">OP #{{ lote.ordem }}</span>
+          {% if lote.lote_codigo %}<span class="text-[11px] text-gray-400">· {{ lote.lote_codigo }}</span>{% endif %}
+          <span class="badge-priority" style="background:#fef3c7;color:#b45309">⏸ PAUSADO</span>
+        </div>
+        <h3 class="text-base font-black text-gray-800 leading-tight">{{ lote.descricao_produto or 'Produto' }}</h3>
+        {% if lote.descricao_operacao %}
+        <p class="text-xs text-gray-500 mt-0.5"><i class="fa-solid fa-gear mr-1"></i>{{ lote.descricao_operacao }}</p>
+        {% endif %}
+        <div class="mt-2 flex items-center gap-2 flex-wrap text-xs">
+          <span class="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full font-bold">
+            <i class="fa-solid fa-boxes-stacked mr-1"></i>{{ lote.quantidade or lote.qtde_ordem or '—' }} peças
+          </span>
+        </div>
+      </div>
+      <div class="p-3 sm:p-4">
+        <button onclick="abrirRetomar({{ lote.op_id or lote.id or lote.ordem }})"
+          class="btn-giant btn-resume w-full">
+          <i class="fa-solid fa-play"></i>
+          <span class="label">RETOMAR PRODUÇÃO</span>
+        </button>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{# ─────────────── AGUARDANDO INÍCIO ─────────────── #}
+{# Operação pendente (op_status = pendente) — independente do status do lote #}
+{% set disponiveis = lotes_departamento | selectattr('op_status', 'equalto', 'pendente') | list %}
+{% if disponiveis %}
+<section class="mb-5">
+  <h2 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+    <span class="inline-block w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+    AGUARDANDO INÍCIO
+    <span class="ml-1 bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-[10px]">{{ disponiveis|length }}</span>
+  </h2>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+    {% for lote in disponiveis %}
+    {% set pborder = {'urgente':'border-red-500','alta':'border-orange-400','media':'border-yellow-400','baixa':'border-green-400'} %}
+    <article class="prodsys-card border-l-4 {{ pborder.get(lote.prioridade|lower,'border-blue-300') }} flex flex-col">
+      <div class="px-4 py-3 flex-1">
+        <div class="flex items-center justify-between mb-1.5">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-xs font-bold text-blue-700">OP #{{ lote.ordem }}</span>
+            {% if lote.lote_codigo %}<span class="text-[11px] text-gray-400">· {{ lote.lote_codigo }}</span>{% endif %}
+          </div>
+          {% if lote.prioridade %}
+          <span class="badge-priority {{ lote.prioridade|lower }}">{{ lote.prioridade|upper }}</span>
+          {% endif %}
+        </div>
+        <h3 class="text-base font-black text-gray-800 leading-tight">{{ lote.descricao_produto or 'Produto' }}</h3>
+        {% if lote.descricao_operacao %}
+        <p class="text-xs text-gray-500 mt-0.5"><i class="fa-solid fa-gear mr-1"></i>{{ lote.descricao_operacao }}</p>
+        {% endif %}
+        <div class="mt-2 flex items-center gap-2 flex-wrap text-xs">
+          <span class="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full font-bold">
+            <i class="fa-solid fa-boxes-stacked mr-1"></i>{{ lote.quantidade or lote.qtde_ordem or '—' }} peças
+          </span>
+          {% if lote.data_previsao_erp %}
+          <span class="text-xs text-gray-400"><i class="fa-regular fa-calendar mr-1"></i>{{ lote.data_previsao_erp|formatar_data_br }}</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="p-3">
+        <button onclick="abrirIniciar({{ lote.op_id or lote.id or lote.ordem }})"
+          class="btn-giant btn-start w-full">
+          <i class="fa-solid fa-play"></i>
+          <span class="label">INICIAR PRODUÇÃO</span>
+        </button>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{# ─────────────── FINALIZADOS ─────────────── #}
+{% set finalizados = lotes_departamento | selectattr('status', 'equalto', 'finalizado') | list %}
+{% if finalizados %}
+<section class="mb-5">
+  <h2 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+    <span class="inline-block w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+    CONCLUÍDOS
+    <span class="ml-1 bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full text-[10px]">{{ finalizados|length }}</span>
+  </h2>
+  <div class="prodsys-card overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+        <tr>
+          <th class="px-4 py-2.5 text-left">OP</th>
+          <th class="px-4 py-2.5 text-left">Produto</th>
+          <th class="px-4 py-2.5 text-center">Qtd</th>
+          <th class="px-4 py-2.5 text-center">Status</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-50">
+        {% for lote in finalizados %}
+        <tr class="hover:bg-slate-50">
+          <td class="px-4 py-2.5 font-bold text-gray-700">#{{ lote.ordem }}</td>
+          <td class="px-4 py-2.5 text-gray-600">{{ (lote.descricao_produto or '—')[:40] }}</td>
+          <td class="px-4 py-2.5 text-center font-semibold">{{ lote.quantidade or lote.qtde_ordem or '—' }}</td>
+          <td class="px-4 py-2.5 text-center">
+            <span class="badge-status finalizado"><i class="fa-solid fa-check mr-1"></i>Finalizado</span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+{% else %}
+{# ─────────────── ESTADO VAZIO ─────────────── #}
+<div class="flex flex-col items-center justify-center py-16 text-center">
+  <div class="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center mb-4">
+    <i class="fa-solid fa-circle-check text-green-400 text-4xl"></i>
+  </div>
+  <h3 class="text-xl font-bold text-gray-700 mb-1">Tudo em dia!</h3>
+  <p class="text-gray-400 text-sm">Nenhuma ordem de produção pendente para <strong>{{ usuario_departamento }}</strong>.</p>
+</div>
+{% endif %}
+
+
+{# ═══════════════ MODAIS (substituem confirm()) ═══════════════ #}
+
+{# ── Modal CONFIRMAR INÍCIO ── #}
+<div id="modalIniciar" class="prodsys-modal-backdrop hidden">
+  <div class="prodsys-modal">
+    <div class="flex items-center gap-3 mb-4">
+      <div class="w-14 h-14 rounded-2xl bg-green-100 flex items-center justify-center flex-shrink-0">
+        <i class="fa-solid fa-play text-green-600 text-2xl"></i>
+      </div>
+      <div>
+        <h3>Iniciar Produção?</h3>
+        <p class="mt-0.5">O cronômetro vai começar a contar agora.</p>
+      </div>
+    </div>
+    <div class="flex gap-3">
+      <button onclick="fecharModal('modalIniciar')" class="btn-touch btn-cancel flex-1">
+        <i class="fa-solid fa-xmark"></i>Cancelar
+      </button>
+      <button onclick="confirmarIniciar()" class="btn-touch btn-start flex-1">
+        <i class="fa-solid fa-play"></i>CONFIRMAR
+      </button>
+    </div>
+  </div>
+</div>
+
+{# ── Modal CONFIRMAR RETOMADA ── #}
+<div id="modalRetomar" class="prodsys-modal-backdrop hidden">
+  <div class="prodsys-modal">
+    <div class="flex items-center gap-3 mb-4">
+      <div class="w-14 h-14 rounded-2xl bg-green-100 flex items-center justify-center flex-shrink-0">
+        <i class="fa-solid fa-play text-green-600 text-2xl"></i>
+      </div>
+      <div>
+        <h3>Retomar Produção?</h3>
+        <p class="mt-0.5">A operação pausada será continuada agora.</p>
+      </div>
+    </div>
+    <div class="flex gap-3">
+      <button onclick="fecharModal('modalRetomar')" class="btn-touch btn-cancel flex-1">
+        <i class="fa-solid fa-xmark"></i>Cancelar
+      </button>
+      <button onclick="confirmarRetomar()" class="btn-touch btn-resume flex-1">
+        <i class="fa-solid fa-play"></i>RETOMAR
+      </button>
+    </div>
+  </div>
+</div>
+
+{# ── Modal PAUSAR (com motivo) ── #}
+<div id="modalPausar" class="prodsys-modal-backdrop hidden">
+  <div class="prodsys-modal" style="max-width:460px">
+    <div class="flex items-center gap-3 mb-5">
+      <div class="w-14 h-14 rounded-2xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+        <i class="fa-solid fa-pause text-amber-600 text-2xl"></i>
+      </div>
+      <div>
+        <h3>Pausar Operação</h3>
+        <p class="mt-0.5">Selecione o motivo da pausa</p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-2 mb-4">
+      {% for motivo, icone in [
+        ('Almoço / Intervalo', 'fa-utensils'),
+        ('Banheiro', 'fa-restroom'),
+        ('Aguardando Material', 'fa-boxes-stacked'),
+        ('Manutenção', 'fa-wrench'),
+        ('Fim de Turno', 'fa-door-open'),
+        ('Outro', 'fa-ellipsis')
+      ] %}
+      <button type="button"
+        onclick="selecionarMotivo('{{ motivo }}')"
+        data-motivo="{{ motivo }}"
+        class="motivo-btn flex flex-col items-center gap-1.5 p-3 rounded-2xl border-2 border-gray-100 hover:border-amber-400 hover:bg-amber-50 transition-all text-sm font-bold text-gray-600 hover:text-amber-700 active:scale-95">
+        <i class="fa-solid {{ icone }} text-xl text-gray-400"></i>
+        <span class="text-[11px] text-center leading-tight">{{ motivo }}</span>
+      </button>
+      {% endfor %}
+    </div>
+
+    <input type="text" id="motivoPausaTexto" placeholder="Motivo selecionado..."
+      class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm mb-4 focus:ring-2 focus:ring-amber-400 outline-none bg-gray-50" readonly>
+
+    <div class="flex gap-3">
+      <button onclick="fecharModal('modalPausar')" class="btn-touch btn-cancel flex-1">
+        <i class="fa-solid fa-xmark"></i>Cancelar
+      </button>
+      <button onclick="confirmarPausa()" class="btn-touch btn-pause flex-1">
+        <i class="fa-solid fa-pause"></i>Pausar
+      </button>
+    </div>
+  </div>
+</div>
+
+{# ── Modal FINALIZAR ── #}
+<div id="modalFinalizar" class="prodsys-modal-backdrop hidden">
+  <div class="prodsys-modal" style="max-width:480px">
+    <div class="flex items-center gap-3 mb-4">
+      <div class="w-14 h-14 rounded-2xl bg-blue-100 flex items-center justify-center flex-shrink-0">
+        <i class="fa-solid fa-flag-checkered text-blue-600 text-2xl"></i>
+      </div>
+      <div class="min-w-0">
+        <h3>Finalizar Operação</h3>
+        <p id="modalFinalizarProduto" class="mt-0.5 text-xs truncate"></p>
+      </div>
+    </div>
+
+    <div class="bg-blue-50 rounded-xl px-4 py-3 mb-4 flex items-center justify-between">
+      <span class="text-xs font-bold text-blue-700">Quantidade total da OP:</span>
+      <span id="qtdTotal" class="text-xl font-black text-blue-800">—</span>
+    </div>
+
+    <div class="mb-4">
+      <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-2">Tipo de finalização</label>
+      <div class="grid grid-cols-2 gap-2">
+        <button type="button" onclick="setTipoFinalizar('parcial')" id="btnParcial"
+          class="tipo-fin flex flex-col items-center gap-1 p-3 rounded-2xl border-2 border-blue-400 bg-blue-50 text-blue-700 font-bold text-xs transition-all active:scale-95">
+          <i class="fa-solid fa-layer-group text-lg"></i>
+          Parcial<br><span class="font-normal text-blue-500 text-[10px]">Outro setor já pode ver</span>
+        </button>
+        <button type="button" onclick="setTipoFinalizar('total')" id="btnTotal"
+          class="tipo-fin flex flex-col items-center gap-1 p-3 rounded-2xl border-2 border-gray-200 text-gray-500 font-bold text-xs transition-all active:scale-95">
+          <i class="fa-solid fa-circle-check text-lg"></i>
+          Total<br><span class="font-normal text-gray-400 text-[10px]">Fechar completamente</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="space-y-3 mb-5">
+      <div>
+        <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1">
+          Quantidade Produzida <span class="text-red-500">*</span>
+        </label>
+        <input type="number" id="qtdeProduzida" min="0" step="1"
+          class="w-full border border-gray-200 rounded-xl px-4 py-3 text-lg font-black focus:ring-2 focus:ring-blue-500 outline-none text-center"
+          placeholder="0">
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1">Qtde Refugada</label>
+          <input type="number" id="qtdeRefugada" min="0" step="1" value="0"
+            class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-center">
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1">Observações</label>
+          <input type="text" id="obsFinalizacao"
+            class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            placeholder="Opcional">
+        </div>
+      </div>
+    </div>
+
+    <div class="flex gap-3">
+      <button onclick="fecharModal('modalFinalizar')" class="btn-touch btn-cancel flex-1">
+        <i class="fa-solid fa-xmark"></i>Cancelar
+      </button>
+      <button onclick="confirmarFinalizacao()" class="btn-touch btn-finish flex-1">
+        <i class="fa-solid fa-check"></i>CONFIRMAR
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="prodsys-toast hidden"></div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ═════════ Estado global ═════════ */
+let opIdAtual    = null;
+let tipoFinalizar = 'parcial';
+
+/* ═════════ Modais ═════════ */
+function abrirModal(id)  { document.getElementById(id).classList.remove('hidden'); }
+function fecharModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+/* ═════════ Toast ═════════ */
+function showToast(msg, tipo='success') {
+  const t = document.getElementById('toast');
+  t.className = 'prodsys-toast ' + tipo;
+  t.innerHTML = `<i class="fa-solid ${tipo==='success'?'fa-check-circle':tipo==='error'?'fa-exclamation-circle':'fa-info-circle'}"></i> ${msg}`;
+  t.classList.remove('hidden');
+  setTimeout(() => t.classList.add('hidden'), 3500);
+}
+
+/* ═════════ Cronômetros em tempo real ═════════ */
+function iniciarCronometros() {
+  document.querySelectorAll('[id^="timer-"]').forEach(el => {
+    const isoStr = el.dataset.inicio;
+    if (!isoStr) return;
+    let inicio;
+    try {
+      const parts = isoStr.replace('T',' ').split(/[- :]/).map(Number);
+      inicio = new Date(parts[0], parts[1]-1, parts[2], parts[3]||0, parts[4]||0, parts[5]||0);
+    } catch(e) {
+      inicio = new Date(isoStr);
+    }
+    function tick() {
+      const diff = Math.max(0, Math.floor((Date.now() - inicio.getTime()) / 1000));
+      const h = String(Math.floor(diff / 3600)).padStart(2,'0');
+      const m = String(Math.floor((diff % 3600) / 60)).padStart(2,'0');
+      const s = String(diff % 60).padStart(2,'0');
+      el.textContent = `${h}:${m}:${s}`;
+    }
+    tick();
+    setInterval(tick, 1000);
+  });
+}
+
+/* ═════════ Abrir modais (sem confirm nativo) ═════════ */
+function abrirIniciar(id) {
+  opIdAtual = id;
+  abrirModal('modalIniciar');
+}
+function abrirRetomar(id) {
+  opIdAtual = id;
+  abrirModal('modalRetomar');
+}
+function abrirPausar(id) {
+  opIdAtual = id;
+  document.querySelectorAll('.motivo-btn').forEach(b => {
+    b.classList.remove('border-amber-400','bg-amber-50','text-amber-700');
+    b.classList.add('border-gray-100','text-gray-600');
+  });
+  document.getElementById('motivoPausaTexto').value = '';
+  abrirModal('modalPausar');
+}
+function abrirFinalizar(id, produto, qtdTotal) {
+  opIdAtual = id;
+  tipoFinalizar = 'parcial';
+  document.getElementById('qtdeProduzida').value = '';
+  document.getElementById('qtdeRefugada').value  = '0';
+  document.getElementById('obsFinalizacao').value = '';
+  document.getElementById('modalFinalizarProduto').textContent = produto || '';
+  document.getElementById('qtdTotal').textContent = qtdTotal || '—';
+  setTipoFinalizar('parcial');
+  abrirModal('modalFinalizar');
+}
+
+/* ═════════ Confirmações ═════════ */
+function confirmarIniciar() {
+  fecharModal('modalIniciar');
+  apiOp(`/api/operacoes/${opIdAtual}/iniciar`, {});
+}
+function confirmarRetomar() {
+  fecharModal('modalRetomar');
+  apiOp(`/api/operacoes/${opIdAtual}/retomar`, {});
+}
+
+/* ═════════ Pausa (motivo) ═════════ */
+function selecionarMotivo(motivo) {
+  document.querySelectorAll('.motivo-btn').forEach(b => {
+    const sel = b.dataset.motivo === motivo;
+    b.classList.toggle('border-amber-400', sel);
+    b.classList.toggle('bg-amber-50', sel);
+    b.classList.toggle('text-amber-700', sel);
+    b.classList.toggle('border-gray-100', !sel);
+    b.classList.toggle('text-gray-600', !sel);
+  });
+  document.getElementById('motivoPausaTexto').value = motivo;
+}
+function confirmarPausa() {
+  const motivo = document.getElementById('motivoPausaTexto').value || 'Pausa';
+  fecharModal('modalPausar');
+  apiOp(`/api/operacoes/${opIdAtual}/pausar`, { motivo });
+}
+
+/* ═════════ Finalizar ═════════ */
+function setTipoFinalizar(tipo) {
+  tipoFinalizar = tipo;
+  const parcial = document.getElementById('btnParcial');
+  const total   = document.getElementById('btnTotal');
+  if (tipo === 'parcial') {
+    parcial.className = 'tipo-fin flex flex-col items-center gap-1 p-3 rounded-2xl border-2 border-blue-400 bg-blue-50 text-blue-700 font-bold text-xs transition-all active:scale-95';
+    total.className   = 'tipo-fin flex flex-col items-center gap-1 p-3 rounded-2xl border-2 border-gray-200 text-gray-500 font-bold text-xs transition-all active:scale-95';
+  } else {
+    total.className   = 'tipo-fin flex flex-col items-center gap-1 p-3 rounded-2xl border-2 border-green-400 bg-green-50 text-green-700 font-bold text-xs transition-all active:scale-95';
+    parcial.className = 'tipo-fin flex flex-col items-center gap-1 p-3 rounded-2xl border-2 border-gray-200 text-gray-500 font-bold text-xs transition-all active:scale-95';
+  }
+}
+function confirmarFinalizacao() {
+  const qtde   = parseFloat(document.getElementById('qtdeProduzida').value) || null;
+  const refugo = parseFloat(document.getElementById('qtdeRefugada').value)  || 0;
+  const obs    = document.getElementById('obsFinalizacao').value;
+  fecharModal('modalFinalizar');
+  apiOp(`/api/operacoes/${opIdAtual}/finalizar`, {
+    qtde_produzida: qtde,
+    qtde_refugada:  refugo,
+    observacoes:    obs,
+    tipo:           tipoFinalizar
+  });
+}
+
+/* ═════════ API genérica ═════════ */
+function apiOp(url, data) {
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.status === 'success' || d.success) {
+      showToast('Operação realizada com sucesso!', 'success');
+      setTimeout(() => location.reload(), 1200);
+    } else {
+      showToast('Erro: ' + (d.error || d.message || 'Falha'), 'error');
+    }
+  })
+  .catch(() => showToast('Erro de conexão', 'error'));
+}
+
+/* ═════════ Fechar modais clicando fora ═════════ */
+['modalIniciar','modalRetomar','modalPausar','modalFinalizar'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('click', function(e) {
+    if (e.target === this) fecharModal(id);
+  });
+});
+
+/* ═════════ Init ═════════ */
+iniciarCronometros();
+
+// Auto-refresh a cada 90s para pegar novos lotes
+setTimeout(() => location.reload(), 90000);
+</script>
+{% endblock %}

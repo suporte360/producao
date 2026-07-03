@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Acessos — SALUTEM{% endblock %}
+{% block header_title %}
+  <span class="flex items-center gap-2">
+    <i class="fa-solid fa-users-gear text-purple-500"></i>
+    <span class="hidden sm:inline">Acessos</span>
+  </span>
+{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
+  {% set rc = namespace(admin=0, gerente=0, pcp=0, diretor=0, almoxarifado=0, operador=0, encarregado=0) %}
+  {% for u in usuarios %}
+    {% if u.ativo %}
+      {% if u.role == 'admin' %}{% set rc.admin = rc.admin + 1 %}
+      {% elif u.role == 'gerente' %}{% set rc.gerente = rc.gerente + 1 %}
+      {% elif u.role == 'pcp' %}{% set rc.pcp = rc.pcp + 1 %}
+      {% elif u.role == 'diretor' %}{% set rc.diretor = rc.diretor + 1 %}
+      {% elif u.role == 'almoxarifado' %}{% set rc.almoxarifado = rc.almoxarifado + 1 %}
+      {% elif u.role == 'encarregado' %}{% set rc.encarregado = rc.encarregado + 1 %}
+      {% elif u.role == 'operador' %}{% set rc.operador = rc.operador + 1 %}
+      {% endif %}
+    {% endif %}
+  {% endfor %}
+
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#dbeafe;color:#1d4ed8"><i class="fa-solid fa-users"></i></div>
+    <div>
+      <div class="kpi-num text-blue-700">{{ usuarios|length }}</div>
+      <div class="kpi-lbl">Total</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#f3e8ff;color:#7c3aed"><i class="fa-solid fa-user-tie"></i></div>
+    <div>
+      <div class="kpi-num text-purple-600">{{ rc.diretor }}</div>
+      <div class="kpi-lbl">Diretor</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#fef3c7;color:#a16207"><i class="fa-solid fa-user-shield"></i></div>
+    <div>
+      <div class="kpi-num text-amber-600">{{ rc.gerente }}</div>
+      <div class="kpi-lbl">Gerente</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#cffafe;color:#0891b2"><i class="fa-solid fa-clipboard"></i></div>
+    <div>
+      <div class="kpi-num text-cyan-600">{{ rc.pcp }}</div>
+      <div class="kpi-lbl">PCP</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#fed7aa;color:#c2410c"><i class="fa-solid fa-warehouse"></i></div>
+    <div>
+      <div class="kpi-num text-orange-500">{{ rc.almoxarifado }}</div>
+      <div class="kpi-lbl">Almoxarifado</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#dcfce7;color:#15803d"><i class="fa-solid fa-hard-hat"></i></div>
+    <div>
+      <div class="kpi-num text-green-600">{{ rc.operador + rc.encarregado }}</div>
+      <div class="kpi-lbl">Chão de Fábrica</div>
+    </div>
+  </div>
+</div>
+
+<div class="prodsys-card overflow-hidden">
+  <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+    <i class="fa-solid fa-list text-purple-500"></i>
+    <h3 class="text-sm font-bold text-gray-700">Usuários Cadastrados</h3>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+        <tr>
+          <th class="px-4 py-2.5 text-left">Usuário</th>
+          <th class="px-4 py-2.5 text-left">Nome</th>
+          <th class="px-4 py-2.5 text-center">Role</th>
+          <th class="px-4 py-2.5 text-center">Setor</th>
+          <th class="px-4 py-2.5 text-center">Status</th>
+          <th class="px-4 py-2.5 text-center">Último Acesso</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-50">
+        {% for u in usuarios %}
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-2.5 font-bold text-gray-800">{{ u.usuario }}</td>
+          <td class="px-4 py-2.5 text-gray-700">{{ u.nome }}</td>
+          <td class="px-4 py-2.5 text-center">
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full
+              {% if u.role == 'admin' %}bg-red-100 text-red-700
+              {% elif u.role == 'diretor' %}bg-purple-100 text-purple-700
+              {% elif u.role == 'gerente' %}bg-amber-100 text-amber-700
+              {% elif u.role == 'pcp' %}bg-cyan-100 text-cyan-700
+              {% elif u.role == 'almoxarifado' %}bg-orange-100 text-orange-700
+              {% else %}bg-green-100 text-green-700
+              {% endif %}">{{ u.role|upper }}</span>
+          </td>
+          <td class="px-4 py-2.5 text-center text-gray-600 text-xs">{{ u.nome_departamento or '—' }}</td>
+          <td class="px-4 py-2.5 text-center">
+            {% if u.ativo %}<span class="text-green-600 font-bold text-xs">ATIVO</span>
+            {% else %}<span class="text-red-500 font-bold text-xs">INATIVO</span>{% endif %}
+          </td>
+          <td class="px-4 py-2.5 text-center text-xs text-gray-500">{{ u.ultimo_acesso or 'Nunca' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Usuários — SALUTEM{% endblock %}
+{% block header_title %}
+  <span class="flex items-center gap-2">
+    <i class="fa-solid fa-users text-slate-700"></i>
+    <span class="hidden sm:inline">Usuários do Sistema</span>
+  </span>
+{% endblock %}
+
+{% block content %}
+
+{# ═══════════════ HEADER ═══════════════ #}
+<div class="flex items-end justify-between mb-5 pb-4 border-b border-slate-200">
+  <div>
+    <p class="eyebrow mb-1">Gestão de Acessos</p>
+    <h1 class="text-xl font-extrabold text-slate-900 tracking-tight">Usuários do Sistema</h1>
+    <p class="text-sm text-slate-500 mt-0.5">{{ usuarios|length }} usuário(s) cadastrado(s)</p>
+  </div>
+  <a href="{{ url_for('admin_novo_usuario') }}" class="btn-touch btn-finish text-sm">
+    <i class="fa-solid fa-user-plus"></i>Novo Usuário
+  </a>
+</div>
+
+{# ═══════════════ KPIs RÁPIDOS ═══════════════ #}
+{% set ativos = usuarios|selectattr('ativo', 'equalto', 1)|list %}
+{% set inativos = usuarios|selectattr('ativo', 'equalto', 0)|list %}
+{% set admins = usuarios|selectattr('role', 'equalto', 'admin')|list %}
+{% set operadores = usuarios|selectattr('role', 'equalto', 'operador')|list %}
+
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#dbeafe;color:#1d4ed8"><i class="fa-solid fa-users"></i></div>
+    <div>
+      <div class="kpi-num text-blue-700 tabular-nums">{{ usuarios|length }}</div>
+      <div class="kpi-lbl">Total</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#dcfce7;color:#15803d"><i class="fa-solid fa-circle-check"></i></div>
+    <div>
+      <div class="kpi-num text-green-600 tabular-nums">{{ ativos|length }}</div>
+      <div class="kpi-lbl">Ativos</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#f3e8ff;color:#7c3aed"><i class="fa-solid fa-crown"></i></div>
+    <div>
+      <div class="kpi-num text-purple-600 tabular-nums">{{ admins|length }}</div>
+      <div class="kpi-lbl">Administradores</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#fed7aa;color:#c2410c"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+    <div>
+      <div class="kpi-num text-orange-500 tabular-nums">{{ operadores|length }}</div>
+      <div class="kpi-lbl">Operadores</div>
+    </div>
+  </div>
+</div>
+
+{# ═══════════════ TABELA DE USUÁRIOS ═══════════════ #}
+<div class="prodsys-card overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase tracking-wider">
+        <tr>
+          <th class="px-4 py-3 text-left font-bold">Usuário</th>
+          <th class="px-4 py-3 text-left font-bold">Cargo</th>
+          <th class="px-4 py-3 text-left font-bold">Departamento</th>
+          <th class="px-4 py-3 text-center font-bold">Status</th>
+          <th class="px-4 py-3 text-center font-bold">Último Acesso</th>
+          <th class="px-4 py-3 text-right font-bold">Ações</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-50">
+        {% for user in usuarios %}
+        <tr class="hover:bg-slate-50/50 transition-colors">
+          <td class="px-4 py-3">
+            <div class="flex items-center gap-3">
+              <img class="h-9 w-9 rounded-full" src="https://ui-avatars.com/api/?name={{ user.nome|urlencode }}&background=1e3a8a&color=fff&bold=true" alt="">
+              <div>
+                <div class="font-bold text-slate-800">{{ user.nome }}</div>
+                <div class="text-[11px] text-slate-400">@{{ user.usuario }}</div>
+              </div>
+            </div>
+          </td>
+          <td class="px-4 py-3">
+            {% set role_colors = {'admin':'bg-purple-100 text-purple-700','gerente':'bg-blue-100 text-blue-700','pcp':'bg-indigo-100 text-indigo-700','almoxarifado':'bg-cyan-100 text-cyan-700','operador':'bg-slate-100 text-slate-700','encarregado':'bg-amber-100 text-amber-700'} %}
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase {{ role_colors.get(user.role, 'bg-gray-100 text-gray-700') }}">
+              {{ user.role }}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-slate-600 text-xs">
+            {% if user.nome_departamento %}
+            <span class="chip-dept dept-{{ user.nome_departamento }}">{{ user.nome_departamento }}</span>
+            {% else %}
+            <span class="text-slate-400">—</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3 text-center">
+            {% if user.ativo %}
+            <span class="inline-flex items-center gap-1 text-[10px] font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
+              <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>ATIVO
+            </span>
+            {% else %}
+            <span class="inline-flex items-center gap-1 text-[10px] font-bold text-red-700 bg-red-50 px-2 py-0.5 rounded-full">
+              <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>INATIVO
+            </span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3 text-center text-xs text-slate-500 tabular-nums">
+            {{ user.ultimo_acesso|formatar_data_br if user.ultimo_acesso else 'Nunca' }}
+          </td>
+          <td class="px-4 py-3 text-right">
+            <div class="flex items-center justify-end gap-1">
+              <a href="{{ url_for('admin_editar_usuario', user_id=user.id) }}"
+                 class="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition" title="Editar">
+                <i class="fa-solid fa-pen-to-square text-xs"></i>
+              </a>
+              {% if user.id != session.get('usuario_id') %}
+              <form method="POST" action="{{ url_for('admin_deletar_usuario', user_id=user.id) }}"
+                    onsubmit="return confirm('Excluir usuário {{ user.nome }}?\nEsta ação não pode ser desfeita.')" class="inline">
+                <button type="submit" class="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition" title="Excluir">
+                  <i class="fa-solid fa-trash text-xs"></i>
+                </button>
+              </form>
+              {% else %}
+              <span class="text-[10px] text-slate-300 px-1.5">(você)</span>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="px-5 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+    <span class="text-xs text-slate-500">
+      Mostrando <strong class="text-slate-700">{{ usuarios|length }}</strong> usuário(s)
+    </span>
+    <a href="{{ url_for('admin_dashboard') }}" class="text-xs text-blue-600 hover:text-blue-800 font-bold">
+      <i class="fa-solid fa-arrow-left mr-1"></i>Voltar ao Painel
+    </a>
+  </div>
+</div>
+
+{% endblock %}

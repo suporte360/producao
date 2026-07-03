@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Departamentos{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/prioridades.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h2><i class="fas fa-building"></i> Departamentos</h2>
+            <p class="text-muted">Visualize a produção por departamento</p>
+        </div>
+    </div>
+
+    <div class="row">
+        {% for stats in estatisticas %}
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header" style="background-color: {{ stats.cor }}; color: white;">
+                    <h5 class="mb-0">
+                        <i class="fas {{ stats.icone }}"></i> {{ stats.departamento }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <h3 class="text-primary">{{ stats.total_lotes }}</h3>
+                            <small class="text-muted">Total</small>
+                        </div>
+                        <div class="col-4">
+                            <h3 class="text-warning">{{ stats.lotes_em_producao }}</h3>
+                            <small class="text-muted">Em Produção</small>
+                        </div>
+                        <div class="col-4">
+                            <h3 class="text-success">{{ stats.lotes_finalizados }}</h3>
+                            <small class="text-muted">Finalizados</small>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <h6>Prioridades:</h6>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="badge-prioridade badge-prioridade-alta">
+                            Alta: {{ stats.lotes_alta_prioridade }}
+                        </span>
+                        <span class="badge-prioridade badge-prioridade-media">
+                            Média: {{ stats.lotes_media_prioridade }}
+                        </span>
+                        <span class="badge-prioridade badge-prioridade-baixa">
+                            Baixa: {{ stats.lotes_baixa_prioridade }}
+                        </span>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <a href="{{ url_for('departamento_detalhes', nome=stats.departamento) }}" 
+                       class="btn btn-primary btn-block">
+                        <i class="fas fa-eye"></i> Ver Lotes
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if not estatisticas %}
+    <div class="row">
+        <div class="col-md-12">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> Nenhum departamento cadastrado.
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+

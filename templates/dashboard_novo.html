@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - {{ sistema_nome }}{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- Cabeçalho do Dashboard -->
+    <div class="card">
+        <div class="card-body text-center">
+            <h1 class="mb-3">
+                <i class="fas fa-tachometer-alt text-primary"></i>
+                Painel de Controle
+            </h1>
+            <p class="text-secondary">
+                Bem-vindo(a), <strong>{{ usuario_nome }}</strong>!
+                {% if usuario_role == 'operador' and usuario_departamento %}
+                    <br>Departamento: <strong>{{ usuario_departamento }}</strong>
+                {% endif %}
+            </p>
+        </div>
+    </div>
+    
+    <!-- Estatísticas Rápidas -->
+    {% if usuario_role == 'operador' %}
+    <!-- Dashboard do Operador -->
+    <div class="row mb-4" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+        <div class="card">
+            <div class="card-body text-center">
+                <div style="font-size: 2.5rem; color: #ffc107; margin-bottom: 0.5rem;">
+                    <i class="fas fa-hourglass-half"></i>
+                </div>
+                <h3 style="color: #ffc107; margin-bottom: 0.5rem;">
+                    {{ estatisticas.processos_abertos|default(0) }}
+                </h3>
+                <p class="text-secondary mb-0">Processos em Aberto</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-body text-center">
+                <div style="font-size: 2.5rem; color: #28a745; margin-bottom: 0.5rem;">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h3 style="color: #28a745; margin-bottom: 0.5rem;">
+                    {{ estatisticas.processos_fechados_hoje|default(0) }}
+                </h3>
+                <p class="text-secondary mb-0">Fechados Hoje</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-body text-center">
+                <div style="font-size: 2.5rem; color: #17a2b8; margin-bottom: 0.5rem;">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+                <h3 style="color: #17a2b8; margin-bottom: 0.5rem;">
+                    {{ estatisticas.processos_fechados_mes|default(0) }}
+                </h3>
+                <p class="text-secondary mb-0">Fechados no Mês</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-body text-center">
+                <div style="font-size: 2.5rem; color: #6c757d; margin-bottom: 0.5rem;">
+                    <i class="fas fa-inbox"></i>
+                </div>
+                <h3 style="color: #6c757d; margin-bottom: 0.5rem;">
+                    {{ estatisticas.lotes_aguardando|default(0) }}
+                </h3>
+                <p class="text-secondary mb-0">Lotes Aguardando</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-body text-center">
+                <div style="font-size: 2.5rem; color: #fd7e14; margin-bottom: 0.5rem;">
+                    <i class="fas fa-cogs"></i>
+                </div>
+                <h3 style="color: #fd7e14; margin-bottom: 0.5rem;">
+                    {{ estatisticas.lotes_em_producao|default(0) }}
+                </h3>
+                <p class="text-secondary mb-0">Em Produção</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-body text-center">
+                <div style="font-size: 2.5rem; color: #28a745; margin-bottom: 0.5rem;">
+                    <i class="fas fa-trophy"></i>
+                </div>
+                <h3 style="color: #28a745; margin-bottom: 0.5rem;">
+                    {{ estatisticas.lotes_finalizados_mes|default(0) }}
+                </h3>
+                <p class="text-secondary mb-0">Finalizados no Mês</p>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- Dashboard do Encarregado/Admin -->
+    <div class="row mb-4" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+        <div class="card">
+            <div class="card-body text-center">
+                <div style="font-size: 2.5rem; color: var(--primary-color); margin-bottom: 0.5rem;">
+                    <i class="fas fa-inbox"></i>
+                </div>
+                <h3 style="color: var(--primary-color); margin-bottom: 0.5rem;">
+                    {{ estatisticas.lotes_importados|default(0) }}
+                </h3>
+                <p class="text-secondary mb-0">Lotes Importados</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-body text-center">
+                <div style="font-size: 2.5rem; color: var(--warning-color); margin-bottom: 0.5rem;">
+                    <i class="fas fa-cogs"></i>
+                </div>
+                <h3 style="color: var(--warning-color); margin-bottom: 0.5rem;">
+                    {{ estatisticas.lotes_em_producao|default(0) }}
+                </h3>
+                <p class="text-secondary mb-0">Em Produção</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-body text-center">
+                <div style="font-size: 2.5rem; color: var(--success-color); margin-bottom: 0.5rem;">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h3 style="color: var(--success-color); margin-bottom: 0.5rem;">
+                    {{ estatisticas.lotes_finalizados|default(0) }}
+                </h3>
+                <p class="text-secondary mb-0">Finalizados</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-body text-center">
+                <div style="font-size: 2.5rem; color: var(--secondary-color); margin-bottom: 0.5rem;">
+                    <i class="fas fa-chart-bar"></i>
+                </div>
+                <h3 style="color: var(--secondary-color); margin-bottom: 0.5rem;">
+                    {{ estatisticas.total_lotes|default(0) }}
+                </h3>
+                <p class="text-secondary mb-0">Total de Lotes</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Menu Principal -->
+    <div class="main-menu">
+        <!-- Lotes (todos veem) -->
+        <a href="{{ url_for('kanban_board') }}" class="menu-item">
+            <i class="fas fa-boxes"></i>
+            <h3>Lotes de Produção</h3>
+            <p>{% if usuario_role == 'operador' %}Ver lotes do meu departamento{% else %}Gerenciar todos os lotes{% endif %}</p>
+        </a>
+        
+        <!-- Produção (apenas encarregado e admin) -->
+        {% if pode_iniciar_producao %}
+        <a href="{{ url_for('producao') }}" class="menu-item">
+            <i class="fas fa-cogs"></i>
+            <h3>Controle de Produção</h3>
+            <p>Gerenciar processos em andamento</p>
+        </a>
+        {% endif %}
+        
+        <!-- Departamentos (apenas encarregado e admin) -->
+        {% if pode_ver_todos_departamentos %}
+        <a href="{{ url_for('departamentos') }}" class="menu-item">
+            <i class="fas fa-building"></i>
+            <h3>Departamentos</h3>
+            <p>Visão por setor</p>
+        </a>
+        {% endif %}
+        
+        <!-- Relatórios (apenas encarregado e admin) -->
+        {% if pode_ver_relatorios %}
+        <a href="{{ url_for('relatorios') }}" class="menu-item">
+            <i class="fas fa-chart-line"></i>
+            <h3>Relatórios</h3>
+            <p>Análises e estatísticas completas</p>
+        </a>
+        {% endif %}
+        
+        <!-- Usuários (apenas admin) -->
+        {% if pode_gerenciar_usuarios %}
+        <a href="{{ url_for('admin_usuarios') }}" class="menu-item">
+            <i class="fas fa-users"></i>
+            <h3>Usuários</h3>
+            <p>Gerenciar usuários do sistema</p>
+        </a>
+        {% endif %}
+    </div>
+    
+    <!-- Ações Rápidas -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-bolt"></i> Ações Rápidas
+        </div>
+        <div class="card-body">
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <a href="{{ url_for('kanban_board') }}" class="btn btn-primary">
+                    <i class="fas fa-boxes"></i> {% if usuario_role == 'operador' %}Ver Meus Lotes{% else %}Gerenciar Lotes{% endif %}
+                </a>
+                
+                {% if pode_iniciar_producao %}
+                <a href="{{ url_for('producao') }}" class="btn btn-warning">
+                    <i class="fas fa-cogs"></i> Controlar Produção
+                </a>
+                {% endif %}
+                
+                {% if pode_ver_todos_departamentos %}
+                <a href="{{ url_for('departamentos') }}" class="btn btn-info">
+                    <i class="fas fa-building"></i> Ver Departamentos
+                </a>
+                {% endif %}
+                
+                {% if pode_ver_relatorios %}
+                <a href="{{ url_for('relatorios') }}" class="btn btn-success">
+                    <i class="fas fa-chart-line"></i> Relatórios
+                </a>
+                {% endif %}
+                
+                <button onclick="location.reload()" class="btn btn-secondary">
+                    <i class="fas fa-sync-alt"></i> Atualizar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.main-menu {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.menu-item {
+    display: block;
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.menu-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.menu-item i {
+    font-size: 3rem;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+.menu-item h3 {
+    margin-bottom: 0.5rem;
+    color: var(--text-color);
+}
+
+.menu-item p {
+    color: var(--secondary-text-color);
+    margin: 0;
+    font-size: 0.9rem;
+}
+</style>
+{% endblock %}
+

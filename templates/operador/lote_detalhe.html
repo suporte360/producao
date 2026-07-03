@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Lote #{{ lote.ordem }} - Detalhe{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-file-earmark-text me-2"></i>Lote #{{ lote.ordem }}</h1>
+    <nav aria-label="breadcrumb"><ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{{ url_for('operador_dashboard') }}">Meu Setor</a></li>
+        <li class="breadcrumb-item active">#{{ lote.ordem }}</li>
+    </ol></nav>
+</div>
+
+<div class="table-card p-4 mb-4">
+    <h5 class="fw-bold mb-3">{{ lote.descricao_produto }}</h5>
+    <div class="row g-3">
+        <div class="col-6 col-md-3">
+            <div class="text-muted" style="font-size:0.8rem">Lote ERP</div>
+            <div class="fw-semibold">{{ lote.lote_codigo or '-' }}</div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="text-muted" style="font-size:0.8rem">Quantidade</div>
+            <div class="fw-semibold">{{ lote.qtde_ordem|int }} {{ lote.unidade_medida }}</div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="text-muted" style="font-size:0.8rem">Previsao</div>
+            <div class="fw-semibold">{{ lote.data_previsao_erp|formatar_data }}</div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="text-muted" style="font-size:0.8rem">Status</div>
+            <span class="badge badge-{{ lote.status }}">{{ lote.status|replace('_',' ')|upper }}</span>
+        </div>
+    </div>
+</div>
+
+<div class="table-card">
+    <div class="p-3 border-bottom">
+        <h6 class="fw-bold mb-0">
+            <i class="bi bi-list-check me-2"></i>
+            Operacoes do Setor {{ departamento or 'Todos' }}
+        </h6>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr><th>Seq</th><th>Operacao</th><th>Status</th><th>Inicio</th><th>Fim</th></tr>
+            </thead>
+            <tbody>
+                {% for op in operacoes %}
+                <tr class="{{ 'table-warning' if op.status=='em_andamento' else 'table-success' if op.status=='concluido' else '' }}">
+                    <td><strong>{{ op.sequencia }}</strong></td>
+                    <td>{{ op.descricao_operacao }}</td>
+                    <td><span class="badge badge-{{ op.status }}">{{ op.status|replace('_',' ')|upper }}</span></td>
+                    <td style="font-size:0.82rem">{{ op.data_inicio|formatar_datetime }}</td>
+                    <td style="font-size:0.82rem">{{ op.data_fim|formatar_datetime }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="text-center text-muted py-4">Nenhuma operacao encontrada.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

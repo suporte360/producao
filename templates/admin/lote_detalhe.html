@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% block title %}Lote #{{ lote.ordem }} - Detalhe{% endblock %}
+{% block content %}
+{% set pct = ((lote.operacoes_concluidas or 0) / (lote.total_operacoes or 1) * 100)|int %}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1><i class="bi bi-file-earmark-text me-2"></i>Lote #{{ lote.ordem }}</h1>
+        <nav aria-label="breadcrumb"><ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('admin_lotes') }}">Lotes</a></li>
+            <li class="breadcrumb-item active">#{{ lote.ordem }}</li>
+        </ol></nav>
+    </div>
+    <div class="d-flex gap-2">
+        <span class="badge badge-{{ lote.prioridade }} fs-6">{{ lote.prioridade|upper }}</span>
+        <span class="badge badge-{{ lote.status }} fs-6">{{ lote.status|replace('_',' ')|upper }}</span>
+    </div>
+</div>
+
+<!-- CABEÇALHO DO LOTE -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-8">
+        <div class="table-card p-4">
+            <h5 class="fw-bold mb-3">{{ lote.descricao_produto }}</h5>
+            <div class="row g-3">
+                <div class="col-6 col-md-3">
+                    <div class="text-muted" style="font-size:0.8rem">Lote ERP</div>
+                    <div class="fw-semibold">{{ lote.lote_codigo or '-' }}</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="text-muted" style="font-size:0.8rem">Quantidade</div>
+                    <div class="fw-semibold">{{ lote.qtde_ordem|int }} {{ lote.unidade_medida }}</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="text-muted" style="font-size:0.8rem">Previsao ERP</div>
+                    <div class="fw-semibold {{ 'text-danger' if lote.data_previsao_erp and lote.data_previsao_erp < now.date() and lote.status not in ('finalizado','cancelado') else '' }}">
+                        {{ lote.data_previsao_erp|formatar_data }}
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="text-muted" style="font-size:0.8rem">Setor Atual</div>
+                    <div class="fw-semibold">{{ lote.departamento_atual or 'Aguardando' }}</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="text-muted" style="font-size:0.8rem">Inicio Producao</div>
+                    <div class="fw-semibold">{{ lote.data_inicio_producao|formatar_datetime }}</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="text-muted" style="font-size:0.8rem">Fim Producao</div>
+                    <div class="fw-semibold">{{ lote.data_fim_producao|formatar_datetime }}</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="text-muted" style="font-size:0.8rem">Total OFs</div>
+                    <div class="fw-semibold">{{ lote.total_ofs or 0 }}</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="text-muted" style="font-size:0.8rem">Planejador</div>
+                    <div class="fw-semibold">{{ lote.planejador or '-' }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="table-card p-4 h-100 d-flex flex-column justify-content-center">
+            <div class="text-center mb-3">
+                <div style="font-size:3rem;font-weight:700;color:{% if pct == 100 %}#2e7d32{% elif pct > 50 %}#f57f17{% else %}#1a237e{% endif %}">{{ pct }}%</div>
+                <div class="text-muted">Progresso Geral</div>
+            </div>
+            <div class="progress mb-2" style="height:12px;border-radius:6px">
+                <div class="progress-bar bg-success" style="width:{{ pct }}%;border-radius:6px"></div>
+            </div>
+            <div class="text-center text-muted" style="font-size:0.85rem">
+                {{ lote.operacoes_concluidas or 0 }} de {{ lote.total_operacoes or 0 }} operacoes concluidas
+            </div>
+            <!-- Alterar Prioridade -->
+            <div class="mt-3">
+                <label class="form-label fw-semibold" style="font-size:0.85rem">Alterar Prioridade</label>
+                <select class="form-select form-select-sm" onchange="alterarPrioridade({{ lote.ordem }}, this.value)">
+                    <option value="urgente" {{ 'selected' if lote.prioridade=='urgente' }}>Urgente</option>
+                    <option value="alta" {{ 'selected' if lote.prioridade=='alta' }}>Alta</option>
+                    <option value="media" {{ 'selected' if lote.prioridade=='media' }}>Media</option>
+                    <option value="baixa" {{ 'selected' if lote.prioridade=='baixa' }}>Baixa</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- FLUXO DE SETORES -->
+<div class="table-card p-3 mb-4">
+    <h6 class="fw-bold mb-3"><i class="bi bi-diagram-3 me-2"></i>Fluxo de Fabricacao</h6>
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+        {% set setores = ['ALMOXARIFADO','CORTE','SOLDA','ACABAMENTO','MONTAGEM','EMBALAGEM'] %}
+        {% for setor in setores %}
+        {% set ops_setor = operacoes | selectattr('departamento','equalto',setor) | list %}
+        {% set concluidas_setor = ops_setor | selectattr('status','equalto','concluido') | list %}
+        {% set em_andamento_setor = ops_setor | selectattr('status','equalto','em_andamento') | list %}
+        <div class="text-center" style="min-width:110px">
+            <div class="p-2 rounded-3 border-2 border
+                {% if em_andamento_setor %}border-warning bg-warning bg-opacity-10
+                {% elif concluidas_setor|length == ops_setor|length and ops_setor %}border-success bg-success bg-opacity-10
+                {% elif ops_setor %}border-primary bg-primary bg-opacity-10
+                {% else %}border-secondary bg-light{% endif %}">
+                <div style="font-size:0.75rem;font-weight:700;color:{% if em_andamento_setor %}#f57f17{% elif concluidas_setor|length == ops_setor|length and ops_setor %}#2e7d32{% elif ops_setor %}#1a237e{% else %}#9e9e9e{% endif %}">
+                    {{ setor }}
+                </div>
+                <div style="font-size:0.7rem;color:#757575">
+                    {{ concluidas_setor|length }}/{{ ops_setor|length }} ops
+                </div>
+            </div>
+        </div>
+        {% if not loop.last %}
+        <i class="bi bi-chevron-right text-muted"></i>
+        {% endif %}
+        {% endfor %}
+    </div>
+</div>
+
+<!-- TABS: OPERAÇÕES / OFs -->
+<ul class="nav nav-tabs mb-3" id="tabsLote">
+    <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabOps">
+        <i class="bi bi-list-check me-1"></i>Operacoes ({{ operacoes|length }})
+    </a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabOFs">
+        <i class="bi bi-files me-1"></i>Ordens de Fabricacao ({{ ofs|length }})
+    </a></li>
+</ul>
+
+<div class="tab-content">
+    <!-- TAB OPERAÇÕES -->
+    <div class="tab-pane fade show active" id="tabOps">
+        <div class="table-card">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Seq</th><th>OF</th><th>Operacao</th><th>Setor</th>
+                            <th>Status</th><th>Inicio</th><th>Fim</th><th>Operador</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for op in operacoes %}
+                        <tr class="{{ 'table-warning' if op.status=='em_andamento' else 'table-success' if op.status=='concluido' else '' }}">
+                            <td><strong>{{ op.sequencia }}</strong></td>
+                            <td><small>#{{ op.of_numero }}</small></td>
+                            <td>{{ op.descricao_operacao }}</td>
+                            <td>
+                                <span class="badge" style="background:{% if op.departamento=='CORTE' %}#fd7e14{% elif op.departamento=='SOLDA' %}#dc3545{% elif op.departamento=='ACABAMENTO' %}#6f42c1{% elif op.departamento=='MONTAGEM' %}#0d6efd{% elif op.departamento=='EMBALAGEM' %}#198754{% elif op.departamento=='ALMOXARIFADO' %}#17a2b8{% else %}#607d8b{% endif %}">
+                                    {{ op.departamento or '-' }}
+                                </span>
+                            </td>
+                            <td><span class="badge badge-{{ op.status }}">{{ op.status|replace('_',' ')|upper }}</span></td>
+                            <td style="font-size:0.82rem">{{ op.data_inicio|formatar_datetime }}</td>
+                            <td style="font-size:0.82rem">{{ op.data_fim|formatar_datetime }}</td>
+                            <td style="font-size:0.82rem">{{ op.usuario_inicio_nome or '-' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="8" class="text-center text-muted py-4">Nenhuma operacao registrada.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB OFs -->
+    <div class="tab-pane fade" id="tabOFs">
+        <div class="table-card">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr><th>OF</th><th>Produto</th><th>Qtd</th><th>Tipo</th><th>Status</th><th>Progresso</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for of in ofs %}
+                        {% set pct_of = ((of.ops_concluidas or 0) / (of.total_ops or 1) * 100)|int %}
+                        <tr>
+                            <td><strong>#{{ of.of_numero }}</strong></td>
+                            <td>{{ of.descricao_produto or '-' }}</td>
+                            <td>{{ of.qtde_ordem|int }} {{ of.unidade_medida }}</td>
+                            <td><span class="badge {{ 'bg-primary' if of.tipo=='pai' else 'bg-secondary' }}">{{ of.tipo|upper }}</span></td>
+                            <td><span class="badge badge-{{ of.status }}">{{ of.status|replace('_',' ')|upper }}</span></td>
+                            <td style="min-width:100px">
+                                <div class="progress" style="height:6px">
+                                    <div class="progress-bar bg-success" style="width:{{ pct_of }}%"></div>
+                                </div>
+                                <small class="text-muted">{{ of.ops_concluidas }}/{{ of.total_ops }}</small>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="6" class="text-center text-muted py-4">Nenhuma OF registrada.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function alterarPrioridade(ordem, prioridade) {
+    fetch('/api/lotes/prioridade', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ordem: ordem, prioridade: prioridade})
+    }).then(r => r.json()).then(d => {
+        if (d.success) {
+            const el = document.createElement('div');
+            el.className = 'alert alert-success position-fixed top-0 end-0 m-3';
+            el.style.zIndex = 9999;
+            el.textContent = 'Prioridade atualizada!';
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 2000);
+        }
+    });
+}
+</script>
+{% endblock %}

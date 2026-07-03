@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Editar' if usuario else 'Novo' }} Usuário — SALUTEM{% endblock %}
+{% block header_title %}
+  <span class="flex items-center gap-2">
+    <i class="fa-solid fa-user-{{ 'pen' if usuario else 'plus' }} text-blue-600"></i>
+    <span class="hidden sm:inline">{{ 'Editar' if usuario else 'Novo' }} Usuário</span>
+  </span>
+{% endblock %}
+
+{% block content %}
+
+{# ═══════════════ HEADER ═══════════════ #}
+<div class="flex items-end justify-between mb-5 pb-4 border-b border-slate-200">
+  <div>
+    <p class="eyebrow mb-1">Gestão de Usuários</p>
+    <h1 class="text-xl font-extrabold text-slate-900 tracking-tight">
+      {{ 'Editar Usuário' if usuario else 'Cadastrar Novo Usuário' }}
+    </h1>
+    {% if usuario %}
+    <p class="text-sm text-slate-500 mt-0.5">
+      Editando: <strong class="text-slate-700">@{{ usuario.usuario }}</strong>
+    </p>
+    {% endif %}
+  </div>
+  <a href="{{ url_for('admin_dashboard') }}" class="btn-touch btn-cancel text-sm">
+    <i class="fa-solid fa-arrow-left"></i>Voltar
+  </a>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+  {# ═══════════════ FORMULÁRIO PRINCIPAL ═══════════════ #}
+  <div class="lg:col-span-2 prodsys-card p-5">
+    <form method="POST" class="space-y-5">
+
+      {# Dados de acesso #}
+      <div>
+        <p class="eyebrow mb-3"><i class="fa-solid fa-key mr-1"></i>Dados de Acesso</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">
+              Usuário (Login) <span class="text-red-500">*</span>
+            </label>
+            <input type="text" name="usuario" id="usuario"
+                   value="{{ usuario.usuario if usuario else '' }}"
+                   class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none {{ 'bg-slate-50 text-slate-500' if usuario }}"
+                   {{ 'readonly' if usuario else 'required' }}>
+            {% if usuario %}
+            <p class="text-[10px] text-slate-400 mt-1">Não pode ser alterado</p>
+            {% else %}
+            <p class="text-[10px] text-slate-400 mt-1">Nome único para login</p>
+            {% endif %}
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">
+              Nome Completo <span class="text-red-500">*</span>
+            </label>
+            <input type="text" name="nome" id="nome"
+                   value="{{ usuario.nome if usuario else '' }}"
+                   class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                   required>
+          </div>
+        </div>
+      </div>
+
+      {# Cargo e departamento #}
+      <div>
+        <p class="eyebrow mb-3"><i class="fa-solid fa-id-badge mr-1"></i>Permissões</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">
+              Nível de Acesso <span class="text-red-500">*</span>
+            </label>
+            <select name="role" id="role"
+                    class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                    required>
+              {% for valor, label in [
+                ('operador',     '🔧 Operador (chão de fábrica)'),
+                ('encarregado',  '👷 Encarregado'),
+                ('pcp',          '📋 PCP (Planejamento)'),
+                ('almoxarifado', '📦 Almoxarifado'),
+                ('gerente',      '📊 Gerente'),
+                ('admin',        '👑 Administrador (acesso total)')
+              ] %}
+              <option value="{{ valor }}" {{ 'selected' if usuario and usuario.role == valor else '' }}>
+                {{ label }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5">
+              Departamento
+            </label>
+            <select name="nome_departamento" id="nome_departamento"
+                    class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+              <option value="">— Nenhum (admin/gerente) —</option>
+              {% for depto in departamentos %}
+              {% if depto.ordem_fluxo > 0 or depto.codigo == 'PCP' %}
+              <option value="{{ depto.codigo }}"
+                      {{ 'selected' if usuario and usuario.nome_departamento == depto.codigo else '' }}>
+                {{ depto.nome }} ({{ depto.codigo }})
+              </option>
+              {% endif %}
+              {% endfor %}
+            </select>
+            <p class="text-[10px] text-slate-400 mt-1">Operador deve ter um departamento</p>
+          </div>
+        </div>
+      </div>
+
+      {# Senha #}
+      <div>
+        <p class="eyebrow mb-3"><i class="fa-solid fa-lock mr-1"></i>Senha</p>
+        {% if usuario %}
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-3">
+          <p class="text-xs text-amber-800">
+            <i class="fa-solid fa-circle-info mr-1"></i>
+            Deixe em branco para manter a senha atual.
+          </p>
+        </div>
+        <input type="password" name="senha" id="senha"
+               placeholder="Nova senha (opcional)"
+               class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+        {% else %}
+        <input type="password" name="senha" id="senha"
+               placeholder="Senha de acesso"
+               class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+               required>
+        {% endif %}
+      </div>
+
+      {# Status (apenas edição) #}
+      {% if usuario %}
+      <div>
+        <p class="eyebrow mb-3"><i class="fa-solid fa-toggle-on mr-1"></i>Status</p>
+        <div class="flex items-center gap-4">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="radio" name="ativo" value="1" id="ativo_sim"
+                   {{ 'checked' if not usuario or usuario.ativo else '' }}
+                   class="w-4 h-4 text-blue-600">
+            <span class="text-sm font-bold text-green-700">✓ Ativo</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="radio" name="ativo" value="0" id="ativo_nao"
+                   {{ 'checked' if usuario and not usuario.ativo else '' }}
+                   class="w-4 h-4 text-blue-600">
+            <span class="text-sm font-bold text-red-700">✗ Inativo</span>
+          </label>
+        </div>
+      </div>
+      {% endif %}
+
+      {# Botões #}
+      <div class="pt-3 border-t border-slate-100 flex gap-3">
+        <button type="submit" class="btn-touch btn-finish flex-1">
+          <i class="fa-solid fa-save"></i>SALVAR USUÁRIO
+        </button>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn-touch btn-cancel">
+          <i class="fa-solid fa-xmark"></i>Cancelar
+        </a>
+      </div>
+    </form>
+  </div>
+
+  {# ═══════════════ INFORMAÇÕES LATERAIS ═══════════════ #}
+  <div class="space-y-4">
+
+    <div class="prodsys-card p-4">
+      <h3 class="section-title mb-3">
+        <i class="fa-solid fa-shield-halved text-blue-500"></i>
+        Níveis de Acesso
+      </h3>
+      <div class="space-y-2.5 text-xs">
+        <div class="flex items-start gap-2">
+          <i class="fa-solid fa-circle text-[6px] text-slate-500 mt-1.5"></i>
+          <div>
+            <strong class="text-slate-700">Operador</strong>
+            <p class="text-slate-500">Vê apenas as OPs do seu setor</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-2">
+          <i class="fa-solid fa-circle text-[6px] text-amber-500 mt-1.5"></i>
+          <div>
+            <strong class="text-slate-700">Encarregado</strong>
+            <p class="text-slate-500">Kanban e TV do setor</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-2">
+          <i class="fa-solid fa-circle text-[6px] text-indigo-500 mt-1.5"></i>
+          <div>
+            <strong class="text-slate-700">PCP</strong>
+            <p class="text-slate-500">Importar OPs, classificar, liberar</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-2">
+          <i class="fa-solid fa-circle text-[6px] text-cyan-500 mt-1.5"></i>
+          <div>
+            <strong class="text-slate-700">Almoxarifado</strong>
+            <p class="text-slate-500">Separação e entrega de materiais</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-2">
+          <i class="fa-solid fa-circle text-[6px] text-blue-600 mt-1.5"></i>
+          <div>
+            <strong class="text-slate-700">Gerente</strong>
+            <p class="text-slate-500">KPIs, gráficos, relatórios</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-2">
+          <i class="fa-solid fa-circle text-[6px] text-purple-600 mt-1.5"></i>
+          <div>
+            <strong class="text-slate-700">Administrador</strong>
+            <p class="text-slate-500">Acesso total (todas as telas)</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="prodsys-card p-4 bg-blue-50/50">
+      <h3 class="section-title mb-2">
+        <i class="fa-solid fa-lightbulb text-amber-500"></i>
+        Dica
+      </h3>
+      <p class="text-xs text-slate-600 leading-relaxed">
+        Para o <strong>operador do tablet</strong> no chão de fábrica, crie um usuário
+        simples como <code class="bg-slate-100 px-1.5 py-0.5 rounded text-[10px]">corte</code>
+        ou <code class="bg-slate-100 px-1.5 py-0.5 rounded text-[10px]">solda</code> —
+        fácil de lembrar e digitar.
+      </p>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}

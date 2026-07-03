@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Produção - {{ sistema_nome }}{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="card">
+        <div class="card-body">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <h1 class="mb-2"><i class="fas fa-cogs text-primary"></i> Processos em Produção</h1>
+                    <p class="text-secondary mb-0">Controle e acompanhamento dos processos em andamento</p>
+                </div>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <a href="{{ url_for('kanban_board') }}" class="btn btn-secondary"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+                    <button onclick="location.reload()" class="btn btn-secondary"><i class="fas fa-sync-alt"></i> Atualizar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-tasks"></i> Processos em Andamento
+        </div>
+        <div class="card-body">
+            {% if processos %}
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>OF</th>
+                                <th>Lote</th>
+                                <th>Produto</th>
+                                <th>Departamento</th>
+                                <th>Processo</th>
+                                <th>Máquina</th>
+                                <th>Início</th>
+                                <th>Usuário</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for processo in processos %}
+                            <tr>
+                                <td><strong>{{ processo.ordem }}</strong></td>
+                                <td>{{ processo.lote_codigo }}</td>
+                                <td>{{ processo.produto }}</td>
+                                <td>{{ processo.nome_departamento }}</td>
+                                <td>{{ processo.descricao_processo or processo.processo }}</td>
+                                <td>{{ processo.nome_maquina or '-' }}</td>
+                                <td>{{ processo.data_inicio|formatar_data_hora_br }}</td>
+                                <td>{{ processo.usuario_inicio }}</td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('finalizar_processo', processo_id=processo.id) }}" style="display: inline;">
+                                        <input type="text" name="observacoes" placeholder="Observações" style="width: 150px; padding: 0.25rem;">
+                                        <button type="submit" class="btn btn-success btn-sm">
+                                            <i class="fas fa-check"></i> Finalizar
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-secondary">Nenhum processo em andamento no momento.</p>
+                <a href="{{ url_for('kanban_board') }}" class="btn btn-primary">
+                    <i class="fas fa-boxes"></i> Ver Lotes Disponíveis
+                </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

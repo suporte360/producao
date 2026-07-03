@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h4 font-weight-bold text-secondary">Detalhes da Ordem de Produção #{{ ordem }}</h1>
+    <a href="{{ url_for('kanban_board') }}" class="btn btn-sm btn-outline-secondary">
+        <i class="fas fa-arrow-left mr-1"></i> Voltar para Lista
+    </a>
+</div>
+
+<div class="row">
+    <!-- Informações Gerais -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white font-weight-bold text-navy">
+                <i class="fas fa-info-circle mr-2"></i>Informações da OF
+            </div>
+            <div class="card-body">
+                <table class="table table-sm table-borderless mb-0">
+                    <tr><td class="text-muted">Lote:</td><td><strong>{{ lote.lote_codigo }}</strong></td></tr>
+                    <tr><td class="text-muted">Produto:</td><td><strong>{{ lote.descricao_produto }}</strong></td></tr>
+                    <tr><td class="text-muted">Quantidade:</td><td>{{ lote.qtde_ordem|floatformat(0) }} pç</td></tr>
+                    <tr><td class="text-muted">Prioridade:</td><td><span class="badge badge-pro badge-{{ lote.prioridade|lower }}">{{ lote.prioridade|upper }}</span></td></tr>
+                    <tr><td class="text-muted">Status Atual:</td><td><span class="badge badge-pro badge-info">{{ lote.status|upper }}</span></td></tr>
+                    <tr><td class="text-muted">Setor Atual:</td><td>{{ lote.departamento_atual }}</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Histórico de Apontamentos -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white font-weight-bold text-navy">
+                <i class="fas fa-history mr-2"></i>Histórico de Tempos (Toyota/Lean)
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-pro mb-0">
+                        <thead>
+                            <tr>
+                                <th>Data/Hora</th>
+                                <th>Evento</th>
+                                <th>Usuário</th>
+                                <th>Motivo/Obs</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if apontamentos %}
+                                {% for a in apontamentos %}
+                                <tr>
+                                    <td>{{ a.data_hora|formatar_data_br }}</td>
+                                    <td><span class="badge badge-pro badge-{{ 'success' if a.tipo == 'inicio' else ('warning' if a.tipo == 'pausa' else 'primary') }}">{{ a.tipo|upper }}</span></td>
+                                    <td>{{ a.usuario_nome }}</td>
+                                    <td>{{ a.motivo_pausa or '-' }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr><td colspan="4" class="text-center py-4 text-muted">Nenhum registro de tempo encontrado para esta OF.</td></tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

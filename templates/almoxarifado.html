@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}Almoxarifado - Produção{% endblock %}
+{% block content %}
+<h1 class="mb-4">🏭 Almoxarifado - Requisições</h1>
+<div class="card">
+    <div class="card-body">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>ID</th><th>Solicitante</th><th>Material</th><th>Quantidade</th>
+                    <th>Status</th><th>Data</th><th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for req in requisicoes %}
+                <tr>
+                    <td>{{ req.id }}</td>
+                    <td>{{ req.solicitante }}</td>
+                    <td>{{ req.material }}</td>
+                    <td>{{ req.quantidade }}</td>
+                    <td>
+                        <span class="badge bg-{{ 'success' if req.status == 'aprovada' else 'warning' if req.status == 'pendente' else 'danger' }}">
+                            {{ req.status|upper }}
+                        </span>
+                    </td>
+                    <td>{{ req.data_criacao|formatar_data_br }}</td>
+                    <td>
+                        {% if req.status == 'pendente' %}
+                            <button class="btn btn-sm btn-success" onclick="aprovarRequisicao({{ req.id }})">✅ Aprovar</button>
+                            <button class="btn btn-sm btn-danger" onclick="rejeitarRequisicao({{ req.id }})">❌ Rejeitar</button>
+                        {% else %}
+                            <span class="text-muted">Processada</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+<script>
+function aprovarRequisicao(id) {
+    if(confirm('Aprovar esta requisição?')) {
+        fetch(`/almoxarifado/aprovar/${id}`, { method: 'POST' })
+            .then(r => r.json())
+            .then(data => { alert(data.mensagem); location.reload(); });
+    }
+}
+function rejeitarRequisicao(id) {
+    if(confirm('Rejeitar esta requisição?')) {
+        fetch(`/almoxarifado/rejeitar/${id}`, { method: 'POST' })
+            .then(r => r.json())
+            .then(data => { alert(data.mensagem); location.reload(); });
+    }
+}
+</script>
+{% endblock %}

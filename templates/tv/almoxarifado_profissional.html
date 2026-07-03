@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TV Almoxarife - Sistema de Produção</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style_profissional.css') }}">
+    <style>
+        body {
+            background: #1f2937;
+            color: #e5e7eb;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .tv-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background: #111827;
+        }
+
+        .tv-header {
+            background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+            padding: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .tv-title {
+            font-size: 2rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            color: #fff;
+        }
+
+        .tv-title i {
+            font-size: 2.2rem;
+        }
+
+        .tv-time {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 0.5rem;
+        }
+
+        .tv-clock {
+            font-size: 2rem;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+            color: #fff;
+        }
+
+        .tv-date {
+            font-size: 1rem;
+            opacity: 0.95;
+            color: #fff;
+        }
+
+        .tv-body {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .tv-body::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .tv-body::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .tv-body::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+
+        .tv-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+        }
+
+        .tv-stat-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .tv-stat-card:hover {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.08) 100%);
+            border-color: rgba(255, 255, 255, 0.25);
+            transform: translateY(-4px);
+        }
+
+        .tv-stat-number {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #06b6d4, #0891b2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .tv-stat-label {
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.8;
+            font-weight: 600;
+        }
+
+        .tv-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+            flex: 1;
+        }
+
+        .tv-section {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .tv-section-header {
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.3), rgba(8, 145, 178, 0.3));
+            padding: 1rem;
+            font-weight: 700;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .tv-section-body {
+            flex: 1;
+            padding: 1rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .tv-section-body::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .tv-section-body::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+        }
+
+        .tv-item {
+            background: rgba(255, 255, 255, 0.04);
+            border-left: 4px solid #06b6d4;
+            padding: 1rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .tv-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-left-color: #0891b2;
+            transform: translateX(4px);
+        }
+
+        .tv-item-title {
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-bottom: 0.25rem;
+            color: #fff;
+        }
+
+        .tv-item-meta {
+            font-size: 0.9rem;
+            opacity: 0.7;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .tv-item-badge {
+            display: inline-block;
+            padding: 0.35rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-urgente { background: #dc2626; color: #fff; }
+        .badge-alta { background: #f97316; color: #fff; }
+        .badge-media { background: #eab308; color: #000; }
+        .badge-baixa { background: #22c55e; color: #fff; }
+
+        .badge-importado { background: #3b82f6; color: #fff; }
+        .badge-pendente { background: #a855f7; color: #fff; }
+        .badge-liberado { background: #10b981; color: #fff; }
+
+        .tv-ticker {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(90deg, #1f2937 0%, #111827 100%);
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            border-top: 2px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.95rem;
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .tv-ticker-label {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            white-space: nowrap;
+            animation: blink 1.5s infinite;
+            color: #06b6d4;
+        }
+
+        .tv-ticker-text {
+            flex: 1;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            color: #e5e7eb;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            text-align: center;
+            color: #9ca3af;
+        }
+
+        .empty-state i {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        @media (max-width: 1024px) {
+            .tv-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .tv-title {
+                font-size: 1.5rem;
+            }
+            
+            .tv-clock {
+                font-size: 1.5rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .tv-header {
+                padding: 1rem;
+            }
+            
+            .tv-title {
+                font-size: 1.2rem;
+                gap: 0.5rem;
+            }
+            
+            .tv-title i {
+                font-size: 1.5rem;
+            }
+            
+            .tv-body {
+                padding: 1rem;
+            }
+            
+            .tv-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .tv-stat-number {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="tv-container">
+        <!-- HEADER -->
+        <div class="tv-header">
+            <div class="tv-title">
+                <i class="bi bi-box-seam"></i>
+                <span>ALMOXARIFE - Painel de Separação</span>
+            </div>
+            <div class="tv-time">
+                <div class="tv-clock" id="clock">00:00:00</div>
+                <div class="tv-date" id="dateStr"></div>
+            </div>
+        </div>
+
+        <!-- BODY -->
+        <div class="tv-body">
+            <!-- ESTATÍSTICAS -->
+            <div class="tv-stats">
+                <div class="tv-stat-card">
+                    <div class="tv-stat-number" id="statImportados">0</div>
+                    <div class="tv-stat-label">Importados</div>
+                </div>
+                <div class="tv-stat-card">
+                    <div class="tv-stat-number" id="statUrgentes">0</div>
+                    <div class="tv-stat-label">Urgentes</div>
+                </div>
+                <div class="tv-stat-card">
+                    <div class="tv-stat-number" id="statPendentes">0</div>
+                    <div class="tv-stat-label">Pendentes</div>
+                </div>
+                <div class="tv-stat-card">
+                    <div class="tv-stat-number" id="statLiberados">0</div>
+                    <div class="tv-stat-label">Liberados Hoje</div>
+                </div>
+            </div>
+
+            <!-- GRID DE SEÇÕES -->
+            <div class="tv-grid">
+                <!-- LOTES IMPORTADOS -->
+                <div class="tv-section">
+                    <div class="tv-section-header">
+                        <span><i class="bi bi-download me-2"></i>Lotes Importados do ERP</span>
+                        <span class="badge bg-info" id="countImportados">0</span>
+                    </div>
+                    <div class="tv-section-body" id="lotesImportados">
+                        <div class="empty-state">
+                            <i class="bi bi-inbox"></i>
+                            <p>Aguardando lotes...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- LOTES PENDENTES DE LIBERAÇÃO -->
+                <div class="tv-section">
+                    <div class="tv-section-header">
+                        <span><i class="bi bi-hourglass-split me-2"></i>Aguardando Liberação</span>
+                        <span class="badge bg-warning text-dark" id="countPendentes">0</span>
+                    </div>
+                    <div class="tv-section-body" id="lotesPendentes">
+                        <div class="empty-state">
+                            <i class="bi bi-check-circle"></i>
+                            <p>Nenhum lote aguardando</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TICKER -->
+        <div class="tv-ticker">
+            <span class="tv-ticker-label"><i class="bi bi-broadcast me-1"></i>AO VIVO</span>
+            <span class="tv-ticker-text" id="tickerText">Sistema de Produção SALUTEM — Atualizando em tempo real</span>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').textContent = now.toLocaleTimeString('pt-BR');
+            document.getElementById('dateStr').textContent = now.toLocaleDateString('pt-BR', {
+                weekday: 'long',
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric'
+            });
+        }
+
+        function getPriorityBadge(prioridade) {
+            const map = {
+                'urgente': 'badge-urgente',
+                'alta': 'badge-alta',
+                'media': 'badge-media',
+                'baixa': 'badge-baixa'
+            };
+            return map[prioridade] || 'badge-media';
+        }
+
+        function formatarData(data) {
+            if (!data) return '';
+            const d = new Date(data);
+            return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        }
+
+        function refreshData() {
+            fetch('/api/almoxarifado/tv')
+                .then(r => r.json())
+                .then(data => {
+                    // Atualizar estatísticas
+                    document.getElementById('statImportados').textContent = data.total_importados || 0;
+                    document.getElementById('statUrgentes').textContent = data.total_urgentes || 0;
+                    document.getElementById('statPendentes').textContent = data.total_pendentes || 0;
+                    document.getElementById('statLiberados').textContent = data.total_liberados || 0;
+
+                    // Atualizar contadores
+                    document.getElementById('countImportados').textContent = data.total_importados || 0;
+                    document.getElementById('countPendentes').textContent = data.total_pendentes || 0;
+
+                    // Atualizar lotes importados
+                    const lotesDiv = document.getElementById('lotesImportados');
+                    if (data.lotes && data.lotes.length > 0) {
+                        lotesDiv.innerHTML = data.lotes.map(lote => `
+                            <div class="tv-item">
+                                <div class="tv-item-title">#${lote.ordem} - ${lote.codigo || 'Sem código'}</div>
+                                <div class="tv-item-meta">
+                                    <span class="tv-item-badge ${getPriorityBadge(lote.prioridade)}">${lote.prioridade}</span>
+                                    ${lote.departamento ? `<span class="tv-item-badge badge-importado">${lote.departamento}</span>` : ''}
+                                    ${lote.tempo_horas ? `<span style="opacity: 0.7;">Há ${lote.tempo_horas}h</span>` : ''}
+                                </div>
+                            </div>
+                        `).join('');
+                    } else {
+                        lotesDiv.innerHTML = '<div class="empty-state"><i class="bi bi-inbox"></i><p>Nenhum lote importado</p></div>';
+                    }
+
+                    // Atualizar ticker
+                    document.getElementById('tickerText').textContent = 
+                        `Última atualização: ${new Date().toLocaleTimeString('pt-BR')} | ` +
+                        `Importados: ${data.total_importados} | ` +
+                        `Urgentes: ${data.total_urgentes} | ` +
+                        `Liberados hoje: ${data.total_liberados}`;
+                })
+                .catch(err => console.error('Erro ao atualizar:', err));
+        }
+
+        // Inicializar
+        updateClock();
+        refreshData();
+
+        // Atualizar a cada 15 segundos
+        setInterval(updateClock, 1000);
+        setInterval(refreshData, 15000);
+
+        // Recarregar página a cada 5 minutos
+        setTimeout(() => location.reload(), 300000);
+    </script>
+</body>
+</html>

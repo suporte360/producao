@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+{% block title %}Kanban de Produção{% endblock %}
+{% block header_title %}
+  <span class="flex items-center gap-2">
+    <i class="fa-solid fa-table-columns text-purple-500"></i>
+    <span class="hidden sm:inline">Kanban de Produção</span>
+    {% if usuario_departamento %}
+    {% set dc = {'ALMOXARIFADO':'bg-cyan-600','CORTE':'bg-orange-500','SOLDA':'bg-red-500','ACABAMENTO':'bg-purple-500','MONTAGEM':'bg-blue-600','EMBALAGEM':'bg-green-600'} %}
+    <span class="hidden md:inline-flex chip-dept {{ dc.get(usuario_departamento, 'bg-slate-600') }} text-[10px]">{{ usuario_departamento }}</span>
+    {% endif %}
+  </span>
+{% endblock %}
+
+{% block content %}
+
+{# ═══════════════ KPIs SUPERIORES ═══════════════ #}
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-4">
+  {% for stat in stats %}
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:{% if stat.etapa == 'aguardando' %}rgba(37,99,235,.15);color:#3b82f6{% elif stat.etapa == 'em_producao' %}rgba(217,119,6,.15);color:#f97316{% elif stat.etapa == 'pausado' %}rgba(146,64,14,.2);color:#f59e0b{% else %}rgba(22,163,74,.15);color:#16a34a{% endif %}">
+      <i class="fa-solid {% if stat.etapa == 'aguardando' %}fa-hourglass-start{% elif stat.etapa == 'em_producao' %}fa-gear{% elif stat.etapa == 'pausado' %}fa-pause{% else %}fa-circle-check{% endif %}"></i>
+    </div>
+    <div>
+      <div class="kpi-num" style="color:{% if stat.etapa == 'aguardando' %}#3b82f6{% elif stat.etapa == 'em_producao' %}#f97316{% elif stat.etapa == 'pausado' %}#f59e0b{% else %}#16a34a{% endif %}">{{ stat.total }}</div>
+      <div class="kpi-lbl">{% if stat.etapa == 'aguardando' %}Aguardando{% elif stat.etapa == 'em_producao' %}Em Produção{% elif stat.etapa == 'pausado' %}Pausados{% else %}Concluídos{% endif %}</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{# ═══════════════ INFO BAR ═══════════════ #}
+<div class="flex flex-wrap items-center gap-2 mb-3 text-xs">
+  {% if usuario_role in ['operador', 'encarregado'] and usuario_departamento %}
+  <div class="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full font-bold border border-blue-200">
+    <i class="fa-solid fa-filter mr-1"></i>Filtrado: {{ usuario_departamento }}
+  </div>
+  {% else %}
+  <div class="bg-purple-50 text-purple-700 px-3 py-1.5 rounded-full font-bold border border-purple-200">
+    <i class="fa-solid fa-eye mr-1"></i>Todos os setores
+  </div>
+  {% endif %}
+  <div class="bg-green-50 text-green-700 px-3 py-1.5 rounded-full font-bold border border-green-200">
+    <i class="fa-solid fa-circle-check mr-1"></i>{{ concluidos_hoje }} concluídos hoje
+  </div>
+  <div class="ml-auto flex gap-2">
+    <button onclick="location.reload()" class="btn-touch btn-cancel text-xs" style="min-height:32px">
+      <i class="fa-solid fa-rotate-right"></i>Atualizar
+    </button>
+    {% if usuario_role in ['admin', 'gerente', 'pcp', 'encarregado'] %}
+    <a href="{{ url_for('kanban_tv') }}" target="_blank" class="btn-touch btn-finish text-xs" style="min-height:32px">
+      <i class="fa-solid fa-tv"></i>TV
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+{# ═══════════════ KANBAN BOARD (4 colunas) ═══════════════ #}
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+
+  {% set colunas = [
+    ('aguardando',  'Aguardando',  'fa-hourglass-start', 'blue',   'border-blue-400',   'bg-blue-50',   'text-blue-700'),
+    ('em_producao', 'Em Produção', 'fa-gear',            'orange', 'border-orange-400', 'bg-orange-50', 'text-orange-700'),
+    ('pausado',     'Pausados',    'fa-pause',           'amber',  'border-amber-400',  'bg-amber-50',  'text-amber-700'),
+    ('concluido',   'Concluídos',  'fa-circle-check',    'green',  'border-green-400',  'bg-green-50',  'text-green-700')
+  ] %}
+
+  {% for etapa, label, icon, cor, border_cor, bg_cor, text_cor in colunas %}
+  {% set cards_col = cards | selectattr('etapa', 'equalto', etapa) | list %}
+
+  <section class="prodsys-card overflow-hidden flex flex-col" data-etapa="{{ etapa }}" style="min-height: 60vh">
+    <header class="px-3 py-2.5 border-b border-gray-100 {{ bg_cor }} flex items-center justify-between">
+      <h2 class="text-xs font-black {{ text_cor }} flex items-center gap-2 uppercase tracking-wide">
+        <i class="fa-solid {{ icon }}"></i>{{ label }}
+      </h2>
+      <span class="bg-white {{ text_cor }} text-[10px] font-black px-2 py-0.5 rounded-full border {{ border_cor }}">{{ cards_col|length }}</span>
+    </header>
+
+    <div class="kanban-col-body p-2 flex-1 overflow-y-auto space-y-2" data-etapa="{{ etapa }}">
+      {% if cards_col %}
+      {% for card in cards_col %}
+      {% set prio = (card.prioridade or 'media')|lower %}
+      {% set pborder = {'urgente':'border-red-500','alta':'border-orange-400','media':'border-yellow-400','baixa':'border-green-400'} %}
+      <article class="bg-white border border-gray-200 border-l-4 {{ pborder.get(prio,'border-blue-300') }} rounded-lg p-3 hover:shadow-md transition cursor-pointer kanban-card"
+               draggable="true"
+               data-card-id="{{ card.id }}"
+               data-etapa-atual="{{ card.etapa }}">
+
+        <div class="flex items-start justify-between gap-1 mb-1.5">
+          <div class="text-[11px] font-bold text-blue-700">
+            OP #{{ card.lote_ordem }}{% if card.lote_codigo %} <span class="text-gray-400 font-normal">· {{ card.lote_codigo }}</span>{% endif %}
+          </div>
+          {% if card.prioridade %}
+          <span class="badge-priority {{ prio }}">{{ card.prioridade|upper }}</span>
+          {% endif %}
+        </div>
+
+        <div class="text-sm font-bold text-gray-800 leading-tight mb-1 line-clamp-2">
+          {{ card.descricao_produto or 'Produto' }}
+        </div>
+
+        {% if card.descricao_operacao %}
+        <div class="text-[11px] text-gray-500 mb-1.5 flex items-center gap-1">
+          <i class="fa-solid fa-screwdriver-wrench text-[9px]"></i>
+          <span class="truncate">{{ card.descricao_operacao[:40] }}</span>
+        </div>
+        {% endif %}
+
+        <div class="flex items-center justify-between mt-2 text-[10px]">
+          <div class="flex items-center gap-2 text-gray-500">
+            {% if card.qtde_ordem %}
+            <span class="bg-slate-100 px-1.5 py-0.5 rounded font-bold">{{ card.qtde_ordem|round(0) }}pc</span>
+            {% endif %}
+            {% if card.departamento %}
+            <span class="chip-dept dept-{{ card.departamento }} text-[9px]">{{ card.departamento }}</span>
+            {% endif %}
+          </div>
+          {% if card.etapa == 'em_producao' and card.data_inicio %}
+          <span class="font-mono font-bold text-green-600" data-timer="{{ card.data_inicio }}">00:00:00</span>
+          {% elif card.etapa == 'pausado' %}
+          <i class="fa-solid fa-pause text-amber-500" title="Pausado"></i>
+          {% endif %}
+        </div>
+
+        {% if card.operador_nome %}
+        <div class="mt-1.5 pt-1.5 border-t border-gray-100 text-[10px] text-gray-400 flex items-center gap-1">
+          <i class="fa-solid fa-user"></i>{{ card.operador_nome }}
+        </div>
+        {% endif %}
+      </article>
+      {% endfor %}
+      {% else %}
+      <div class="text-center py-8 text-gray-300">
+        <i class="fa-regular fa-rectangle-list text-3xl mb-1.5"></i>
+        <p class="text-xs">Nenhum card</p>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if usuario_role in ['admin', 'gerente', 'pcp', 'encarregado'] and etapa != 'concluido' %}
+    <div class="kanban-drop-zone p-2 border-t border-dashed border-gray-200 text-center text-[10px] text-gray-400 hover:bg-blue-50 hover:text-blue-700 transition cursor-pointer"
+         data-etapa="{{ etapa }}">
+      <i class="fa-solid fa-arrows-up-down-left-right"></i> Solte cards aqui
+    </div>
+    {% endif %}
+  </section>
+  {% endfor %}
+</div>
+
+<!-- Toast -->
+<div id="toast" class="prodsys-toast hidden"></div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ═════════ Toast ═════════ */
+function showToast(msg, tipo='success') {
+  const t = document.getElementById('toast');
+  t.className = 'prodsys-toast ' + tipo;
+  t.innerHTML = `<i class="fa-solid ${tipo==='success'?'fa-check-circle':'fa-exclamation-circle'}"></i> ${msg}`;
+  t.classList.remove('hidden');
+  setTimeout(()=>t.classList.add('hidden'), 3500);
+}
+
+/* ═════════ Cronômetros ═════════ */
+function tempoDecorrido(isoStr) {
+  if (!isoStr) return '';
+  try {
+    const p = isoStr.replace('T',' ').split(/[- :]/).map(Number);
+    const inicio = new Date(p[0],p[1]-1,p[2],p[3]||0,p[4]||0,p[5]||0);
+    const diff = Math.max(0, Math.floor((Date.now() - inicio.getTime())/1000));
+    const h = String(Math.floor(diff/3600)).padStart(2,'0');
+    const m = String(Math.floor((diff%3600)/60)).padStart(2,'0');
+    const s = String(diff%60).padStart(2,'0');
+    return `${h}:${m}:${s}`;
+  } catch(e){ return ''; }
+}
+
+function atualizarTimers() {
+  document.querySelectorAll('[data-timer]').forEach(el => {
+    el.textContent = tempoDecorrido(el.dataset.timer);
+  });
+}
+atualizarTimers();
+setInterval(atualizarTimers, 1000);
+
+/* ═════════ DRAG AND DROP ═════════ */
+let cardArrastado = null;
+let cardArrastadoId = null;
+
+document.querySelectorAll('.kanban-card').forEach(card => {
+  card.addEventListener('dragstart', function(e) {
+    cardArrastado = this;
+    cardArrastadoId = this.dataset.cardId;
+    this.classList.add('opacity-50', 'scale-95');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', cardArrastadoId);
+  });
+
+  card.addEventListener('dragend', function() {
+    this.classList.remove('opacity-50', 'scale-95');
+    document.querySelectorAll('.kanban-col-body, .kanban-drop-zone').forEach(el => {
+      el.classList.remove('ring-2', 'ring-blue-400', 'bg-blue-50');
+    });
+  });
+});
+
+// Permitir drop nas colunas
+document.querySelectorAll('.kanban-col-body').forEach(col => {
+  col.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    this.classList.add('ring-2', 'ring-blue-400', 'bg-blue-50');
+  });
+
+  col.addEventListener('dragleave', function() {
+    this.classList.remove('ring-2', 'ring-blue-400', 'bg-blue-50');
+  });
+
+  col.addEventListener('drop', function(e) {
+    e.preventDefault();
+    this.classList.remove('ring-2', 'ring-blue-400', 'bg-blue-50');
+
+    if (!cardArrastado) return;
+    const novaEtapa = this.dataset.etapa;
+    const etapaAtual = cardArrastado.dataset.etapaAtual;
+
+    if (novaEtapa === etapaAtual) return; // mesma coluna
+
+    // Move visualmente
+    this.appendChild(cardArrastado);
+    cardArrastado.dataset.etapaAtual = novaEtapa;
+
+    // Atualiza contadores
+    atualizarContadores();
+
+    // Chama API
+    fetch('/api/kanban/mover', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ card_id: parseInt(cardArrastadoId), etapa: novaEtapa })
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.status === 'success') {
+        showToast(`Card movido para "${novaEtapa}"`);
+      } else {
+        showToast('Erro ao mover card', 'error');
+        setTimeout(()=>location.reload(), 1000);
+      }
+    })
+    .catch(()=> {
+      showToast('Erro de conexão', 'error');
+      setTimeout(()=>location.reload(), 1000);
+    });
+  });
+});
+
+/* ═════════ Atualizar contadores ═════════ */
+function atualizarContadores() {
+  document.querySelectorAll('[data-etapa]').forEach(section => {
+    const etapa = section.dataset.etapa;
+    const count = section.querySelectorAll('.kanban-card').length;
+    const badge = section.querySelector('header span');
+    if (badge) badge.textContent = count;
+  });
+}
+
+/* ═════════ Auto-refresh 60s ═════════ */
+setTimeout(() => location.reload(), 60000);
+</script>
+{% endblock %}

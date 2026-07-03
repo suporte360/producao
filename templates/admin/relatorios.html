@@ -1,0 +1,66 @@
+{% extends "admin/base.html" %}
+{% block title %}Relatórios{% endblock %}
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-file-earmark-bar-graph me-2"></i>Relatórios de Produção</h2>
+
+<div class="row mb-4">
+    <div class="col-md-6 mb-3">
+        <div class="admin-card">
+            <h5 class="mb-3"><i class="bi bi-clipboard-check me-2"></i>Resumo ERP (PostgreSQL)</h5>
+            <table class="table table-sm">
+                <tr><td><strong>Total Ordens:</strong></td><td>{{ erp_stats.total }}</td></tr>
+                <tr><td><strong>Urgentes:</strong></td><td class="text-danger">{{ erp_stats.urgentes }}</td></tr>
+                <tr><td><strong>Atrasadas:</strong></td><td class="text-warning">{{ erp_stats.atrasadas }}</td></tr>
+                <tr><td><strong>Normais:</strong></td><td class="text-success">{{ erp_stats.normais }}</td></tr>
+            </table>
+        </div>
+    </div>
+    <div class="col-md-6 mb-3">
+        <div class="admin-card">
+            <h5 class="mb-3"><i class="bi bi-people me-2"></i>Usuários Ativos</h5>
+            <table class="table table-sm">
+                <tr><td><strong>Total:</strong></td><td>{{ usuarios|length }}</td></tr>
+                <tr><td><strong>Admins:</strong></td><td>{{ usuarios|selectattr('role','eq','admin')|list|length }}</td></tr>
+                <tr><td><strong>Gerentes:</strong></td><td>{{ usuarios|selectattr('role','eq','gerente')|list|length }}</td></tr>
+                <tr><td><strong>Operadores:</strong></td><td>{{ usuarios|selectattr('role','eq','operador')|list|length }}</td></tr>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="admin-card">
+    <h5 class="mb-3"><i class="bi bi-list-ol me-2"></i>Últimas Ordens do ERP</h5>
+    <div class="table-responsive">
+        <table class="table table-hover table-sm">
+            <thead>
+                <tr>
+                    <th>Ordem</th>
+                    <th>Lote</th>
+                    <th>Produto</th>
+                    <th>Qtd</th>
+                    <th>Previsão</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ordem in ordens_erp %}
+                <tr>
+                    <td>{{ ordem.ordem }}</td>
+                    <td>{{ ordem.lote_codigo }}</td>
+                    <td>{{ ordem.produto_nome or ordem.produto_codigo }}</td>
+                    <td>{{ ordem.quantidade }}</td>
+                    <td>{{ ordem.data_previsao }}</td>
+                    <td>
+                        {% if ordem.data_previsao < now %}
+                        <span class="badge bg-danger">Atrasado</span>
+                        {% else %}
+                        <span class="badge bg-success">OK</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

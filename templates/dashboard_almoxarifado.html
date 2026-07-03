@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h4 font-weight-bold text-secondary"><i class="fas fa-boxes mr-2"></i>Gestão de Materiais (Almoxarifado)</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <button type="button" class="btn btn-sm btn-primary" onclick="location.reload()">
+            <i class="fas fa-sync-alt mr-1"></i> Atualizar Pedidos
+        </button>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white">
+                <span class="font-weight-bold text-navy">Requisições Pendentes de Entrega</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-pro table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Prioridade</th>
+                                <th>Lote/OF</th>
+                                <th>Material</th>
+                                <th>Quantidade</th>
+                                <th>Setor Destino</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-requisicoes">
+                            <!-- Preenchido via API -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function carregarRequisicoes() {
+    fetch('/api/apontamentos/requisicoes/pendentes')
+        .then(r => r.json())
+        .then(data => {
+            const tbody = document.getElementById('tabela-requisicoes');
+            tbody.innerHTML = '';
+            data.data.forEach(req => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><span class="badge badge-pro badge-${req.prioridade === 'alta' ? 'danger' : 'warning'}">${req.prioridade || 'NORMAL'}</span></td>
+                    <td>#${req.ordem}</td>
+                    <td><strong>${req.descricao}</strong></td>
+                    <td>${req.quantidade} ${req.unidade_medida || 'UN'}</td>
+                    <td>${req.departamento_destino || 'PRODUÇÃO'}</td>
+                    <td>
+                        <button onclick="entregarMaterial(${req.id})" class="btn btn-sm btn-success">
+                            <i class="fas fa-check"></i> Entregar
+                        </button>
+                        <button onclick="recusarMaterial(${req.id})" class="btn btn-sm btn-outline-danger">
+                            <i class="fas fa-times"></i> Recusar
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        });
+}
+
+function entregarMaterial(id) {
+    if(!confirm("Confirmar entrega deste material para a produção?")) return;
+    
+    fetch(`/api/apontamentos/requisicoes/${id}/entregar`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({observacao: 'Entregue via Dashboard'})
+    }).then(r => r.json()).then(data => {
+        if(data.status === 'success') carregarRequisicoes();
+    });
+}
+
+carregarRequisicoes();
+</script>
+{% endblock %}

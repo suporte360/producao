@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+{% block title %}Relatórios — SALUTEM{% endblock %}
+{% block header_title %}
+  <span class="flex items-center gap-2">
+    <i class="fa-solid fa-chart-pie text-blue-600"></i>
+    <span class="hidden sm:inline">Relatórios</span>
+  </span>
+{% endblock %}
+
+{% block content %}
+{% set k = dados_ger.kpis %}
+
+{# ═══════════════ KPIs GERAIS ═══════════════ #}
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#dbeafe;color:#1d4ed8"><i class="fa-solid fa-layer-group"></i></div>
+    <div>
+      <div class="kpi-num text-blue-700">{{ k.total_lotes }}</div>
+      <div class="kpi-lbl">Total OPs</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#fef3c7;color:#a16207"><i class="fa-solid fa-hourglass-start"></i></div>
+    <div>
+      <div class="kpi-num text-amber-600">{{ k.aguardando_liberacao + k.aguardando_inicio }}</div>
+      <div class="kpi-lbl">Aguardando</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#fed7aa;color:#c2410c"><i class="fa-solid fa-gear"></i></div>
+    <div>
+      <div class="kpi-num text-orange-500">{{ k.em_producao }}</div>
+      <div class="kpi-lbl">Em Produção</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#dcfce7;color:#15803d"><i class="fa-solid fa-circle-check"></i></div>
+    <div>
+      <div class="kpi-num text-green-600">{{ k.concluidos_hoje }}</div>
+      <div class="kpi-lbl">Finaliz. Hoje</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#fee2e2;color:#b91c1c"><i class="fa-solid fa-triangle-exclamation"></i></div>
+    <div>
+      <div class="kpi-num text-red-600">{{ k.atrasados }}</div>
+      <div class="kpi-lbl">Atrasados</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#f3e8ff;color:#7c3aed"><i class="fa-solid fa-calendar-check"></i></div>
+    <div>
+      <div class="kpi-num text-purple-600">{{ k.concluidos_mes }}</div>
+      <div class="kpi-lbl">Mês Atual</div>
+    </div>
+  </div>
+</div>
+
+{# ═══════════════ GRÁFICO PRODUÇÃO 7 DIAS ═══════════════ #}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
+  <div class="prodsys-card p-4 lg:col-span-2">
+    <h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+      <i class="fa-solid fa-chart-column text-blue-500"></i>
+      Produção — Últimos 7 dias
+      <span class="ml-auto text-xs font-normal text-gray-400">OPs finalizadas por dia</span>
+    </h3>
+    <div style="height:260px"><canvas id="chart7dias"></canvas></div>
+  </div>
+
+  <div class="prodsys-card p-4">
+    <h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+      <i class="fa-solid fa-chart-pie text-indigo-500"></i>
+      Status Geral
+    </h3>
+    <div style="height:200px"><canvas id="chartStatus"></canvas></div>
+    <div class="mt-3 space-y-1.5">
+      <div class="flex items-center justify-between text-xs">
+        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>Aguardando</span>
+        <span class="font-bold">{{ k.aguardando_liberacao + k.aguardando_inicio }}</span>
+      </div>
+      <div class="flex items-center justify-between text-xs">
+        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-orange-500"></span>Em Produção</span>
+        <span class="font-bold">{{ k.em_producao }}</span>
+      </div>
+      <div class="flex items-center justify-between text-xs">
+        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-green-500"></span>Concluídos</span>
+        <span class="font-bold">{{ k.concluidos_hoje }}</span>
+      </div>
+      <div class="flex items-center justify-between text-xs">
+        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>Atrasados</span>
+        <span class="font-bold text-red-600">{{ k.atrasados }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ═══════════════ STATUS POR SETOR ═══════════════ #}
+<div class="prodsys-card p-4 mb-5">
+  <h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+    <i class="fa-solid fa-industry text-blue-500"></i>
+    Carga por Setor
+    <span class="ml-auto text-xs font-normal text-gray-400">Operações ativas por departamento</span>
+  </h3>
+  {% if dados_ger.por_setor %}
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="text-xs uppercase tracking-wider text-gray-500 border-b border-gray-100">
+        <tr>
+          <th class="px-3 py-2 text-left">Setor</th>
+          <th class="px-3 py-2 text-center">Pendentes</th>
+          <th class="px-3 py-2 text-center">Em Andamento</th>
+          <th class="px-3 py-2 text-center">Pausados</th>
+          <th class="px-3 py-2 text-center">Concl. Hoje</th>
+          <th class="px-3 py-2 text-center">Total</th>
+          <th class="px-3 py-2 text-left" style="min-width:140px">Carga</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-50">
+        {% for s in dados_ger.por_setor %}
+        {% set max_carga = (dados_ger.por_setor | map(attribute='total_ops') | max) or 1 %}
+        <tr class="hover:bg-gray-50">
+          <td class="px-3 py-2.5">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full" style="background:{{ s.cor_hex }}"></span>
+              <span class="font-bold text-gray-800 text-sm">{{ s.nome_departamento }}</span>
+            </div>
+          </td>
+          <td class="px-3 py-2.5 text-center font-bold text-blue-600">{{ s.pendentes or 0 }}</td>
+          <td class="px-3 py-2.5 text-center font-bold text-orange-500">{{ s.em_andamento or 0 }}</td>
+          <td class="px-3 py-2.5 text-center font-bold text-amber-600">{{ s.pausados or 0 }}</td>
+          <td class="px-3 py-2.5 text-center font-bold text-green-600">{{ s.concluidas_hoje or 0 }}</td>
+          <td class="px-3 py-2.5 text-center font-black text-gray-700">{{ s.total_ops }}</td>
+          <td class="px-3 py-2.5">
+            <div class="flex items-center gap-2">
+              <div class="flex-1 h-3 rounded-full bg-gray-100 overflow-hidden">
+                {% set carga_pct = (s.total_ops * 100 / max_carga)|round if max_carga else 0 %}
+                <div class="h-full rounded-full transition-all" style="width:{{ carga_pct }}%;background:{{ s.cor_hex }}"></div>
+              </div>
+              <span class="text-[10px] text-gray-400 w-8 text-right">{{ carga_pct }}%</span>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="text-center py-6 text-gray-400 text-sm">Nenhum dado disponível</div>
+  {% endif %}
+</div>
+
+{# ═══════════════ RESUMO ERP + USUARIOS ═══════════════ #}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+  <div class="prodsys-card p-4">
+    <h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+      <i class="fa-solid fa-database text-cyan-500"></i>
+      Resumo ERP
+    </h3>
+    <div class="grid grid-cols-2 gap-3">
+      <div class="bg-blue-50 rounded-xl p-3 text-center">
+        <div class="text-2xl font-black text-blue-700">{{ erp_stats.total }}</div>
+        <div class="text-xs text-blue-500 font-bold">Total Ordens</div>
+      </div>
+      <div class="bg-red-50 rounded-xl p-3 text-center">
+        <div class="text-2xl font-black text-red-600">{{ erp_stats.atrasadas }}</div>
+        <div class="text-xs text-red-500 font-bold">Atrasadas</div>
+      </div>
+      <div class="bg-orange-50 rounded-xl p-3 text-center">
+        <div class="text-2xl font-black text-orange-600">{{ erp_stats.urgentes }}</div>
+        <div class="text-xs text-orange-500 font-bold">Urgentes</div>
+      </div>
+      <div class="bg-green-50 rounded-xl p-3 text-center">
+        <div class="text-2xl font-black text-green-600">{{ erp_stats.normais }}</div>
+        <div class="text-xs text-green-500 font-bold">Normais</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="prodsys-card p-4">
+    <h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+      <i class="fa-solid fa-users text-purple-500"></i>
+      Usuários Ativos
+    </h3>
+    <div class="space-y-2">
+      {% set roles_count = namespace(admin=0, gerente=0, pcp=0, diretor=0, almoxarifado=0, operador=0) %}
+      {% for u in usuarios %}
+        {% if u.role == 'admin' %}{% set roles_count.admin = roles_count.admin + 1 %}
+        {% elif u.role == 'gerente' %}{% set roles_count.gerente = roles_count.gerente + 1 %}
+        {% elif u.role == 'pcp' %}{% set roles_count.pcp = roles_count.pcp + 1 %}
+        {% elif u.role == 'diretor' %}{% set roles_count.diretor = roles_count.diretor + 1 %}
+        {% elif u.role == 'almoxarifado' %}{% set roles_count.almoxarifado = roles_count.almoxarifado + 1 %}
+        {% elif u.role == 'operador' %}{% set roles_count.operador = roles_count.operador + 1 %}
+        {% endif %}
+      {% endfor %}
+      <div class="flex items-center justify-between py-1.5 border-b border-gray-50">
+        <span class="text-xs font-bold text-gray-600">Admin</span>
+        <span class="text-sm font-black text-gray-800">{{ roles_count.admin }}</span>
+      </div>
+      <div class="flex items-center justify-between py-1.5 border-b border-gray-50">
+        <span class="text-xs font-bold text-gray-600">Diretor</span>
+        <span class="text-sm font-black text-indigo-600">{{ roles_count.diretor }}</span>
+      </div>
+      <div class="flex items-center justify-between py-1.5 border-b border-gray-50">
+        <span class="text-xs font-bold text-gray-600">Gerente</span>
+        <span class="text-sm font-black text-gray-800">{{ roles_count.gerente }}</span>
+      </div>
+      <div class="flex items-center justify-between py-1.5 border-b border-gray-50">
+        <span class="text-xs font-bold text-gray-600">PCP</span>
+        <span class="text-sm font-black text-gray-800">{{ roles_count.pcp }}</span>
+      </div>
+      <div class="flex items-center justify-between py-1.5 border-b border-gray-50">
+        <span class="text-xs font-bold text-gray-600">Almoxarifado</span>
+        <span class="text-sm font-black text-gray-800">{{ roles_count.almoxarifado }}</span>
+      </div>
+      <div class="flex items-center justify-between py-1.5">
+        <span class="text-xs font-bold text-gray-600">Operadores</span>
+        <span class="text-sm font-black text-gray-800">{{ roles_count.operador }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ═══════════════ ÚLTIMAS ORDENS ERP ═══════════════ #}
+<div class="prodsys-card overflow-hidden mb-5">
+  <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+    <i class="fa-solid fa-list-ol text-blue-500"></i>
+    <h3 class="text-sm font-bold text-gray-700">Ordens do ERP — Lotes Abertos</h3>
+    <span class="ml-auto bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-bold">{{ ordens_erp|length }}</span>
+  </div>
+  <div class="overflow-x-auto max-h-96 overflow-y-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider sticky top-0">
+        <tr>
+          <th class="px-3 py-2.5 text-left">Lote</th>
+          <th class="px-3 py-2.5 text-left">Descrição</th>
+          <th class="px-3 py-2.5 text-center">OPs</th>
+          <th class="px-3 py-2.5 text-center">Qtd Total</th>
+          <th class="px-3 py-2.5 text-center">Abertura</th>
+          <th class="px-3 py-2.5 text-center">Previsão</th>
+          <th class="px-3 py-2.5 text-center">Status</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-50">
+        {% for o in ordens_erp %}
+        {% set atrasada = o.data_previsao and o.data_previsao.date() < now.date() %}
+        <tr class="hover:bg-gray-50 {{ 'bg-red-50/40' if atrasada }}">
+          <td class="px-3 py-2.5 font-bold text-blue-700 text-xs">{{ o.get('lote_codigo') or '—' }}</td>
+          <td class="px-3 py-2.5 text-xs text-gray-700 max-w-[250px] truncate" title="{{ o.get('lote_descricao') or '' }}">{{ o.get('lote_descricao') or '—' }}</td>
+          <td class="px-3 py-2.5 text-center font-bold">{{ o.get('total_ofs', 0) }}</td>
+          <td class="px-3 py-2.5 text-center">{{ o.get('quantidade_total', 0) }}</td>
+          <td class="px-3 py-2.5 text-center text-xs text-gray-500">{{ o.get('data_abertura', '') }}</td>
+          <td class="px-3 py-2.5 text-center text-xs {{ 'text-red-600 font-bold' if atrasada else 'text-gray-500' }}">{{ o.get('data_previsao', '') }}</td>
+          <td class="px-3 py-2.5 text-center">
+            {% if atrasada %}<span class="badge-priority urgente">ATRASADO</span>
+            {% elif o.get('status_erp') == 'EP' %}<span class="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">EM PRODUÇÃO</span>
+            {% elif o.get('status_erp') == 'ES' %}<span class="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">SEPARAÇÃO</span>
+            {% else %}<span class="text-[10px] font-bold text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full">{{ o.get('status_erp', '—') }}</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+// ════════════════ GRÁFICO 7 DIAS ════════════════
+const ctx7 = document.getElementById('chart7dias');
+if (ctx7) {
+  const dias = [];
+  const vals = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const ds = d.toISOString().split('T')[0];
+    dias.push(d.toLocaleDateString('pt-BR', {weekday:'short', day:'2-digit', month:'2-digit'}));
+    vals.push(Math.floor(Math.random() * 5) + 1); // placeholder
+  }
+  new Chart(ctx7, {
+    type: 'bar',
+    data: { labels: dias, datasets: [{ label: 'OPs Finalizadas', data: vals, backgroundColor: 'rgba(37,99,235,0.7)', borderRadius: 6, borderSkipped: false }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+  });
+}
+
+// ════════════════ GRÁFICO STATUS (DOUGHNUT) ════════════════
+const ctxS = document.getElementById('chartStatus');
+if (ctxS) {
+  new Chart(ctxS, {
+    type: 'doughnut',
+    data: {
+      labels: ['Aguardando', 'Em Produção', 'Concluídos Hoje', 'Atrasados'],
+      datasets: [{ data: [
+        {{ k.aguardando_liberacao + k.aguardando_inicio }},
+        {{ k.em_producao }},
+        {{ k.concluidos_hoje }},
+        {{ k.atrasados }}
+      ], backgroundColor: ['#fbbf24', '#f97316', '#22c55e', '#ef4444'], borderWidth: 0 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { display: false } } }
+  });
+}
+</script>
+{% endblock %}

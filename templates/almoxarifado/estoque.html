@@ -1,0 +1,493 @@
+{% extends "base.html" %}
+{% block title %}Estoque — Almoxarifado{% endblock %}
+{% block header_title %}
+  <span class="flex items-center gap-2">
+    <i class="fa-solid fa-boxes-stacked text-amber-500"></i>
+    <span class="hidden sm:inline">Estoque</span>
+  </span>
+{% endblock %}
+
+{% block content %}
+
+{# ═══════════════ ABAS ═══════════════ #}
+<div class="flex gap-1 mb-4 bg-gray-100 rounded-xl p-1">
+  <button onclick="trocarAba('almoxarifado')" id="abaAlmoxarifado"
+    class="flex-1 text-xs font-bold py-2.5 rounded-lg transition-all bg-white text-gray-800 shadow-sm">
+    <i class="fa-solid fa-warehouse mr-1"></i>Estoque Almoxarifado
+  </button>
+  <button onclick="trocarAba('fabrica')" id="abaFabrica"
+    class="flex-1 text-xs font-bold py-2.5 rounded-lg transition-all text-gray-500">
+    <i class="fa-solid fa-industry mr-1"></i>Na Fabrica
+  </button>
+</div>
+
+{# ═══════════════ KPIs ═══════════════ #}
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#f0fdf4;color:#15803d"><i class="fa-solid fa-boxes-stacked"></i></div>
+    <div>
+      <div class="kpi-num text-green-600" id="kpiTotal">0</div>
+      <div class="kpi-lbl">Materiais</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#fef2f2;color:#b91c1c"><i class="fa-solid fa-circle-xmark"></i></div>
+    <div>
+      <div class="kpi-num text-red-600" id="kpiZerado">0</div>
+      <div class="kpi-lbl">Sem Estoque</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#fffbeb;color:#b45309"><i class="fa-solid fa-triangle-exclamation"></i></div>
+    <div>
+      <div class="kpi-num text-amber-600" id="kpiBaixo">0</div>
+      <div class="kpi-lbl">Quase Acabando</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#dcfce7;color:#15803d"><i class="fa-solid fa-circle-check"></i></div>
+    <div>
+      <div class="kpi-num text-green-600" id="kpiOk">0</div>
+      <div class="kpi-lbl">OK</div>
+    </div>
+  </div>
+</div>
+
+{# ═══════════════ ACOES + FILTRO ═══════════════ #}
+<div class="prodsys-card p-3 mb-4 flex flex-wrap items-center gap-3">
+  <select id="filtroEstoque" onchange="carregarEstoque(this.value)"
+    class="text-sm font-bold border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-700 focus:ring-2 focus:ring-amber-500 cursor-pointer">
+    <option value="">Todos</option>
+    <option value="baixo">Precisa Repor</option>
+    <option value="normal">OK</option>
+  </select>
+  <div class="flex-1"></div>
+  <button id="btnAcaoPrincipal" onclick="abrirModalAdicionar()"
+    class="btn-touch btn-finish text-sm" style="min-height:40px">
+    <i class="fa-solid fa-plus"></i>Cadastrar Material
+  </button>
+</div>
+
+{# ═══════════════ GRID ═══════════════ #}
+<div id="listaEstoque" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mb-6">
+  <div class="prodsys-card p-8 text-center col-span-full">
+    <i class="fa-solid fa-rotate fa-spin text-gray-300 text-2xl mb-2"></i>
+    <p class="text-sm text-gray-400">Carregando...</p>
+  </div>
+</div>
+
+{# ═══════════════ HISTORICO ═══════════════ #}
+<section class="mb-5">
+  <h2 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+    <span class="inline-block w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+    Historico de Movimentacao
+    <button onclick="carregarMovimentacao()" class="ml-2 text-[10px] text-blue-600 hover:underline normal-case font-normal">
+      <i class="fa-solid fa-rotate"></i>atualizar
+    </button>
+  </h2>
+  <div id="listaMovimentacao" class="prodsys-card overflow-hidden">
+    <div class="p-6 text-center text-sm text-gray-400">Clique em "atualizar" para carregar.</div>
+  </div>
+</section>
+
+{# ═══════════════ MODAL ADICIONAR / ENTREGAR ═══════════════ #}
+<div id="modalAdicionarEstoque" class="prodsys-modal-backdrop hidden">
+  <div class="prodsys-modal" style="max-width:440px">
+    <h3 class="mb-4" id="modalAdicionarTitulo"><i class="fa-solid fa-warehouse text-amber-500 mr-2"></i>Cadastrar Material</h3>
+    <div class="space-y-3">
+      <div>
+        <label class="text-xs font-bold text-gray-500 uppercase">Codigo do Material (ERP)</label>
+        <div class="flex gap-2 mt-1">
+          <input id="estoqueCodigo" type="text" placeholder="Digite o codigo..."
+            class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500"
+            onblur="buscarProdutoERP(this.value)">
+          <button type="button" onclick="buscarProdutoERP(document.getElementById('estoqueCodigo').value)"
+            class="btn-touch btn-start text-xs px-3" style="min-height:38px">
+            <i class="fa-solid fa-search"></i>
+          </button>
+        </div>
+        <p id="erpStatus" class="text-[11px] mt-1 hidden"></p>
+      </div>
+      <div>
+        <label class="text-xs font-bold text-gray-500 uppercase">Descricao</label>
+        <input id="estoqueDescricao" type="text" placeholder="Preenchido automaticamente pelo ERP"
+          class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:ring-2 focus:ring-amber-500" readonly>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="text-xs font-bold text-gray-500 uppercase" id="lblQtd">Quantidade</label>
+          <input id="estoqueQtd" type="number" step="0.01" min="0.01" placeholder="Ex: 50"
+            class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500">
+          <p class="text-[11px] text-gray-400 mt-0.5" id="lblQtdHint">Quanto tem no almoxarifado.</p>
+        </div>
+        <div>
+          <label class="text-xs font-bold text-gray-500 uppercase">Unidade</label>
+          <input id="estoqueUnidade" type="text" placeholder="Ex: KG"
+            class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:ring-2 focus:ring-amber-500" readonly>
+        </div>
+      </div>
+    </div>
+    <div class="flex gap-3 mt-5">
+      <button onclick="fecharModal('modalAdicionarEstoque')" class="btn-touch btn-cancel flex-1">
+        <i class="fa-solid fa-xmark"></i>Cancelar
+      </button>
+      <button onclick="salvarItemEstoque()" class="btn-touch btn-finish flex-1" id="btnSalvar">
+        <i class="fa-solid fa-check"></i>CADASTRAR
+      </button>
+    </div>
+  </div>
+</div>
+
+{# ═══════════════ MODAL SEPARAR P/ FABRICA ═══════════════ #}
+<div id="modalSepararFabrica" class="prodsys-modal-backdrop hidden">
+  <div class="prodsys-modal" style="max-width:400px">
+    <div class="flex items-center gap-3 mb-4">
+      <div class="w-14 h-14 rounded-2xl bg-indigo-100 flex items-center justify-center flex-shrink-0">
+        <i class="fa-solid fa-arrow-right text-indigo-600 text-2xl"></i>
+      </div>
+      <div>
+        <h3>Separar p/ Fabrica</h3>
+        <p class="mt-0.5 text-sm text-gray-500" id="separarFabricaInfo">—</p>
+      </div>
+    </div>
+    <div>
+      <label class="text-xs font-bold text-gray-500 uppercase">Quantidade a separar</label>
+      <input id="separarFabricaQtd" type="number" step="0.01" min="0.01" placeholder="Ex: 25"
+        class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-lg font-bold focus:ring-2 focus:ring-indigo-500">
+      <p class="text-[11px] text-gray-400 mt-1">Sai do almoxarifado e entra na fabrica.</p>
+    </div>
+    <div class="flex gap-3 mt-5">
+      <button onclick="fecharModal('modalSepararFabrica')" class="btn-touch btn-cancel flex-1">
+        <i class="fa-solid fa-xmark"></i>Cancelar
+      </button>
+      <button onclick="confirmarSepararFabrica()" class="btn-touch flex-1" style="background:#4f46e5;color:#fff">
+        <i class="fa-solid fa-arrow-right"></i>SEPARAR
+      </button>
+    </div>
+  </div>
+</div>
+
+{# ═══════════════ MODAL REPOSICIONAR (fabrica) ═══════════════ #}
+<div id="modalReporEstoque" class="prodsys-modal-backdrop hidden">
+  <div class="prodsys-modal" style="max-width:400px">
+    <div class="flex items-center gap-3 mb-4">
+      <div class="w-14 h-14 rounded-2xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+        <i class="fa-solid fa-truck-ramp-box text-amber-600 text-2xl"></i>
+      </div>
+      <div>
+        <h3>Separar Mais Material</h3>
+        <p class="mt-0.5 text-sm text-gray-500" id="reporInfo">—</p>
+      </div>
+    </div>
+    <div>
+      <label class="text-xs font-bold text-gray-500 uppercase">Nova quantidade total na fabrica</label>
+      <input id="reporQtd" type="number" step="0.01" min="0" placeholder="Ex: 50"
+        class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-lg font-bold focus:ring-2 focus:ring-amber-500">
+      <p class="text-[11px] text-gray-400 mt-1">Quanto ficou na fabrica apos buscar mais no almoxarifado.</p>
+    </div>
+    <div class="flex gap-3 mt-5">
+      <button onclick="fecharModal('modalReporEstoque')" class="btn-touch btn-cancel flex-1">
+        <i class="fa-solid fa-xmark"></i>Cancelar
+      </button>
+      <button onclick="confirmarReposicao()" class="btn-touch btn-finish flex-1">
+        <i class="fa-solid fa-truck-ramp-box"></i>SEPARAR
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="prodsys-toast hidden"></div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let abaAtual = 'almoxarifado';
+let reporItemId = null;
+let separarFabricaId = null;
+
+function fecharModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+function showToast(msg, tipo='success') {
+  const t = document.getElementById('toast');
+  t.className = 'prodsys-toast ' + tipo;
+  t.innerHTML = '<i class="fa-solid ' + (tipo==='success'?'fa-check-circle':'fa-exclamation-circle') + '"></i> ' + msg;
+  t.classList.remove('hidden');
+  setTimeout(()=>t.classList.add('hidden'), 3500);
+}
+
+function trocarAba(aba) {
+  abaAtual = aba;
+  document.getElementById('abaAlmoxarifado').className = aba === 'almoxarifado'
+    ? 'flex-1 text-xs font-bold py-2.5 rounded-lg transition-all bg-white text-gray-800 shadow-sm'
+    : 'flex-1 text-xs font-bold py-2.5 rounded-lg transition-all text-gray-500';
+  document.getElementById('abaFabrica').className = aba === 'fabrica'
+    ? 'flex-1 text-xs font-bold py-2.5 rounded-lg transition-all bg-white text-gray-800 shadow-sm'
+    : 'flex-1 text-xs font-bold py-2.5 rounded-lg transition-all text-gray-500';
+  const btn = document.getElementById('btnAcaoPrincipal');
+  if (aba === 'almoxarifado') {
+    btn.innerHTML = '<i class="fa-solid fa-plus"></i>Cadastrar Material';
+  } else {
+    btn.innerHTML = '<i class="fa-solid fa-truck-ramp-box"></i>Entregar Material';
+  }
+  carregarEstoque('');
+}
+
+// ════════════════ BUSCA ERP ════════════════
+function buscarProdutoERP(codigo) {
+  codigo = codigo.trim();
+  const st = document.getElementById('erpStatus');
+  if (!codigo) { st.classList.add('hidden'); return; }
+  st.className = 'text-[11px] mt-1 text-blue-600';
+  st.textContent = 'Buscando...';
+  st.classList.remove('hidden');
+  fetch('/api/erp/produto/' + encodeURIComponent(codigo))
+    .then(r => r.json())
+    .then(d => {
+      if (d.status === 'success' && d.produto) {
+        document.getElementById('estoqueDescricao').value = d.produto.descricao || '';
+        document.getElementById('estoqueUnidade').value = d.produto.unidade || 'UN';
+        st.className = 'text-[11px] mt-1 text-green-600';
+        st.textContent = 'Encontrado: ' + (d.produto.descricao || '');
+      } else {
+        st.className = 'text-[11px] mt-1 text-amber-600';
+        st.textContent = 'Nao encontrado no ERP. Preencha a descricao manualmente.';
+        document.getElementById('estoqueDescricao').readOnly = false;
+        document.getElementById('estoqueDescricao').value = '';
+        document.getElementById('estoqueDescricao').focus();
+      }
+    })
+    .catch(() => {
+      st.className = 'text-[11px] mt-1 text-red-600';
+      st.textContent = 'Erro ao buscar no ERP.';
+    });
+}
+
+// ════════════════ ESTOQUE ════════════════
+function carregarEstoque(filtro) {
+  const url = '/api/estoque' + (filtro ? '?filtro=' + filtro + '&tipo=' + abaAtual : '?tipo=' + abaAtual);
+  fetch(url).then(r => r.json()).then(d => {
+    if (d.status !== 'success') return;
+    const k = d.kpis || {};
+    document.getElementById('kpiTotal').textContent = k.total_itens || 0;
+    document.getElementById('kpiZerado').textContent = k.sem_estoque || 0;
+    document.getElementById('kpiBaixo').textContent = k.estoque_baixo || 0;
+    document.getElementById('kpiOk').textContent = k.estoque_ok || 0;
+    renderizarEstoque(d.itens || []);
+  });
+}
+
+function renderizarEstoque(itens) {
+  const el = document.getElementById('listaEstoque');
+  if (!itens.length) {
+    const msg = abaAtual === 'almoxarifado'
+      ? 'Clique em "Cadastrar Material" para adicionar ao estoque.'
+      : 'Clique em "Entregar Material" para registrar entrega na fabrica.';
+    el.innerHTML = '<div class="prodsys-card p-8 text-center col-span-full"><i class="fa-solid fa-box-open text-4xl text-gray-300 mb-3"></i><h3 class="text-base font-bold text-gray-700">Nenhum material</h3><p class="text-sm text-gray-400 mt-1">' + msg + '</p></div>';
+    return;
+  }
+  el.innerHTML = itens.map(item => {
+    const qtd = parseFloat(item.qtd_atual) || 0;
+    const qtdIni = parseFloat(item.qtd_inicial) || 0;
+    const pct = qtdIni > 0 ? Math.min((qtd / qtdIni) * 100, 100) : (qtd > 0 ? 100 : 0);
+    const semEstoque = qtd <= 0;
+    const baixo = !semEstoque && qtdIni > 0 && qtd <= qtdIni * 0.2;
+    const borda = semEstoque ? 'border-red-500' : (baixo ? 'border-amber-400' : 'border-green-400');
+    const fundo = semEstoque ? 'bg-red-50/30' : (baixo ? 'bg-amber-50/30' : '');
+    const corBarra = semEstoque ? 'bg-red-500' : (baixo ? 'bg-amber-500' : 'bg-green-500');
+    const desc = (item.descricao || '—').replace(/'/g, "\\'");
+    const un = (item.unidade || 'UN');
+
+    let statusTxt, acaoBtn;
+    if (abaAtual === 'almoxarifado') {
+      statusTxt = semEstoque ? '<span class="badge-priority urgente">SEM ESTOQUE</span>' :
+                  (baixo ? '<span class="badge-priority" style="background:#fef3c7;color:#b45309"><i class="fa-solid fa-triangle-exclamation"></i> REPOR</span>' :
+                   '<span class="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">OK</span>');
+      acaoBtn = '<button onclick="abrirModalSepararFabrica(' + item.id + ', \'' + desc + '\', ' + qtd + ', \'' + un + '\')"' +
+        ' class="btn-touch w-full text-xs" style="background:#4f46e5;color:#fff;min-height:36px">' +
+        '<i class="fa-solid fa-arrow-right"></i>SEPARAR P/ FABRICA</button>';
+    } else {
+      statusTxt = semEstoque ? '<span class="badge-priority urgente">ACABOU</span>' :
+                  (baixo ? '<span class="badge-priority" style="background:#fef3c7;color:#b45309"><i class="fa-solid fa-triangle-exclamation"></i> SEPARAR</span>' :
+                   '<span class="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">OK</span>');
+      const usado = qtdIni > 0 ? (qtdIni - qtd).toFixed(2) : '—';
+      acaoBtn = '<div class="flex items-center justify-between text-[11px] text-gray-400 mb-2"><span>Consumido: ' + usado + ' ' + un + '</span></div>' +
+        '<button onclick="abrirModalRepor(' + item.id + ', \'' + desc + '\', ' + qtd + ', \'' + un + '\')"' +
+        ' class="btn-touch btn-finish w-full text-xs" style="min-height:36px">' +
+        '<i class="fa-solid fa-truck-ramp-box"></i>SEPARAR MAIS</button>';
+    }
+
+    const infoExtra = abaAtual === 'fabrica'
+      ? '<span class="text-xs text-gray-400">' + un + ' na fabrica (entregue: ' + qtdIni.toFixed(2) + ')</span>'
+      : '<span class="text-xs text-gray-400">' + un + ' disponivel</span>';
+
+    return '<article class="prodsys-card border-l-4 ' + borda + ' ' + fundo + ' overflow-hidden">' +
+      '<div class="px-4 py-3">' +
+        '<div class="flex items-start justify-between gap-2 mb-1.5">' +
+          '<div class="min-w-0 flex-1">' +
+            '<div class="font-bold text-gray-800 text-sm truncate" title="' + desc + '">' + (item.descricao || '—') + '</div>' +
+            '<div class="text-[11px] text-gray-400">' + item.codigo + ' &middot; ' + un + '</div>' +
+          '</div>' + statusTxt +
+        '</div>' +
+        '<div class="flex items-baseline gap-2 mb-2">' +
+          '<span class="text-2xl font-black ' + (semEstoque ? 'text-red-600' : (baixo ? 'text-amber-600' : 'text-green-600')) + '">' + qtd.toFixed(2) + '</span>' +
+          infoExtra +
+        '</div>' +
+        (abaAtual === 'fabrica' ? (
+          '<div class="w-full bg-gray-100 rounded-full h-3 mb-2 overflow-hidden relative">' +
+          '<div class="' + corBarra + ' h-3 rounded-full transition-all duration-500" style="width:' + pct + '%"></div>' +
+          '<span class="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-gray-600">' +
+            (qtdIni > 0 ? Math.round(pct) + '% restante' : '') +
+          '</span></div>'
+        ) : '') +
+        acaoBtn +
+      '</div></article>';
+  }).join('');
+}
+
+function abrirModalAdicionar() {
+  document.getElementById('estoqueCodigo').value = '';
+  document.getElementById('estoqueDescricao').value = '';
+  document.getElementById('estoqueDescricao').readOnly = true;
+  document.getElementById('estoqueUnidade').value = '';
+  document.getElementById('estoqueQtd').value = '';
+  document.getElementById('erpStatus').classList.add('hidden');
+  if (abaAtual === 'almoxarifado') {
+    document.getElementById('modalAdicionarTitulo').innerHTML = '<i class="fa-solid fa-warehouse text-amber-500 mr-2"></i>Cadastrar Material';
+    document.getElementById('lblQtd').textContent = 'Quantidade';
+    document.getElementById('lblQtdHint').textContent = 'Quanto tem no almoxarifado.';
+    document.getElementById('btnSalvar').innerHTML = '<i class="fa-solid fa-check"></i>CADASTRAR';
+  } else {
+    document.getElementById('modalAdicionarTitulo').innerHTML = '<i class="fa-solid fa-truck-ramp-box text-amber-500 mr-2"></i>Entregar Material na Fabrica';
+    document.getElementById('lblQtd').textContent = 'Qtd Entregue';
+    document.getElementById('lblQtdHint').textContent = 'Quanto foi entregue ao setor agora.';
+    document.getElementById('btnSalvar').innerHTML = '<i class="fa-solid fa-check"></i>ENTREGAR';
+  }
+  document.getElementById('modalAdicionarEstoque').classList.remove('hidden');
+  setTimeout(() => document.getElementById('estoqueCodigo').focus(), 100);
+}
+
+function salvarItemEstoque() {
+  const dados = {
+    codigo: document.getElementById('estoqueCodigo').value.trim(),
+    descricao: document.getElementById('estoqueDescricao').value.trim(),
+    qtd_atual: parseFloat(document.getElementById('estoqueQtd').value) || 0,
+    qtd_minima: 0,
+    unidade: document.getElementById('estoqueUnidade').value.trim() || 'UN',
+    tipo: abaAtual
+  };
+  if (!dados.codigo) { showToast('Codigo obrigatorio', 'error'); return; }
+  if (!dados.descricao) { showToast('Descricao obrigatoria', 'error'); return; }
+  if (dados.qtd_atual <= 0) { showToast('Quantidade deve ser maior que zero', 'error'); return; }
+  fetch('/api/estoque', {
+    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(dados)
+  }).then(r => r.json()).then(d => {
+    if (d.status === 'success') {
+      showToast(abaAtual === 'almoxarifado' ? 'Material cadastrado!' : 'Material entregue na fabrica!');
+      fecharModal('modalAdicionarEstoque');
+      carregarEstoque(document.getElementById('filtroEstoque').value);
+    } else showToast('Erro: ' + (d.message || ''), 'error');
+  });
+}
+
+function abrirModalSepararFabrica(id, descricao, qtdAtual, unidade) {
+  separarFabricaId = id;
+  document.getElementById('separarFabricaInfo').textContent = descricao + ' — Disponivel: ' + qtdAtual.toFixed(2) + ' ' + unidade;
+  document.getElementById('separarFabricaQtd').value = '';
+  document.getElementById('modalSepararFabrica').classList.remove('hidden');
+  setTimeout(() => document.getElementById('separarFabricaQtd').focus(), 100);
+}
+
+function confirmarSepararFabrica() {
+  const qtd = parseFloat(document.getElementById('separarFabricaQtd').value);
+  if (isNaN(qtd) || qtd <= 0) { showToast('Quantidade invalida', 'error'); return; }
+  fetch('/api/estoque/' + separarFabricaId + '/separar-fabrica', {
+    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({qtd: qtd})
+  }).then(r => r.json()).then(d => {
+    if (d.status === 'success') {
+      showToast('Material separado para fabrica!');
+      fecharModal('modalSepararFabrica');
+      carregarEstoque(document.getElementById('filtroEstoque').value);
+    } else showToast('Erro: ' + (d.message || ''), 'error');
+  });
+}
+
+function abrirModalRepor(id, descricao, qtdAtual, unidade) {
+  reporItemId = id;
+  document.getElementById('reporInfo').textContent = descricao + ' — Na fabrica: ' + qtdAtual.toFixed(2) + ' ' + unidade;
+  document.getElementById('reporQtd').value = '';
+  document.getElementById('modalReporEstoque').classList.remove('hidden');
+  setTimeout(() => document.getElementById('reporQtd').focus(), 100);
+}
+
+function confirmarReposicao() {
+  const novaQtd = parseFloat(document.getElementById('reporQtd').value);
+  if (isNaN(novaQtd) || novaQtd < 0) { showToast('Quantidade invalida', 'error'); return; }
+  fetch('/api/estoque/' + reporItemId + '/repor', {
+    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({qtd: novaQtd})
+  }).then(r => r.json()).then(d => {
+    if (d.status === 'success') {
+      showToast('Material separado!');
+      fecharModal('modalReporEstoque');
+      carregarEstoque(document.getElementById('filtroEstoque').value);
+    } else showToast('Erro: ' + (d.message || ''), 'error');
+  });
+}
+
+// ════════════════ MOVIMENTACAO ════════════════
+function carregarMovimentacao() {
+  const el = document.getElementById('listaMovimentacao');
+  el.innerHTML = '<div class="p-6 text-center"><i class="fa-solid fa-rotate fa-spin text-gray-300 text-xl"></i></div>';
+  fetch('/api/estoque/movimentacao').then(r => r.json()).then(d => {
+    if (d.status !== 'success' || !d.movimentacoes.length) {
+      el.innerHTML = '<div class="p-6 text-center text-sm text-gray-400">Nenhuma movimentacao registrada.</div>';
+      return;
+    }
+    el.innerHTML = '<div class="overflow-x-auto"><table class="w-full text-sm">' +
+      '<thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider"><tr>' +
+        '<th class="px-4 py-2.5 text-left">Data</th>' +
+        '<th class="px-4 py-2.5 text-left">Material</th>' +
+        '<th class="px-4 py-2.5 text-center">Tipo</th>' +
+        '<th class="px-4 py-2.5 text-center">Qtd</th>' +
+        '<th class="px-4 py-2.5 text-left">OP</th>' +
+      '</tr></thead><tbody class="divide-y divide-gray-50">' +
+      d.movimentacoes.map(m => {
+        const isBaixa = m.tipo === 'baixa';
+        const isTransf = m.tipo === 'transferencia';
+        let tipoHtml;
+        if (isBaixa) tipoHtml = '<span class="text-red-600 font-bold"><i class="fa-solid fa-arrow-down"></i> Consumo</span>';
+        else if (isTransf) tipoHtml = '<span class="text-indigo-600 font-bold"><i class="fa-solid fa-arrow-right"></i> Transferencia</span>';
+        else tipoHtml = '<span class="text-green-600 font-bold"><i class="fa-solid fa-arrow-up"></i> Entrada</span>';
+        const data = m.created_at ? m.created_at.replace('T',' ').substring(0,16) : '';
+        return '<tr class="hover:bg-gray-50">' +
+          '<td class="px-4 py-2.5 text-xs text-gray-500 whitespace-nowrap">' + data + '</td>' +
+          '<td class="px-4 py-2.5"><div class="font-medium text-gray-700">' + (m.material_descricao || '—') + '</div>' +
+            '<div class="text-[11px] text-gray-400">' + (m.codigo || '') + '</div></td>' +
+          '<td class="px-4 py-2.5 text-center">' + tipoHtml + '</td>' +
+          '<td class="px-4 py-2.5 text-center font-bold">' + parseFloat(m.quantidade||0).toFixed(2) + ' ' + (m.unidade||'') + '</td>' +
+          '<td class="px-4 py-2.5 text-xs text-gray-500">' + (m.ordem_relacionada ? 'OF #'+m.ordem_relacionada : '—') + '</td>' +
+        '</tr>';
+      }).join('') +
+      '</tbody></table></div>';
+  });
+}
+
+// Fechar modais no backdrop
+['modalAdicionarEstoque','modalSepararFabrica','modalReporEstoque'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('click', function(e) { if (e.target === this) this.classList.add('hidden'); });
+});
+
+// Enter nos inputs
+document.getElementById('reporQtd').addEventListener('keydown', e => { if (e.key === 'Enter') confirmarReposicao(); });
+document.getElementById('separarFabricaQtd').addEventListener('keydown', e => { if (e.key === 'Enter') confirmarSepararFabrica(); });
+document.getElementById('estoqueCodigo').addEventListener('keydown', e => { if (e.key === 'Tab') buscarProdutoERP(e.target.value); });
+
+// Carregar ao abrir
+document.addEventListener('DOMContentLoaded', () => {
+  carregarEstoque('');
+  carregarMovimentacao();
+});
+</script>
+{% endblock %}

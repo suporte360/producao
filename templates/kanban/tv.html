@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TV Kanban — SALUTEM</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    :root {
+      --bg:      #060d18;
+      --bg2:     #0b1628;
+      --bg3:     #0f1e35;
+      --border:  rgba(255,255,255,0.06);
+      --text:    #e8edf5;
+      --muted:   #5a6a88;
+      --blue:    #2563eb;
+      --cyan:    #22d3ee;
+      --green:   #22c55e;
+      --amber:   #f59e0b;
+      --red:     #ef4444;
+      --purple:  #a855f7;
+      --orange:  #f97316;
+      --pink:    #ec4899;
+      --yellow:  #eab308;
+    }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    html, body { height: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      overflow: hidden;
+      display: flex; flex-direction: column;
+      position: relative;
+    }
+
+    /* ── FUNDO ANIMADO INDUSTRIAL ── */
+    .bg-animated {
+      position: fixed; inset: 0;
+      z-index: 0; pointer-events: none;
+      overflow: hidden;
+    }
+    /* Linhas de grade tipo "blueprint" */
+    .bg-animated::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(37,99,235,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(37,99,235,0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+    }
+    /* Engrenagens girando no fundo */
+    .gear {
+      position: absolute;
+      color: rgba(37,99,235,0.06);
+      animation: spin 20s linear infinite;
+    }
+    .gear.g1 { top: 10%; left: 5%; font-size: 6rem; animation-duration: 25s; }
+    .gear.g2 { top: 60%; right: 8%; font-size: 8rem; animation-duration: 30s; animation-direction: reverse; }
+    .gear.g3 { bottom: 5%; left: 30%; font-size: 5rem; animation-duration: 18s; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    /* ── HEADER ── */
+    header {
+      background: linear-gradient(90deg, #070f22 0%, #0c1a3a 55%, #070f22 100%);
+      border-bottom: 1px solid rgba(37,99,235,0.35);
+      padding: 0 24px; height: 64px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0; position: relative; z-index: 2;
+    }
+    .h-left { display:flex; align-items:center; gap:14px; }
+    .h-logo {
+      width:42px; height:42px; border-radius:10px;
+      background: var(--blue);
+      display:flex; align-items:center; justify-content:center;
+      font-size:1.3rem;
+      box-shadow: 0 0 20px rgba(37,99,235,0.5);
+      animation: logoPulse 3s ease-in-out infinite;
+    }
+    @keyframes logoPulse {
+      0%, 100% { box-shadow: 0 0 20px rgba(37,99,235,0.5); }
+      50% { box-shadow: 0 0 30px rgba(37,99,235,0.8); }
+    }
+    .h-title { font-size:1.3rem; font-weight:800; letter-spacing:.02em; }
+    .h-title span { color:#60a5fa; text-shadow: 0 0 12px rgba(96,165,250,0.5); }
+    .h-sub { font-size:.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-top:1px; }
+    .h-clock .time { font-size:1.9rem; font-weight:700; font-family:'Courier New',monospace; color:#60a5fa; line-height:1; text-align:right; text-shadow: 0 0 12px rgba(96,165,250,0.4); }
+    .h-clock .date { font-size:.7rem; color:var(--muted); margin-top:2px; text-align:right; text-transform:capitalize; }
+
+    /* ── STATS BAR ── */
+    .stats-bar {
+      display:grid; grid-template-columns:repeat(5,1fr);
+      gap:8px; padding:10px 16px; flex-shrink:0;
+      position: relative; z-index: 2;
+    }
+    .stat-card {
+      background: var(--bg2); border:1px solid var(--border);
+      border-radius:10px; padding:12px 16px;
+      display:flex; align-items:center; gap:12px;
+      transition: all .3s;
+    }
+    .stat-card.highlight {
+      animation: cardGlow 2s ease-in-out infinite;
+    }
+    @keyframes cardGlow {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(217,119,6,0.4); border-color: rgba(217,119,6,0.4); }
+      50% { box-shadow: 0 0 20px 4px rgba(217,119,6,0.2); border-color: rgba(217,119,6,0.8); }
+    }
+    .stat-icon {
+      width:40px; height:40px; border-radius:8px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:1.1rem; flex-shrink:0;
+    }
+    .stat-num { font-size:1.7rem; font-weight:800; line-height:1; }
+    .stat-lbl { font-size:.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-top:2px; }
+
+    /* ── FLUXO ── */
+    .fluxo {
+      display:flex; align-items:center; justify-content:center;
+      gap:6px; padding:4px 16px 8px; flex-shrink:0;
+      flex-wrap:wrap;
+      position: relative; z-index: 2;
+    }
+    .fluxo-step {
+      display:flex; align-items:center; gap:6px;
+      background: rgba(255,255,255,0.03);
+      border:1px solid rgba(255,255,255,0.06);
+      border-radius:20px; padding:5px 12px;
+      transition: all .2s;
+    }
+    .fluxo-step.ativo {
+      background: rgba(37,99,235,0.15);
+      border-color: rgba(37,99,235,0.4);
+      box-shadow: 0 0 12px rgba(37,99,235,0.3);
+    }
+    .fluxo-dot { width:8px; height:8px; border-radius:50%; box-shadow: 0 0 6px currentColor; }
+    .fluxo-nome { font-size:.62rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; }
+    .fluxo-cnt {
+      font-size:.6rem; font-weight:800;
+      background:rgba(255,255,255,0.1);
+      border-radius:10px; padding:1px 7px;
+    }
+    .fluxo-arrow {
+      color:#1e2d45; font-size:1rem;
+      animation: arrowPulse 1.5s ease-in-out infinite;
+    }
+    @keyframes arrowPulse {
+      0%, 100% { opacity: 0.4; transform: translateX(0); }
+      50% { opacity: 1; transform: translateX(2px); }
+    }
+
+    /* ── KANBAN ── */
+    .kanban-outer {
+      flex:1; overflow:hidden;
+      padding:0 16px 8px;
+      display:flex; flex-direction:column; gap:0;
+      position: relative; z-index: 2;
+    }
+
+    .status-group {
+      display:flex; flex-direction:column;
+      border:1px solid var(--border);
+      border-radius:12px;
+      overflow:hidden;
+      flex:1;
+    }
+    .status-group + .status-group { margin-top:8px; }
+
+    .sg-header {
+      padding:8px 14px;
+      font-size:.78rem; font-weight:800;
+      text-transform:uppercase; letter-spacing:.07em;
+      display:flex; align-items:center; justify-content:space-between;
+      flex-shrink:0; border-bottom:1px solid var(--border);
+    }
+    .sg-body {
+      flex:1; display:flex; overflow:hidden;
+    }
+
+    .setor-col {
+      flex:1; display:flex; flex-direction:column;
+      border-right:1px solid var(--border); overflow:hidden;
+    }
+    .setor-col:last-child { border-right:none; }
+    .setor-col-header {
+      padding:6px 10px;
+      font-size:.6rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em;
+      display:flex; align-items:center; justify-content:space-between;
+      border-bottom:1px solid var(--border); flex-shrink:0;
+    }
+    .setor-col-body {
+      flex:1; overflow-y:auto; padding:6px; display:flex; flex-direction:column; gap:4px;
+    }
+    .setor-col-body::-webkit-scrollbar { width:2px; }
+    .setor-col-body::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.08); border-radius:2px; }
+
+    /* Card do lote */
+    .k-card {
+      background:rgba(255,255,255,0.04);
+      border:1px solid rgba(255,255,255,0.06);
+      border-left:3px solid transparent;
+      border-radius:7px; padding:7px 9px;
+      transition: background .2s, transform .2s;
+    }
+    .k-card.p-urgente { border-left-color:#ef4444; background:rgba(239,68,68,0.08); }
+    .k-card.p-alta    { border-left-color:#f97316; }
+    .k-card.p-media   { border-left-color:#eab308; }
+    .k-card.p-baixa   { border-left-color:#22c55e; }
+
+    /* Card em produção com animação */
+    .sg-em_producao .k-card {
+      animation: cardProducing 3s ease-in-out infinite;
+    }
+    @keyframes cardProducing {
+      0%, 100% { background: rgba(217,119,6,0.04); }
+      50% { background: rgba(217,119,6,0.12); }
+    }
+
+    .kc-op   { font-size:.62rem; color:#60a5fa; font-weight:700; margin-bottom:2px; }
+    .kc-prod { font-size:.75rem; font-weight:600; color:#e2e8f0; line-height:1.3; margin-bottom:2px; }
+    .kc-op2  { font-size:.62rem; color:var(--muted); margin-bottom:4px; }
+    .kc-meta { display:flex; justify-content:space-between; align-items:center; gap:4px; flex-wrap:wrap; }
+    .kc-timer { font-size:.68rem; font-weight:700; font-family:'Courier New',monospace; }
+
+    .badge-p {
+      font-size:.55rem; font-weight:700; text-transform:uppercase;
+      padding:1px 6px; border-radius:8px;
+    }
+    .badge-p.urgente { background:#7f1d1d; color:#fca5a5; }
+    .badge-p.alta    { background:#7c2d12; color:#fdba74; }
+    .badge-p.media   { background:#713f12; color:#fde68a; }
+    .badge-p.baixa   { background:#14532d; color:#86efac; }
+
+    .k-empty {
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      height:100%; color:#1e3050;
+      font-size:.7rem; gap:4px;
+    }
+    .k-empty i { font-size:1.4rem; }
+
+    .cnt-badge {
+      background:rgba(255,255,255,0.1);
+      border-radius:12px; padding:1px 8px;
+      font-size:.65rem; font-weight:700;
+    }
+
+    /* cores por status */
+    .sg-aguardando  .sg-header { background:#0a1628; color:#60a5fa; border-left:3px solid #2563eb; }
+    .sg-em_producao .sg-header { background:#1a0e00; color:#fb923c; border-left:3px solid #d97706; }
+    .sg-pausado     .sg-header { background:#180f00; color:#fbbf24; border-left:3px solid #92400e; }
+    .sg-concluido   .sg-header { background:#001a0a; color:#4ade80; border-left:3px solid #16a34a; }
+
+    /* Indicador "AGORA" no header em produção */
+    .sg-em_producao .sg-header .now-indicator {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size:.55rem; padding: 2px 7px;
+      background: rgba(217,119,6,0.3); color:#fb923c;
+      border-radius: 8px; font-weight: 800;
+    }
+    .now-indicator { display: none; }
+    .now-indicator .dot {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: #fb923c;
+      animation: pulse 1s infinite;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      height:30px; background:#040a14;
+      border-top:1px solid rgba(37,99,235,0.25);
+      display:flex; align-items:center;
+      padding:0 16px; gap:12px; flex-shrink:0;
+      position: relative; z-index: 2;
+    }
+    .live-dot {
+      display:flex; align-items:center; gap:5px;
+      font-size:.6rem; font-weight:700; color:#22c55e; white-space:nowrap;
+    }
+    .dot { width:6px; height:6px; border-radius:50%; background:#22c55e; animation:pulse 1.4s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.75)} }
+    .ticker-msg { font-size:.65rem; color:#2d4060; }
+
+    /* ── ESTEIRA ANIMADA NO RODAPÉ ── */
+    .esteira {
+      height: 3px;
+      background: linear-gradient(90deg,
+        transparent 0%,
+        var(--blue) 30%,
+        var(--cyan) 50%,
+        var(--blue) 70%,
+        transparent 100%);
+      background-size: 200% 100%;
+      animation: esteiraMove 3s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes esteiraMove {
+      0% { background-position: -100% 0; }
+      100% { background-position: 100% 0; }
+    }
+
+    /* ── PARTÍCULAS (pontos flutuantes no fundo) ── */
+    .particles {
+      position: fixed; inset: 0; z-index: 1;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .particle {
+      position: absolute;
+      width: 3px; height: 3px;
+      background: rgba(96,165,250,0.6);
+      border-radius: 50%;
+      box-shadow: 0 0 6px rgba(96,165,250,0.8);
+      animation: floatUp 15s linear infinite;
+    }
+    @keyframes floatUp {
+      from { transform: translateY(100vh); opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      to { transform: translateY(-10vh); opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- FUNDO ANIMADO -->
+<div class="bg-animated">
+  <i class="fa-solid fa-gear gear g1"></i>
+  <i class="fa-solid fa-gear gear g2"></i>
+  <i class="fa-solid fa-gear gear g3"></i>
+</div>
+<div class="particles" id="particles"></div>
+
+<!-- HEADER -->
+<header>
+  <div class="h-left">
+    <div class="h-logo"><i class="fa-solid fa-industry"></i></div>
+    <div>
+      <div class="h-title">PRODUÇÃO <span>Kanban</span></div>
+      <div class="h-sub">Painel de Acompanhamento — Todos os Setores</div>
+    </div>
+  </div>
+  <div class="h-clock">
+    <div class="time" id="clock">00:00:00</div>
+    <div class="date" id="dateStr">—</div>
+  </div>
+</header>
+
+<!-- STATS BAR -->
+<div class="stats-bar">
+  <div class="stat-card" id="cardAguard">
+    <div class="stat-icon" style="background:rgba(37,99,235,.15);color:#60a5fa">
+      <i class="fa-solid fa-hourglass-start"></i>
+    </div>
+    <div>
+      <div class="stat-num" style="color:#60a5fa" id="sAguardando">0</div>
+      <div class="stat-lbl">Aguardando</div>
+    </div>
+  </div>
+  <div class="stat-card" id="cardProd">
+    <div class="stat-icon" style="background:rgba(217,119,6,.15);color:#fb923c">
+      <i class="fa-solid fa-gear"></i>
+    </div>
+    <div>
+      <div class="stat-num" style="color:#fb923c" id="sEmProd">0</div>
+      <div class="stat-lbl">Em Produção</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background:rgba(146,64,14,.25);color:#fbbf24">
+      <i class="fa-solid fa-pause"></i>
+    </div>
+    <div>
+      <div class="stat-num" style="color:#fbbf24" id="sPausado">0</div>
+      <div class="stat-lbl">Pausados</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background:rgba(22,163,74,.15);color:#4ade80">
+      <i class="fa-solid fa-circle-check"></i>
+    </div>
+    <div>
+      <div class="stat-num" style="color:#4ade80" id="sConcluido">0</div>
+      <div class="stat-lbl">Concluídos Hoje</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background:rgba(168,85,247,.15);color:#c084fc">
+      <i class="fa-solid fa-layer-group"></i>
+    </div>
+    <div>
+      <div class="stat-num" style="color:#c084fc" id="sTotal">0</div>
+      <div class="stat-lbl">Total de Lotes</div>
+    </div>
+  </div>
+</div>
+
+<!-- FLUXO DOS SETORES -->
+<div class="fluxo" id="fluxoBar"></div>
+
+<!-- KANBAN -->
+<div class="kanban-outer" id="kanbanOuter">
+  <div style="display:flex;align-items:center;justify-content:center;flex:1;color:#1e3050;font-size:.9rem;">
+    <i class="fa-solid fa-rotate fa-spin" style="margin-right:8px"></i> Carregando dados...
+  </div>
+</div>
+
+<!-- ESTEIRA ANIMADA -->
+<div class="esteira"></div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="live-dot"><div class="dot"></div> AO VIVO</div>
+  <div class="ticker-msg" id="tickerMsg">Carregando...</div>
+</footer>
+
+<script>
+/* ─── Config ─── */
+const SETORES = [
+  { key:'ALMOXARIFADO', label:'Almox',    cor:'#06b6d4' },
+  { key:'CORTE',        label:'Corte',    cor:'#f97316' },
+  { key:'SOLDA',        label:'Solda',    cor:'#ef4444' },
+  { key:'DOBRA',        label:'Dobra',    cor:'#8b5cf6' },
+  { key:'SERRALHERIA',  label:'Serr.',    cor:'#eab308' },
+  { key:'ACABAMENTO',   label:'Acab.',    cor:'#a855f7' },
+  { key:'PINTURA',      label:'Pintura',  cor:'#ec4899' },
+  { key:'MONTAGEM',     label:'Montagem', cor:'#3b82f6' },
+  { key:'EMBALAGEM',    label:'Embalagem',cor:'#22c55e' },
+];
+
+const STATUS_CONFIG = [
+  { key:'aguardando',  label:'Aguardando',  icon:'fa-hourglass-start' },
+  { key:'em_producao', label:'Em Produção', icon:'fa-gear'            },
+  { key:'pausado',     label:'Pausados',    icon:'fa-pause'           },
+  { key:'concluido',   label:'Concluídos',  icon:'fa-circle-check'   },
+];
+
+/* ─── Partículas flutuantes ─── */
+function criarParticulas() {
+  const container = document.getElementById('particles');
+  for (let i = 0; i < 20; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.animationDelay = (Math.random() * 15) + 's';
+    p.style.animationDuration = (10 + Math.random() * 10) + 's';
+    container.appendChild(p);
+  }
+}
+criarParticulas();
+
+/* ─── Relógio ─── */
+function tick() {
+  const n = new Date();
+  document.getElementById('clock').textContent   = n.toLocaleTimeString('pt-BR');
+  document.getElementById('dateStr').textContent = n.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
+}
+setInterval(tick,1000); tick();
+
+/* ─── Cronômetro de card ─── */
+function tempoDecorrido(isoStr) {
+  if (!isoStr) return '';
+  try {
+    const p = isoStr.replace('T',' ').split(/[- :]/).map(Number);
+    const inicio = new Date(p[0],p[1]-1,p[2],p[3]||0,p[4]||0,p[5]||0);
+    const diff = Math.max(0, Math.floor((Date.now() - inicio.getTime())/1000));
+    const h = String(Math.floor(diff/3600)).padStart(2,'0');
+    const m = String(Math.floor((diff%3600)/60)).padStart(2,'0');
+    const s = String(diff%60).padStart(2,'0');
+    return `${h}:${m}:${s}`;
+  } catch(e){ return ''; }
+}
+
+/* ─── Render ─── */
+let _timerInterval = null;
+
+function renderFluxo(cards) {
+  const bar = document.getElementById('fluxoBar');
+  const ativos = SETORES.filter(s => cards.some(c => (c.departamento||'').toUpperCase() === s.key));
+  if (ativos.length === 0) { bar.innerHTML = ''; return; }
+  bar.innerHTML = ativos.map((s,i) => {
+    const cnt = cards.filter(c => (c.departamento||'').toUpperCase() === s.key).length;
+    const arrow = (i < ativos.length-1) ? '<span class="fluxo-arrow">›</span>' : '';
+    return `
+      <div class="fluxo-step">
+        <div class="fluxo-dot" style="background:${s.cor};color:${s.cor}"></div>
+        <span class="fluxo-nome" style="color:${s.cor}">${s.label}</span>
+        <span class="fluxo-cnt" style="color:${s.cor}">${cnt}</span>
+      </div>${arrow}`;
+  }).join('');
+}
+
+function buildCard(card) {
+  const prio = (card.prioridade||'media').toLowerCase();
+  const timer = card.etapa === 'em_producao' && card.data_inicio
+    ? `<span class="kc-timer" style="color:#4ade80" data-inicio="${card.data_inicio}">${tempoDecorrido(card.data_inicio)}</span>`
+    : '';
+  const badge = `<span class="badge-p ${prio}">${(card.prioridade||'MEDIA').toUpperCase()}</span>`;
+  const prod = (card.descricao_produto || card.descricao_operacao || 'Produto').substring(0,45);
+  const op2  = card.descricao_operacao && card.descricao_produto
+    ? `<div class="kc-op2"><i class="fa-solid fa-screwdriver-wrench" style="font-size:.55rem;margin-right:3px"></i>${card.descricao_operacao.substring(0,38)}</div>` : '';
+  const qtd  = card.qtde_ordem ? `<span style="font-size:.6rem;color:var(--muted)">${Math.round(card.qtde_ordem)}pc</span>` : '';
+  return `
+    <div class="k-card p-${prio}">
+      <div class="kc-op">OP #${card.lote_ordem}${card.lote_codigo?' · '+card.lote_codigo:''}</div>
+      <div class="kc-prod">${prod}</div>
+      ${op2}
+      <div class="kc-meta">${badge}${qtd}${timer}</div>
+    </div>`;
+}
+
+function renderKanban(cards) {
+  const setoresPresentes = SETORES.filter(s =>
+    cards.some(c => (c.departamento||'').toUpperCase() === s.key)
+  );
+  const cols = setoresPresentes.length ? setoresPresentes : SETORES.slice(0,6);
+
+  const outer = document.getElementById('kanbanOuter');
+  outer.innerHTML = '';
+
+  STATUS_CONFIG.forEach(st => {
+    const cardsStatus = cards.filter(c => c.etapa === st.key);
+    const total = cardsStatus.length;
+
+    const group = document.createElement('div');
+    group.className = `status-group sg-${st.key}`;
+    group.style.flex = total > 0 ? '1' : '0 0 44px';
+
+    const nowIndicator = st.key === 'em_producao' && total > 0
+      ? '<span class="now-indicator"><span class="dot"></span>AGORA</span>'
+      : '';
+
+    group.innerHTML = `
+      <div class="sg-header">
+        <span><i class="fa-solid ${st.icon}" style="margin-right:6px"></i>${st.label}</span>
+        <span style="display:flex;align-items:center;gap:8px;">
+          ${nowIndicator}
+          <span class="cnt-badge">${total}</span>
+        </span>
+      </div>`;
+
+    const body = document.createElement('div');
+    body.className = 'sg-body';
+
+    cols.forEach(setor => {
+      const lotesSetor = cardsStatus.filter(c => (c.departamento||'').toUpperCase() === setor.key);
+      const col = document.createElement('div');
+      col.className = 'setor-col';
+      const countBadge = lotesSetor.length
+        ? `<span style="background:${setor.cor}22;color:${setor.cor};font-size:.6rem;font-weight:800;padding:1px 7px;border-radius:8px">${lotesSetor.length}</span>`
+        : '';
+      col.innerHTML = `
+        <div class="setor-col-header" style="color:${setor.cor}">
+          <span><i class="fa-solid fa-circle" style="font-size:.4rem;margin-right:4px"></i>${setor.label}</span>
+          ${countBadge}
+        </div>
+        <div class="setor-col-body">
+          ${lotesSetor.length
+            ? lotesSetor.map(buildCard).join('')
+            : `<div class="k-empty"><i class="fa-regular fa-rectangle-list"></i><span>—</span></div>`
+          }
+        </div>`;
+      body.appendChild(col);
+    });
+
+    group.appendChild(body);
+    outer.appendChild(group);
+  });
+}
+
+function renderStats(stats, concluidos, cards) {
+  document.getElementById('sAguardando').textContent = stats.aguardando  || 0;
+  document.getElementById('sEmProd').textContent     = stats.em_producao || 0;
+  document.getElementById('sPausado').textContent    = stats.pausado     || 0;
+  document.getElementById('sConcluido').textContent  = concluidos        || 0;
+  document.getElementById('sTotal').textContent      = cards.length      || 0;
+
+  // Destaque pulsante quando há OPs em produção
+  const cardProd = document.getElementById('cardProd');
+  if ((stats.em_producao||0) > 0) cardProd.classList.add('highlight');
+  else cardProd.classList.remove('highlight');
+}
+
+function updateTimers() {
+  document.querySelectorAll('[data-inicio]').forEach(el => {
+    el.textContent = tempoDecorrido(el.dataset.inicio);
+  });
+}
+
+/* ─── Carrega dados ─── */
+function loadData() {
+  Promise.all([
+    fetch('/api/kanban/cards').then(r=>r.json()).catch(()=>({cards:[]})),
+    fetch('/api/kanban/status').then(r=>r.json()).catch(()=>({stats:{},concluidos_hoje:0})),
+  ]).then(([cardsRes, statsRes]) => {
+    const cards = cardsRes.cards || cardsRes.data || [];
+    const stats = {};
+    (statsRes.stats || []).forEach(s => { stats[s.etapa] = s.total; });
+    const concluidos = statsRes.concluidos_hoje || 0;
+
+    renderFluxo(cards);
+    renderKanban(cards);
+    renderStats(stats, concluidos, cards);
+
+    document.getElementById('tickerMsg').textContent =
+      'Última atualização: ' + new Date().toLocaleTimeString('pt-BR') +
+      ' | Em produção: ' + (stats.em_producao||0) +
+      ' | Pausados: '    + (stats.pausado||0) +
+      ' | Concluídos hoje: ' + concluidos;
+  }).catch(err => {
+    document.getElementById('tickerMsg').textContent = 'Erro ao carregar dados: ' + err;
+  });
+}
+
+loadData();
+setInterval(loadData, 30000);
+setInterval(updateTimers, 1000);
+setTimeout(() => location.reload(), 1800000);
+</script>
+</body>
+</html>

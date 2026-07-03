@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}Lotes - Produção{% endblock %}
+{% block content %}
+<h1 class="mb-4">📦 Lotes de Produção</h1>
+<div class="card">
+    <div class="card-body">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>ID</th><th>Ordem</th><th>Produto</th><th>Qtde</th>
+                    <th>Status</th><th>Prioridade</th><th>Departamento</th><th>Data</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for lote in lotes %}
+                <tr>
+                    <td>{{ lote.id }}</td>
+                    <td>{{ lote.ordem_producao }}</td>
+                    <td>{{ lote.produto }}</td>
+                    <td>{{ lote.quantidade }}</td>
+                    <td>
+                        <span class="badge bg-{{ 'success' if lote.status == 'concluido' else 'warning' if lote.status == 'em_producao' else 'info' }}">
+                            {{ lote.status|replace('_', ' ')|title }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge bg-{{ 'danger' if lote.prioridade == 'alta' else 'warning' if lote.prioridade == 'media' else 'success' }}">
+                            {{ lote.prioridade|upper }}
+                        </span>
+                    </td>
+                    <td>{{ lote.departamento|default('-') }}</td>
+                    <td>{{ lote.data_criacao|formatar_data_br }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

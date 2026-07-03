@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h4 font-weight-bold text-secondary">
+        <i class="fas fa-clock mr-2"></i>Operador - {{ usuario_departamento }}
+    </h1>
+    <span class="badge badge-primary badge-pill px-3 py-2" style="font-size:1.1rem">
+        <i class="fas fa-user mr-1"></i>{{ usuario_nome }}
+    </span>
+</div>
+
+<!-- 📊 RESUMO RÁPIDO -->
+<div class="row mb-4">
+    <div class="col-6 col-md-3 mb-3">
+        <div class="kpi-card info p-3 text-center" style="border-radius:16px;box-shadow:0 4px 15px rgba(0,0,0,0.1)">
+            <i class="fas fa-boxes fa-3x mb-2" style="color:#17a2b8"></i>
+            <div class="kpi-label" style="font-size:0.9rem">Total OPs</div>
+            <div class="kpi-value" style="font-size:2.2rem;font-weight:800">{{ estatisticas.total_lotes|default(0) }}</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3 mb-3">
+        <div class="kpi-card warning p-3 text-center" style="border-radius:16px;box-shadow:0 4px 15px rgba(0,0,0,0.1)">
+            <i class="fas fa-fire fa-3x mb-2" style="color:#ffc107"></i>
+            <div class="kpi-label" style="font-size:0.9rem">Em Produção</div>
+            <div class="kpi-value" style="font-size:2.2rem;font-weight:800;color:#ffc107">{{ estatisticas.lotes_em_producao|default(0) }}</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3 mb-3">
+        <div class="kpi-card success p-3 text-center" style="border-radius:16px;box-shadow:0 4px 15px rgba(0,0,0,0.1)">
+            <i class="fas fa-check-circle fa-3x mb-2" style="color:#28a745"></i>
+            <div class="kpi-label" style="font-size:0.9rem">Feitas Hoje</div>
+            <div class="kpi-value" style="font-size:2.2rem;font-weight:800;color:#28a745">{{ estatisticas.feitas_hoje|default(0) }}</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3 mb-3">
+        <div class="kpi-card secondary p-3 text-center" style="border-radius:16px;box-shadow:0 4px 15px rgba(0,0,0,0.1)">
+            <i class="fas fa-calendar-check fa-3x mb-2" style="color:#6c757d"></i>
+            <div class="kpi-label" style="font-size:0.9rem">Feitas no Mês</div>
+            <div class="kpi-value" style="font-size:2.2rem;font-weight:800;color:#6c757d">{{ estatisticas.feitas_mes|default(0) }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- 🎛️ PRODUÇÃO ATUAL + BOTÕES INICIAR/PAUSAR/RETOMAR -->
+{% if lotes_departamento|length > 0 %}
+{% set lote_atual = none %}
+{% for lote in lotes_departamento %}
+    {% if lote.status == 'em_producao' %}
+        {% set lote_atual = lote %}
+    {% endif %}
+{% endfor %}
+
+{% if lote_atual %}
+<!-- 🟢 TEM PRODUÇÃO RODANDO -->
+<div class="card border-0 shadow-sm mb-4" style="border-radius:16px">
+    <div class="card-header bg-success text-white" style="border-radius:16px 16px 0 0;padding:16px">
+        <h5 class="mb-0" style="font-size:1.2rem"><i class="fas fa-play-circle mr-2"></i>Produção em Andamento</h5>
+    </div>
+    <div class="card-body p-4">
+        <div class="alert alert-success text-center py-4 mb-4" style="font-size:1.1rem;border-radius:12px">
+            <i class="fas fa-play-circle fa-2x mb-2 d-block"></i>
+            <strong style="font-size:1.3rem">OP #{{ lote_atual.ordem }}</strong>
+            <br>
+            <span style="font-size:1.1rem">{{ lote_atual.descricao_produto }}</span>
+            <br>
+            <span style="font-size:1rem">Quantidade: <strong style="font-size:1.2rem">{{ lote_atual.quantidade }}</strong></span>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-12 col-md-4">
+                <form method="POST" action="{{ url_for('pausar_producao', ordem=lote_atual.ordem) }}">
+                    <button type="submit" class="btn btn-warning w-100 py-4" style="font-size:1.4rem;font-weight:700;border-radius:16px;border:none;min-height:80px">
+                        <i class="fas fa-pause fa-3x d-block mb-2"></i>PAUSAR
+                    </button>
+                </form>
+            </div>
+            <div class="col-12 col-md-4">
+                <form method="POST" action="{{ url_for('retomar_producao', ordem=lote_atual.ordem) }}">
+                    <button type="submit" class="btn btn-info w-100 py-4" style="font-size:1.4rem;font-weight:700;border-radius:16px;border:none;min-height:80px">
+                        <i class="fas fa-play fa-3x d-block mb-2"></i>RETOMAR
+                    </button>
+                </form>
+            </div>
+            <div class="col-12 col-md-4">
+                <form method="POST" action="{{ url_for('finalizar_producao', ordem=lote_atual.ordem) }}">
+                    <button type="submit" class="btn btn-danger w-100 py-4" style="font-size:1.4rem;font-weight:700;border-radius:16px;border:none;min-height:80px">
+                        <i class="fas fa-stop-circle fa-3x d-block mb-2"></i>FINALIZAR
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="row g-3 mt-2">
+            <div class="col-12">
+                <a href="{{ url_for('ver_detalhes_lote', ordem=lote_atual.ordem) }}" class="btn btn-primary w-100 py-3 d-block text-white text-center" style="font-size:1.2rem;font-weight:700;border-radius:16px;border:none">
+                    <i class="fas fa-eye fa-2x d-block mb-1"></i>VER DETALHES COMPLETOS
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<!-- 🔴 NÃO TEM PRODUÇÃO - MOSTRAR LOTES LIBERADOS PELO PCP -->
+<div class="card border-0 shadow-sm mb-4" style="border-radius:16px">
+    <div class="card-header bg-primary text-white" style="border-radius:16px 16px 0 0;padding:16px">
+        <h5 class="mb-0" style="font-size:1.2rem"><i class="fas fa-tasks mr-2"></i>Ops Liberadas pelo PCP - Toque para Iniciar</h5>
+    </div>
+    <div class="card-body p-4">
+        <div class="alert alert-info text-center py-3 mb-4" style="font-size:1rem;border-radius:12px">
+            <i class="fas fa-info-circle mr-2"></i>
+            <strong>Selecione uma OP abaixo para começar a produzir!</strong>
+        </div>
+
+        <div class="row g-3">
+            {% for lote in lotes_departamento|slice(5) %}
+                {% if lote.status == 'importado' %}
+                <div class="col-12 col-md-4 mb-3">
+                    <form method="POST" action="{{ url_for('iniciar_producao', ordem=lote.ordem) }}">
+                        <button type="submit" class="btn btn-success w-100 py-5" style="font-size:1.3rem;font-weight:700;border-radius:16px;border:none;min-height:90px">
+                            <i class="fas fa-play fa-3x d-block mb-2"></i>INICIAR OP #{{ lote.ordem }}
+                        </button>
+                    </form>
+                    <p class="text-center text-muted mt-2 mb-1" style="font-size:1rem;font-weight:600">{{ lote.descricao_produto }}</p>
+                    <p class="text-center text-muted mb-0" style="font-size:0.9rem">Qtd: <strong>{{ lote.quantidade }}</strong> | Prior: <span class="badge badge-pro badge-{{ lote.prioridade|lower }}">{{ lote.prioridade|upper }}</span></p>
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% else %}
+<div class="alert alert-secondary text-center py-5" style="font-size:1.2rem;border-radius:12px">
+    <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
+    Nenhuma ordem de produção encontrada.
+</div>
+{% endif %}
+
+<!-- 📋 TODAS AS OPs -->
+<div class="card border-0 shadow-sm mb-4" style="border-radius:16px">
+    <div class="card-header bg-white border-bottom" style="border-radius:16px 16px 0 0;padding:16px">
+        <h5 class="mb-0" style="font-size:1.1rem">
+            <i class="fas fa-list-ol mr-2 text-primary"></i>
+            Todas as Ordens de Produção
+            <span class="badge badge-secondary ml-2" style="font-size:0.9rem">{{ lotes_departamento|length }} registros</span>
+        </h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" style="font-size:1rem">
+                <thead class="thead-light">
+                    <tr>
+                        <th>Prioridade</th>
+                        <th>OP</th>
+                        <th>Produto</th>
+                        <th>Qtd</th>
+                        <th>Status</th>
+                        <th>Data</th>
+                        <th class="text-center">Ver</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lote in lotes_departamento %}
+                    <tr style="font-size:1rem">
+                        <td>
+                            <span class="badge badge-pro badge-{{ lote.prioridade|lower }}" style="font-size:0.85rem;padding:6px 12px">
+                                {{ lote.prioridade|upper }}
+                            </span>
+                        </td>
+                        <td><strong style="font-size:1.1rem">#{{ lote.ordem }}</strong></td>
+                        <td>{{ lote.descricao_produto }}</td>
+                        <td><strong>{{ lote.quantidade }}</strong></td>
+                        <td>
+                            {% if lote.status == 'em_producao' %}
+                                <span class="badge badge-success" style="font-size:0.9rem;padding:5px 10px">Em Produção</span>
+                            {% elif lote.status == 'importado' %}
+                                <span class="badge badge-warning" style="font-size:0.9rem;padding:5px 10px">Pendente</span>
+                            {% elif lote.status == 'finalizado' %}
+                                <span class="badge badge-secondary" style="font-size:0.9rem;padding:5px 10px">Finalizado</span>
+                            {% else %}
+                                <span class="badge badge-light" style="font-size:0.9rem;padding:5px 10px">{{ lote.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td style="font-size:0.9rem">{{ lote.data_inicio|formatar_data_br }}</td>
+                        <td class="text-center">
+                            <a href="{{ url_for('ver_detalhes_lote', ordem=lote.ordem) }}" class="btn btn-sm btn-outline-primary" style="padding:8px 16px;font-size:1rem">
+                                <i class="fas fa-eye mr-1"></i> Ver
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted" style="font-size:1.1rem">
+                            <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
+                            Nenhuma ordem encontrada.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

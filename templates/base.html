@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>{% block title %}Sistema de Produção{% endblock %}</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <!-- Chart.js (somente onde necessário) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+    <!-- CSS unificado PRODSYS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/prodsys.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-gray-50 text-gray-800 antialiased">
+
+    <div class="flex h-screen overflow-hidden">
+
+        <!-- Sidebar Overlay (tablet) -->
+        <div id="sidebar-overlay" class="prodsys-sidebar-overlay md:hidden"></div>
+
+        <!-- Sidebar -->
+        <aside id="sidebar" class="prodsys-sidebar fixed md:translate-x-0 inset-y-0 left-0 z-50 w-60 bg-slate-900 text-white flex flex-col shadow-xl transition-transform">
+
+            <!-- Logo -->
+            <div class="h-14 flex items-center justify-center border-b border-slate-800 bg-slate-950 flex-shrink-0">
+                <div class="flex items-center gap-2 font-black text-lg tracking-tight">
+                    <i class="fa-solid fa-industry text-blue-500"></i>
+                    <span>PROD<span class="text-blue-500">SYS</span></span>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="flex-1 overflow-y-auto py-3 px-2.5 space-y-0.5">
+
+                <!-- PRINCIPAL -->
+                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 mt-1">Principal</p>
+
+                {% set role = session.get('usuario_role') %}
+                {% set endpoint = request.endpoint %}
+
+                <a href="{{ url_for('dashboard') }}" class="nav-item {% if endpoint in ('dashboard','kanban_board') %}active{% endif %}">
+                    <i class="fa-solid fa-gauge-high"></i>
+                    <span>Início</span>
+                </a>
+
+                {% if role not in ['almoxarifado'] %}
+                <a href="{{ url_for('kanban_board') }}" class="nav-item {% if endpoint == 'kanban_board' %}active{% endif %}">
+                    <i class="fa-solid fa-table-columns"></i>
+                    <span>Kanban de Produção</span>
+                </a>
+                {% endif %}
+
+                <!-- OPERADOR (operador, encarregado, admin) -->
+                {% if role in ['operador', 'encarregado', 'admin'] %}
+                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 mt-3">Operação</p>
+                <a href="{{ url_for('dashboard_operador') }}" class="nav-item {% if endpoint == 'dashboard_operador' %}active{% endif %}">
+                    <i class="fa-solid fa-screwdriver-wrench"></i>
+                    <span>Minha Produção</span>
+                </a>
+                {% endif %}
+
+                <!-- PCP (admin, gerente, pcp) -->
+                {% if role in ['admin', 'gerente', 'pcp'] %}
+                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 mt-3">Planejamento</p>
+                <a href="{{ url_for('dashboard_pcp') }}" class="nav-item {% if endpoint == 'dashboard_pcp' %}active{% endif %}">
+                    <i class="fa-solid fa-diagram-project"></i>
+                    <span>PCP — Ordens</span>
+                </a>
+                <a href="{{ url_for('pcp_importar_erp') }}" class="nav-item {% if endpoint == 'pcp_importar_erp' %}active{% endif %}">
+                    <i class="fa-solid fa-file-import"></i>
+                    <span>Importar do ERP</span>
+                </a>
+                {% endif %}
+
+                <!-- GERENTE (admin, gerente) -->
+                {% if role in ['admin', 'gerente'] %}
+                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 mt-3">Gestão</p>
+                <a href="{{ url_for('dashboard_gerente') }}" class="nav-item {% if endpoint == 'dashboard_gerente' %}active{% endif %}">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <span>Painel Gerencial</span>
+                </a>
+                {% endif %}
+
+                <!-- ALMOXARIFADO (admin, almoxarifado, gerente) -->
+                {% if role in ['admin', 'almoxarifado', 'gerente'] %}
+                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 mt-3">Logística</p>
+                <a href="{{ url_for('dashboard_almoxarifado') }}" class="nav-item {% if endpoint == 'dashboard_almoxarifado' %}active{% endif %}">
+                    <i class="fa-solid fa-warehouse"></i>
+                    <span>Almoxarifado</span>
+                </a>
+                {% if role in ['admin', 'almoxarifado'] %}
+                <a href="{{ url_for('estoque_interno') }}" class="nav-item {% if endpoint == 'estoque_interno' %}active{% endif %}">
+                    <i class="fa-solid fa-boxes-stacked"></i>
+                    <span>Estoque Interno</span>
+                </a>
+                {% endif %}
+                {% endif %}
+
+                <!-- TV / Painéis -->
+                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 mt-3">TVs / Painéis</p>
+                {% if role in ['admin', 'gerente', 'pcp', 'encarregado'] %}
+                <a href="{{ url_for('kanban_tv') }}" target="_blank" class="nav-item">
+                    <i class="fa-solid fa-tv text-blue-400"></i>
+                    <span>TV Kanban</span>
+                    <i class="fa-solid fa-arrow-up-right-from-square ml-auto text-[10px] text-slate-500"></i>
+                </a>
+                {% endif %}
+                {% if role in ['admin', 'almoxarifado', 'gerente'] %}
+                <a href="{{ url_for('tv_almoxarifado') }}" target="_blank" class="nav-item">
+                    <i class="fa-solid fa-box-open text-cyan-400"></i>
+                    <span>TV Almoxarifado</span>
+                    <i class="fa-solid fa-arrow-up-right-from-square ml-auto text-[10px] text-slate-500"></i>
+                </a>
+                {% endif %}
+
+                <!-- ADMIN -->
+                {% if role == 'admin' %}
+                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 mt-3">Administração</p>
+                <a href="{{ url_for('admin_dashboard') }}" class="nav-item {% if endpoint == 'admin_dashboard' %}active{% endif %}">
+                    <i class="fa-solid fa-users-gear"></i>
+                    <span>Painel Admin</span>
+                </a>
+                {% endif %}
+            </nav>
+
+            <!-- User Profile -->
+            <div class="border-t border-slate-800 p-3 bg-slate-950 flex-shrink-0">
+                {% if session.get('usuario_departamento') %}
+                {% set dc = {'ALMOXARIFADO':'bg-cyan-600','CORTE':'bg-orange-500','SOLDA':'bg-red-600','ACABAMENTO':'bg-purple-600','MONTAGEM':'bg-blue-600','EMBALAGEM':'bg-green-600','SERRALHERIA':'bg-yellow-600','PINTURA':'bg-pink-600','PCP':'bg-indigo-600','ADMINISTRACAO':'bg-slate-600','Administração':'bg-slate-600'} %}
+                <div class="mb-2">
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold text-white w-full justify-center {{ dc.get(session.get('usuario_departamento',''), 'bg-slate-600') }}">
+                        <i class="fa-solid fa-industry text-[10px]"></i>
+                        {{ session.get('usuario_departamento') }}
+                    </span>
+                </div>
+                {% endif %}
+                <div class="flex items-center gap-2.5">
+                    <img class="h-9 w-9 rounded-full border-2 border-slate-700" src="https://ui-avatars.com/api/?name={{ session.get('usuario_nome', 'User')|urlencode }}&background=1e3a8a&color=fff&bold=true" alt="Avatar">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-bold text-white truncate">{{ session.get('usuario_nome', 'Usuário') }}</p>
+                        <p class="text-[11px] text-slate-400 truncate capitalize">{{ session.get('usuario_role', 'visitante') }}</p>
+                    </div>
+                    <a href="{{ url_for('logout') }}" class="text-slate-400 hover:text-red-400 transition-colors p-2" title="Sair">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Wrapper -->
+        <div class="flex-1 flex flex-col md:pl-60 transition-all duration-300 min-w-0">
+
+            <!-- Header Compacto -->
+            <header class="prodsys-header">
+                <div class="flex items-center gap-3 min-w-0">
+                    <button id="mobile-menu-btn" class="md:hidden text-gray-600 hover:text-gray-900 p-2 -ml-2" aria-label="Menu">
+                        <i class="fa-solid fa-bars text-xl"></i>
+                    </button>
+                    <h1 class="text-base sm:text-lg font-bold text-gray-800 truncate">{% block header_title %}Dashboard{% endblock %}</h1>
+                </div>
+
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <!-- TV Quick (compacto) -->
+                    {% if role in ['admin', 'gerente', 'pcp', 'encarregado', 'almoxarifado'] %}
+                    <div class="relative group">
+                        <button class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="TVs">
+                            <i class="fa-solid fa-tv text-base sm:text-lg"></i>
+                        </button>
+                        <div class="hidden group-hover:block absolute right-0 top-full mt-1 bg-white border border-gray-100 rounded-xl shadow-xl py-2 min-w-[180px] z-40">
+                            {% if role in ['admin', 'gerente', 'pcp', 'encarregado'] %}
+                            <a href="{{ url_for('kanban_tv') }}" target="_blank" class="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">
+                                <i class="fa-solid fa-industry text-blue-500 w-4"></i> TV Kanban
+                            </a>
+                            {% endif %}
+                            {% if role in ['admin', 'gerente', 'almoxarifado'] %}
+                            <a href="{{ url_for('tv_almoxarifado') }}" target="_blank" class="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-cyan-50 hover:text-cyan-700">
+                                <i class="fa-solid fa-box-open text-cyan-500 w-4"></i> TV Almoxarifado
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Notifications -->
+                    <button class="relative p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition" title="Notificações">
+                        <i class="fa-regular fa-bell text-base sm:text-lg"></i>
+                        <span class="absolute top-1 right-1 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
+                    </button>
+
+                    <!-- Date -->
+                    <div class="hidden sm:flex items-center text-xs text-gray-500 bg-gray-50 px-2.5 py-1.5 rounded-lg border border-gray-200">
+                        <i class="fa-regular fa-calendar mr-1.5"></i>
+                        <span id="current-date">--/--/----</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                <div class="px-4 sm:px-6 lg:px-8 pt-4">
+                    {% for category, message in messages %}
+                    <div class="rounded-xl p-3.5 mb-3 flex items-center justify-between shadow-sm border-l-4 {% if category == 'success' %}bg-green-50 border-green-500 text-green-800{% elif category == 'error' %}bg-red-50 border-red-500 text-red-800{% else %}bg-blue-50 border-blue-500 text-blue-800{% endif %}">
+                        <div class="flex items-center">
+                            <i class="fa-solid {% if category == 'success' %}fa-check-circle{% elif category == 'error' %}fa-exclamation-circle{% else %}fa-info-circle{% endif %} mr-3"></i>
+                            <p class="text-sm font-medium">{{ message }}</p>
+                        </div>
+                        <button onclick="this.parentElement.remove()" class="text-gray-400 hover:text-gray-600 ml-2">
+                            <i class="fa-solid fa-times"></i>
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            {% endwith %}
+
+            <!-- Page Content -->
+            <main class="flex-1 overflow-y-auto bg-gray-50 p-3 sm:p-5 lg:p-7">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // ─── Sidebar Toggle (tablet) ───
+        (function() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            const btn = document.getElementById('mobile-menu-btn');
+
+            function toggle(forceClose) {
+                const isOpen = sidebar.classList.contains('open');
+                if (forceClose && !isOpen) return;
+                sidebar.classList.toggle('open');
+                overlay.classList.toggle('open');
+            }
+
+            if (btn) btn.addEventListener('click', () => toggle(false));
+            if (overlay) overlay.addEventListener('click', () => toggle(true));
+        })();
+
+        // ─── Data atual ───
+        (function() {
+            const el = document.getElementById('current-date');
+            if (el) el.textContent = new Date().toLocaleDateString('pt-BR');
+        })();
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>
