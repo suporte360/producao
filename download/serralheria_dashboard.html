@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Serralheria Totem</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;background:#1a1a2e;color:#e0e0e0}
+.screen{display:none;position:absolute;top:0;left:0;width:100%;height:100%;flex-direction:column}
+.screen.active{display:flex}
+/* ── HEADER ── */
+.header{background:#16213e;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;min-height:60px;border-bottom:3px solid #f59e0b}
+.header h1{font-size:22px;color:#f59e0b;font-weight:700;letter-spacing:1px}
+.header .clock{font-size:28px;color:#00e676;font-weight:700;font-variant-numeric:tabular-nums}
+/* ── KPI CARDS ── */
+.kpi-row{display:flex;gap:12px;padding:12px 16px;overflow-x:auto}
+.kpi-card{flex:1;min-width:120px;background:linear-gradient(135deg,#16213e,#1a1a3e);border:1px solid #2a2a5a;border-radius:12px;padding:14px 10px;text-align:center}
+.kpi-card .label{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.kpi-card .value{font-size:32px;font-weight:800;color:#f59e0b}
+.kpi-card .value.green{color:#00e676}
+.kpi-card .value.blue{color:#42a5f5}
+.kpi-card .value.red{color:#ef5350}
+/* ── BUTTON ── */
+.btn-touch{background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;font-size:20px;font-weight:700;padding:18px 32px;border:none;border-radius:12px;cursor:pointer;width:90%;max-width:500px;margin:10px auto;text-transform:uppercase;letter-spacing:1px;box-shadow:0 4px 20px rgba(245,158,11,.4)}
+.btn-touch:active{transform:scale(.97);box-shadow:0 2px 10px rgba(245,158,11,.3)}
+.btn-green{background:linear-gradient(135deg,#00e676,#00c853);color:#000}
+.btn-green:active{box-shadow:0 2px 10px rgba(0,230,118,.3)}
+.btn-red{background:linear-gradient(135deg,#ef5350,#c62828);color:#fff}
+.btn-red:active{box-shadow:0 2px 10px rgba(239,83,80,.3)}
+.btn-back{background:#2a2a5a;color:#aaa;font-size:16px;padding:12px 24px;border:none;border-radius:10px;cursor:pointer;width:90%;max-width:500px;margin:6px auto}
+.btn-back:active{background:#3a3a6a}
+/* ── SCROLLABLE AREA ── */
+.scroll-area{flex:1;overflow-y:auto;padding:12px 16px;-webkit-overflow-scrolling:touch}
+/* ── LOTE CARDS ── */
+.lote-card{background:#16213e;border:2px solid #2a2a5a;border-radius:14px;padding:16px;margin-bottom:12px;cursor:pointer;transition:border-color .2s}
+.lote-card:active{border-color:#f59e0b}
+.lote-card.ativo{border-color:#00e676}
+.lote-card .lote-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.lote-card .lote-codigo{font-size:20px;font-weight:700;color:#f59e0b}
+.lote-card .lote-desc{font-size:14px;color:#aaa;margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:95%}
+.lote-card .lote-info{display:flex;gap:16px;font-size:13px;color:#888}
+.lote-card .lote-info span{display:flex;align-items:center;gap:4px}
+.lote-card .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase}
+.badge-prod{background:#00e676;color:#000}
+.badge-final{background:#42a5f5;color:#000}
+/* ── PECA CARDS ── */
+.peca-card{background:#16213e;border:1px solid #2a2a5a;border-radius:10px;padding:14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.peca-card .peca-codigo{font-size:18px;font-weight:700;color:#e0e0e0}
+.peca-card .peca-qtd{font-size:20px;font-weight:800;color:#f59e0b}
+.peca-card .peca-tipo{font-size:11px;color:#888;margin-top:2px}
+/* ── USUARIO GRID ── */
+.usuario-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:12px}
+.usuario-btn{background:#16213e;border:2px solid #2a2a5a;border-radius:14px;padding:20px 10px;text-align:center;cursor:pointer;font-size:18px;font-weight:700;color:#e0e0e0;transition:all .2s}
+.usuario-btn:active{border-color:#f59e0b;background:#1e2a4e}
+.usuario-btn .user-icon{font-size:28px;margin-bottom:6px;color:#f59e0b}
+.usuario-btn .user-setor{font-size:11px;color:#888;margin-top:4px}
+/* ── SECTION TITLE ── */
+.section-title{font-size:16px;color:#888;padding:8px 16px;text-transform:uppercase;letter-spacing:1px}
+/* ── PRODUTO FINAL ── */
+.prod-final{background:linear-gradient(135deg,#0d1b3e,#16213e);border:1px solid #42a5f5;border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
+.prod-final .pf-label{font-size:12px;color:#42a5f5;text-transform:uppercase}
+.prod-final .pf-codigo{font-size:20px;font-weight:700;color:#42a5f5}
+/* ── STATUS BAR ── */
+.status-bar{text-align:center;padding:8px;font-size:14px;color:#00e676;background:rgba(0,230,118,.1);border-top:1px solid rgba(0,230,118,.2)}
+/* ── LOADING ── */
+.loading{text-align:center;padding:40px;color:#888;font-size:16px}
+.loading .spinner{display:inline-block;width:32px;height:32px;border:3px solid #2a2a5a;border-top-color:#f59e0b;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* ── CONFIRM DIALOG ── */
+.dialog-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);z-index:100;justify-content:center;align-items:center}
+.dialog-overlay.active{display:flex}
+.dialog-box{background:#16213e;border:2px solid #f59e0b;border-radius:16px;padding:28px;max-width:420px;width:90%;text-align:center}
+.dialog-box h3{font-size:20px;color:#f59e0b;margin-bottom:12px}
+.dialog-box p{font-size:15px;color:#ccc;margin-bottom:20px}
+.dialog-btns{display:flex;gap:12px;justify-content:center}
+.dialog-btns button{flex:1;padding:14px;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer}
+.dialog-btns .sim{background:#00e676;color:#000}
+.dialog-btns .nao{background:#2a2a5a;color:#aaa}
+</style>
+</head>
+<body>
+
+<!-- ========== SCREEN 1: DASHBOARD ========== -->
+<div id="screen1" class="screen active">
+  <div class="header">
+    <h1>SERRALHERIA TOTEM</h1>
+    <div class="clock" id="clock">00:00:00</div>
+  </div>
+  <div class="kpi-row" id="kpiRow">
+    <div class="kpi-card"><div class="label">Lotes Abertos</div><div class="value" id="kpiLotes">--</div></div>
+    <div class="kpi-card"><div class="label">Pecas</div><div class="value blue" id="kpiPecas">--</div></div>
+    <div class="kpi-card"><div class="label">Qtd Total</div><div class="value green" id="kpiQtd">--</div></div>
+    <div class="kpi-card"><div class="label">Em Producao</div><div class="value red" id="kpiAndamento">--</div></div>
+  </div>
+  <div class="scroll-area" id="dashLotes" style="text-align:center">
+    <div class="loading"><div class="spinner"></div><br>Carregando...</div>
+  </div>
+  <div style="padding:10px 16px">
+    <button class="btn-touch" onclick="showScreen(2)">Toque para Ver Lotes</button>
+  </div>
+</div>
+
+<!-- ========== SCREEN 2: LOTES ========== -->
+<div id="screen2" class="screen">
+  <div class="header">
+    <h1>LOTES DE PRODUCAO</h1>
+    <div class="clock" id="clock2">00:00:00</div>
+  </div>
+  <div class="scroll-area" id="lotesList">
+    <div class="loading"><div class="spinner"></div><br>Carregando lotes...</div>
+  </div>
+  <div style="padding:10px 16px">
+    <button class="btn-back" onclick="showScreen(1)">&#8592; Voltar ao Dashboard</button>
+  </div>
+</div>
+
+<!-- ========== SCREEN 3: PECAS ========== -->
+<div id="screen3" class="screen">
+  <div class="header">
+    <h1 id="pecasTitle">PECAS - LOTE</h1>
+    <div class="clock" id="clock3">00:00:00</div>
+  </div>
+  <div class="scroll-area" id="pecasContent">
+    <div class="loading"><div class="spinner"></div><br>Carregando...</div>
+  </div>
+  <div style="padding:10px 16px" id="pecasActions"></div>
+</div>
+
+<!-- ========== SCREEN 4: USUARIOS ========== -->
+<div id="screen4" class="screen">
+  <div class="header">
+    <h1>SELECIONAR OPERADOR</h1>
+    <div class="clock" id="clock4">00:00:00</div>
+  </div>
+  <div class="section-title" id="selInfo"></div>
+  <div class="usuario-grid" id="usuarioGrid"></div>
+  <div style="padding:10px 16px">
+    <button class="btn-back" onclick="showScreen(3)">&#8592; Voltar as Pecas</button>
+  </div>
+</div>
+
+<!-- ========== CONFIRM DIALOG ========== -->
+<div class="dialog-overlay" id="dialogConfirm">
+  <div class="dialog-box">
+    <h3 id="dialogTitle">Confirmar</h3>
+    <p id="dialogMsg">Tem certeza?</p>
+    <div class="dialog-btns">
+      <button class="nao" onclick="fecharDialog()">NAO</button>
+      <button class="sim" id="dialogSimBtn">SIM</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== FINALIZAR DIALOG ========== -->
+<div class="dialog-overlay" id="dialogFinalizar">
+  <div class="dialog-box">
+    <h3>Finalizar Producao</h3>
+    <p id="finalizarMsg">Finalizar este lote? O status sera encerrado no ERP.</p>
+    <div class="dialog-btns">
+      <button class="nao" onclick="fecharFinalizar()">NAO</button>
+      <button class="sim" id="btnConfirmaFinalizar">SIM, FINALIZAR</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var currentLote = null;
+var currentPecas = [];
+var REFRESH_INTERVAL = 30000;
+
+// ── Screen Management ──
+function showScreen(n) {
+  var i, screens = document.querySelectorAll('.screen');
+  for (i = 0; i < screens.length; i++) { screens[i].classList.remove('active'); }
+  document.getElementById('screen' + n).classList.add('active');
+  if (n === 1) { loadDashboard(); }
+  if (n === 2) { loadLotes(); }
+}
+
+// ── Clock ──
+function updateClock() {
+  var now = new Date();
+  var h = String(now.getHours()).padStart(2, '0');
+  var m = String(now.getMinutes()).padStart(2, '0');
+  var s = String(now.getSeconds()).padStart(2, '0');
+  var t = h + ':' + m + ':' + s;
+  document.getElementById('clock').textContent = t;
+  document.getElementById('clock2').textContent = t;
+  document.getElementById('clock3').textContent = t;
+  document.getElementById('clock4').textContent = t;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── HTML Escape ──
+function esc(s) {
+  if (!s) return '';
+  var d = document.createElement('div');
+  d.appendChild(document.createTextNode(String(s)));
+  return d.innerHTML;
+}
+
+// ── Animate Number ──
+function animateValue(el, end) {
+  var start = 0;
+  var dur = 800;
+  var st = null;
+  function step(ts) {
+    if (!st) st = ts;
+    var p = Math.min((ts - st) / dur, 1);
+    el.textContent = Math.floor(p * end);
+    if (p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// ── Load Dashboard ──
+function loadDashboard() {
+  fetch('/api/kpis').then(function(r) { return r.json(); }).then(function(data) {
+    if (data.error) return;
+    animateValue(document.getElementById('kpiLotes'), data.total_lotes || 0);
+    animateValue(document.getElementById('kpiPecas'), data.total_pecas || 0);
+    animateValue(document.getElementById('kpiQtd'), data.total_qtd || 0);
+    animateValue(document.getElementById('kpiAndamento'), data.em_andamento || 0);
+  }).catch(function(e) { console.error('KPI error:', e); });
+
+  // Load mini lotes list for dashboard
+  fetch('/api/lotes').then(function(r) { return r.json(); }).then(function(data) {
+    if (!data.lotes || data.lotes.length === 0) {
+      document.getElementById('dashLotes').innerHTML = '<div class="loading" style="color:#f59e0b">Nenhum lote em aberto</div>';
+      return;
+    }
+    var html = '<div class="section-title">Lotes Ativos</div>';
+    for (var i = 0; i < data.lotes.length; i++) {
+      var l = data.lotes[i];
+      var borderClass = l.status_producao === 'em_producao' ? ' ativo' : '';
+      var badge = l.status_producao === 'em_producao'
+        ? '<span class="badge badge-prod">Em Producao - ' + esc(l.operador) + '</span>'
+        : '<span class="badge badge-final">' + (l.qtd_pecas || 0) + ' pecas</span>';
+      html += '<div class="lote-card' + borderClass + '" onclick="verLote(\'' + esc(l.lotcod) + '\')">'
+        + '<div class="lote-header"><span class="lote-codigo">Lote ' + esc(l.lotcod) + '</span>' + badge + '</div>'
+        + '<div class="lote-desc">' + esc(l.descricao) + '</div>'
+        + '<div class="lote-info">'
+        + '<span>Pecas: <b>' + (l.qtd_pecas || 0) + '</b></span>'
+        + '<span>Qtd: <b>' + (l.qtd_total || 0) + '</b></span>';
+      if (l.produto_final) {
+        html += '<span>Final: <b>' + esc(l.produto_final) + '</b></span>';
+      }
+      html += '</div></div>';
+    }
+    document.getElementById('dashLotes').innerHTML = html;
+  }).catch(function(e) { console.error('Lotes error:', e); });
+}
+
+// ── Load Lotes (Screen 2) ──
+function loadLotes() {
+  fetch('/api/lotes').then(function(r) { return r.json(); }).then(function(data) {
+    if (!data.lotes || data.lotes.length === 0) {
+      document.getElementById('lotesList').innerHTML = '<div class="loading" style="color:#f59e0b">Nenhum lote em aberto</div>';
+      return;
+    }
+    var html = '';
+    for (var i = 0; i < data.lotes.length; i++) {
+      var l = data.lotes[i];
+      var borderClass = l.status_producao === 'em_producao' ? ' ativo' : '';
+      var badge = l.status_producao === 'em_producao'
+        ? '<span class="badge badge-prod">Em Producao - ' + esc(l.operador) + '</span>'
+        : '<span class="badge badge-final">' + (l.qtd_pecas || 0) + ' pecas</span>';
+      html += '<div class="lote-card' + borderClass + '" onclick="verLote(\'' + esc(l.lotcod) + '\')">'
+        + '<div class="lote-header"><span class="lote-codigo">LOTE ' + esc(l.lotcod) + '</span>' + badge + '</div>'
+        + '<div class="lote-desc">' + esc(l.descricao) + '</div>'
+        + '<div class="lote-info">'
+        + '<span>Pecas: <b>' + (l.qtd_pecas || 0) + '</b></span>'
+        + '<span>Qtd Total: <b>' + (l.qtd_total || 0) + '</b></span>';
+      if (l.produto_final) {
+        html += '<span>Produto Final: <b style="color:#42a5f5">' + esc(l.produto_final) + '</b></span>';
+      }
+      html += '</div></div>';
+    }
+    document.getElementById('lotesList').innerHTML = html;
+  }).catch(function(e) {
+    console.error('Lotes error:', e);
+    document.getElementById('lotesList').innerHTML = '<div class="loading" style="color:#ef5350">Erro ao carregar lotes</div>';
+  });
+}
+
+// ── Ver Lote -> Screen 3 (Pecas) ──
+function verLote(lotcod) {
+  currentLote = lotcod;
+  document.getElementById('pecasTitle').textContent = 'PECAS - LOTE ' + lotcod;
+  document.getElementById('pecasContent').innerHTML = '<div class="loading"><div class="spinner"></div><br>Carregando pecas...</div>';
+  document.getElementById('pecasActions').innerHTML = '';
+  showScreen(3);
+
+  fetch('/api/lotes/' + lotcod + '/pecas').then(function(r) { return r.json(); }).then(function(data) {
+    if (data.error) {
+      document.getElementById('pecasContent').innerHTML = '<div class="loading" style="color:#ef5350">Erro: ' + esc(data.error) + '</div>';
+      return;
+    }
+    currentPecas = data.pecas || [];
+    var html = '';
+
+    // Produto final referencia
+    if (data.produto_final) {
+      html += '<div class="prod-final">'
+        + '<div><div class="pf-label">Produto Final (referencia)</div>'
+        + '<div class="pf-codigo">' + esc(data.produto_final.codigo) + '</div></div>'
+        + '<div style="text-align:right"><div style="font-size:12px;color:#888">Qtd</div>'
+        + '<div style="font-size:20px;font-weight:700;color:#42a5f5">' + data.produto_final.quantidade + '</div></div>'
+        + '</div>';
+    }
+
+    // Info do lote
+    if (data.descricao) {
+      html += '<div style="padding:4px 4px 12px;font-size:13px;color:#888">' + esc(data.descricao) + '</div>';
+    }
+
+    // Pecas para fabricar
+    html += '<div class="section-title">Pecas para Fabricar (' + currentPecas.length + ')</div>';
+    for (var i = 0; i < currentPecas.length; i++) {
+      var p = currentPecas[i];
+      var tipo = p.codigo.substring(0, 2);
+      var tipoLabel = tipo === 'CJ' ? 'Conjunto' : 'Peca';
+      html += '<div class="peca-card">'
+        + '<div><div class="peca-codigo">' + esc(p.codigo) + '</div>'
+        + '<div class="peca-tipo">' + tipoLabel + ' | OF ' + p.ordem + '</div></div>'
+        + '<div class="peca-qtd">x' + p.quantidade + '</div>'
+        + '</div>';
+    }
+
+    if (currentPecas.length === 0) {
+      html += '<div class="loading" style="color:#f59e0b">Nenhuma peca para fabricar neste lote</div>';
+    }
+
+    document.getElementById('pecasContent').innerHTML = html;
+
+    // Actions
+    var actions = '<button class="btn-back" onclick="showScreen(2)">&#8592; Voltar aos Lotes</button>';
+    if (data.producao_ativa) {
+      actions = '<div class="status-bar">Em producao por: ' + esc(data.producao_ativa.usuario_nome) + '</div>'
+        + '<button class="btn-touch btn-red" onclick="confirmarFinalizar(\'' + esc(lotcod) + '\')">FINALIZAR PRODUCAO</button>'
+        + '<button class="btn-back" onclick="showScreen(2)">&#8592; Voltar aos Lotes</button>';
+    } else if (currentPecas.length > 0) {
+      actions = '<button class="btn-touch btn-green" onclick="iniciarProducao()">INICIAR PRODUCAO</button>'
+        + '<button class="btn-back" onclick="showScreen(2)">&#8592; Voltar aos Lotes</button>';
+    }
+    document.getElementById('pecasActions').innerHTML = actions;
+  }).catch(function(e) {
+    console.error('Pecas error:', e);
+    document.getElementById('pecasContent').innerHTML = '<div class="loading" style="color:#ef5350">Erro ao carregar</div>';
+  });
+}
+
+// ── Iniciar Producao -> Confirma -> Screen 4 ──
+function iniciarProducao() {
+  document.getElementById('dialogMsg').textContent = 'Iniciar producao do Lote ' + currentLote + ' com ' + currentPecas.length + ' pecas?';
+  document.getElementById('dialogTitle').textContent = 'Iniciar Producao';
+  document.getElementById('dialogSimBtn').onclick = function() {
+    fecharDialog();
+    showScreen4();
+  };
+  document.getElementById('dialogConfirm').classList.add('active');
+}
+
+function fecharDialog() {
+  document.getElementById('dialogConfirm').classList.remove('active');
+}
+
+function showScreen4() {
+  document.getElementById('selInfo').textContent = 'Lote ' + currentLote + ' | ' + currentPecas.length + ' pecas';
+  showScreen(4);
+  loadUsuarios();
+}
+
+// ── Load Usuarios ──
+function loadUsuarios() {
+  fetch('/api/usuarios').then(function(r) { return r.json(); }).then(function(data) {
+    if (!data.usuarios || data.usuarios.length === 0) {
+      document.getElementById('usuarioGrid').innerHTML = '<div class="loading">Nenhum usuario cadastrado</div>';
+      return;
+    }
+    var html = '';
+    for (var i = 0; i < data.usuarios.length; i++) {
+      var u = data.usuarios[i];
+      html += '<div class="usuario-btn" onclick="selecionarUsuario(' + u.id + ',\'' + esc(u.nome) + '\')">'
+        + '<div class="user-icon">&#9881;</div>'
+        + '<div>' + esc(u.nome) + '</div>'
+        + '<div class="user-setor">' + esc(u.setor) + '</div>'
+        + '</div>';
+    }
+    document.getElementById('usuarioGrid').innerHTML = html;
+  }).catch(function(e) { console.error('Usuarios error:', e); });
+}
+
+// ── Selecionar Usuario -> Iniciar ──
+function selecionarUsuario(id, nome) {
+  var pecas = [];
+  for (var i = 0; i < currentPecas.length; i++) {
+    pecas.push({ ordem: currentPecas[i].ordem, codigo: currentPecas[i].codigo });
+  }
+  fetch('/api/iniciar', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lote: currentLote, usuario_id: id, usuario_nome: nome, pecas: pecas })
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    if (data.success) {
+      verLote(currentLote); // reload para mostrar status
+    } else {
+      alert('Erro: ' + (data.error || 'Erro desconhecido'));
+    }
+  }).catch(function(e) { alert('Erro de conexao'); });
+}
+
+// ── Finalizar ──
+function confirmarFinalizar(lotcod) {
+  document.getElementById('finalizarMsg').textContent = 'Finalizar producao do Lote ' + lotcod + '? O status sera encerrado (EC) no ERP.';
+  document.getElementById('dialogFinalizar').classList.add('active');
+  document.getElementById('btnConfirmaFinalizar').onclick = function() {
+    fecharFinalizar();
+    fetch('/api/finalizar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lote: lotcod })
+    }).then(function(r) { return r.json(); }).then(function(data) {
+      if (data.success) {
+        showScreen(1);
+      } else {
+        alert('Erro: ' + (data.error || 'Erro desconhecido'));
+      }
+    }).catch(function(e) { alert('Erro de conexao'); });
+  };
+}
+
+function fecharFinalizar() {
+  document.getElementById('dialogFinalizar').classList.remove('active');
+}
+
+// ── Auto-refresh ──
+setInterval(function() {
+  if (document.getElementById('screen1').classList.contains('active')) {
+    loadDashboard();
+  }
+}, REFRESH_INTERVAL);
+
+// ── Init ──
+loadDashboard();
+</script>
+</body>
+</html>
