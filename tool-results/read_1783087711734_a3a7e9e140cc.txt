@@ -1,0 +1,502 @@
+     1→     1→<!DOCTYPE html>
+     2→     2→<html lang="pt-BR">
+     3→     3→<head>
+     4→     4→<meta charset="UTF-8">
+     5→     5→<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+     6→     6→<title>Serralheria Totem</title>
+     7→     7→<style>
+     8→     8→*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+     9→     9→html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;background:#0a0e1a;color:#e0e0e0}
+    10→    10→
+    11→    11→/* ── SCREENS ── */
+    12→    12→.screen{display:none;position:absolute;top:0;left:0;width:100%;height:100%;flex-direction:column}
+    13→    13→.screen.active{display:flex}
+    14→    14→
+    15→    15→/* ══════════════════════════════════════════════════════════
+    16→    16→   SCREEN 1 — ANIMATED FACTORY DASHBOARD
+    17→    17→   ══════════════════════════════════════════════════════════ */
+    18→    18→#screen1{background:linear-gradient(170deg,#0a0e1a 0%,#111827 40%,#0f172a 100%);cursor:pointer}
+    19→    19→
+    20→    20→/* Header */
+    21→    21→.dash-header{background:rgba(15,23,42,.92);backdrop-filter:blur(8px);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #f59e0b;position:relative;z-index:5}
+    22→    22→.dash-header h1{font-size:20px;color:#f59e0b;font-weight:800;letter-spacing:2px;text-transform:uppercase}
+    23→    23→.dash-header h1 span{color:#fff;font-weight:300;letter-spacing:0;margin-left:6px;font-size:14px}
+    24→    24→.dash-clock{font-size:30px;color:#00e676;font-weight:700;font-variant-numeric:tabular-nums;text-shadow:0 0 12px rgba(0,230,118,.5)}
+    25→    25→
+    26→    26→/* ── KPI CARDS ── */
+    27→    27→.kpi-row{display:flex;gap:10px;padding:10px 14px;flex-shrink:0}
+    28→    28→.kpi-card{flex:1;min-width:0;background:linear-gradient(145deg,rgba(22,33,62,.9),rgba(15,23,42,.95));border:1px solid rgba(245,158,11,.2);border-radius:12px;padding:12px 8px;text-align:center;position:relative;overflow:hidden;animation:slideUp .6s ease-out both}
+    29→    29→.kpi-card:nth-child(1){animation-delay:.1s}
+    30→    30→.kpi-card:nth-child(2){animation-delay:.2s}
+    31→    31→.kpi-card:nth-child(3){animation-delay:.3s}
+    32→    32→.kpi-card:nth-child(4){animation-delay:.4s}
+    33→    33→.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#f59e0b,transparent)}
+    34→    34→.kpi-card.green-border::before{background:linear-gradient(90deg,transparent,#00e676,transparent)}
+    35→    35→.kpi-card.blue-border::before{background:linear-gradient(90deg,transparent,#42a5f5,transparent)}
+    36→    36→.kpi-card.red-border::before{background:linear-gradient(90deg,transparent,#ef5350,transparent)}
+    37→    37→.kpi-icon{font-size:18px;margin-bottom:4px;opacity:.7}
+    38→    38→.kpi-value{font-size:34px;font-weight:800;color:#f59e0b;line-height:1.1}
+    39→    39→.kpi-value.green{color:#00e676}
+    40→    40→.kpi-value.blue{color:#42a5f5}
+    41→    41→.kpi-value.red{color:#ef5350}
+    42→    42→.kpi-label{font-size:10px;color:#7a7a9a;text-transform:uppercase;letter-spacing:.8px;margin-top:4px}
+    43→    43→
+    44→    44→/* ── PRODUCTION PIPELINE ── */
+    45→    45→.pipeline-section{padding:6px 0;flex-shrink:0;background:rgba(15,23,42,.5)}
+    46→    46→.pipeline-title{font-size:10px;color:#5a5a7a;text-transform:uppercase;letter-spacing:2px;padding:4px 16px 6px;text-align:center}
+    47→    47→.pipeline{display:flex;align-items:center;width:100%;padding:4px 10px 12px}
+    48→    48→.p-node{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;position:relative;z-index:2}
+    49→    49→.p-node-box{width:50px;height:50px;border-radius:50%;background:linear-gradient(145deg,#1a1f35,#0f1525);border:2px solid #2a2a4a;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#5a5a7a;transition:all .5s ease;position:relative}
+    50→    50→.p-node.active .p-node-box{border-color:#00e676;color:#00e676;box-shadow:0 0 20px rgba(0,230,118,.3),inset 0 0 15px rgba(0,230,118,.1);animation:nodeGlow 2s ease-in-out infinite}
+    51→    51→.p-node-label{font-size:10px;color:#5a5a7a;margin-top:4px;text-transform:uppercase;letter-spacing:1px;font-weight:600;transition:color .5s}
+    52→    52→.p-node.active .p-node-label{color:#00e676}
+    53→    53→.p-node-worker{font-size:10px;color:#f59e0b;font-weight:700;margin-top:2px;min-height:14px;opacity:0;transition:opacity .5s}
+    54→    54→.p-node.active .p-node-worker{opacity:1}
+    55→    55→.p-arrow{flex:1;display:flex;align-items:center;position:relative;height:32px;margin:0 -4px;margin-bottom:16px;min-width:20px}
+    56→    56→.p-arrow-line{width:100%;height:4px;background:linear-gradient(90deg,#1a1f35,#2a2a4a,#1a1f35);border-radius:2px;position:relative;overflow:hidden}
+    57→    57→.p-arrow-head{width:0;height:0;border-top:8px solid transparent;border-bottom:8px solid transparent;border-left:14px solid #2a2a4a;flex-shrink:0;transition:border-color .5s}
+    58→    58→.p-node.active+.p-arrow .p-arrow-head,.p-arrow.active .p-arrow-head{border-left-color:#00e676}
+    59→    59→.p-arrow-dot{width:10px;height:10px;border-radius:50%;background:radial-gradient(circle,#f59e0b,#d97706);position:absolute;top:-3px;animation:arrowFlow 5s linear infinite;box-shadow:0 0 8px rgba(245,158,11,.6)}
+    60→    60→.p-arrow-dot:nth-child(2){animation-delay:1.6s}
+    61→    61→.p-arrow-dot:nth-child(3){animation-delay:3.2s}
+    62→    62→.p-arrow.inactive .p-arrow-dot{opacity:.15;animation-duration:8s}
+    63→    63→
+    64→    64→/* ── ACTIVE WORKERS SECTION ── */
+    65→    65→.workers-section{flex:1;overflow:hidden;display:flex;flex-direction:column;padding:4px 14px 0;min-height:0}
+    66→    66→.workers-title{font-size:11px;color:#5a5a7a;text-transform:uppercase;letter-spacing:2px;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+    67→    67→.workers-title .live-dot{width:8px;height:8px;border-radius:50%;background:#00e676;animation:livePulse 1.5s ease-in-out infinite;flex-shrink:0}
+    68→    68→.workers-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:8px}
+    69→    69→.worker-card{background:linear-gradient(145deg,rgba(22,33,62,.85),rgba(15,23,42,.9));border:1px solid rgba(0,230,118,.25);border-radius:12px;padding:12px 14px;margin-bottom:8px;animation:fadeInUp .5s ease-out both;position:relative;overflow:hidden}
+    70→    70→.worker-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#00e676,#00c853);border-radius:0 2px 2px 0}
+    71→    71→.worker-card:nth-child(1){animation-delay:.1s}
+    72→    72→.worker-card:nth-child(2){animation-delay:.2s}
+    73→    73→.worker-card:nth-child(3){animation-delay:.3s}
+    74→    74→.worker-card:nth-child(4){animation-delay:.4s}
+    75→    75→.worker-card:nth-child(5){animation-delay:.5s}
+    76→    76→.worker-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+    77→    77→.worker-name{font-size:16px;font-weight:700;color:#00e676;display:flex;align-items:center;gap:6px}
+    78→    78→.worker-name .w-icon{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#00e676,#00c853);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#000}
+    79→    79→.worker-time{font-size:11px;color:#7a7a9a}
+    80→    80→.worker-details{display:flex;gap:12px;flex-wrap:wrap}
+    81→    81→.worker-detail{font-size:12px;color:#aaa}
+    82→    82→.worker-detail strong{color:#e0e0e0}
+    83→    83→.worker-detail .lote-code{color:#f59e0b;font-weight:700}
+    84→    84→.worker-detail .peca-nome{color:#42a5f5;font-weight:600}
+    85→    85→
+    86→    86→.no-workers{text-align:center;padding:10px 20px;color:#5a5a7a;font-size:13px}
+    87→    87→.no-workers .nw-icon{font-size:30px;margin-bottom:4px;opacity:.4}
+    88→    88→
+    89→    89→/* ── LOTES MARQUEE ON DASHBOARD ── */
+    90→    90→.lotes-dash-section{flex-shrink:0;padding:4px 0;border-top:1px solid rgba(245,158,11,.15);border-bottom:1px solid rgba(245,158,11,.15);background:rgba(15,23,42,.6)}
+    91→    91→.lotes-dash-title{font-size:10px;color:#5a5a7a;text-transform:uppercase;letter-spacing:2px;padding:4px 14px 2px;display:flex;align-items:center;gap:8px}
+    92→    92→.lotes-dash-title .ld-count{color:#f59e0b;font-weight:700;margin-left:auto}
+    93→    93→.marquee-container{overflow:hidden;position:relative;height:72px}
+    94→    94→.marquee-container::before,.marquee-container::after{content:'';position:absolute;top:0;bottom:0;width:40px;z-index:2;pointer-events:none}
+    95→    95→.marquee-container::before{left:0;background:linear-gradient(90deg,#0a0e1a,transparent)}
+    96→    96→.marquee-container::after{right:0;background:linear-gradient(270deg,#0a0e1a,transparent)}
+    97→    97→.marquee-track{display:flex;align-items:center;gap:20px;height:72px;animation:marqueeScroll 40s linear infinite;width:max-content}
+    98→    98→.marquee-track:hover{animation-play-state:paused}
+    99→    99→.marquee-item{flex-shrink:0;display:flex;align-items:center;gap:10px;background:linear-gradient(145deg,rgba(22,33,62,.8),rgba(15,23,42,.9));border:1px solid #2a2a4a;border-radius:10px;padding:10px 18px;white-space:nowrap;font-size:15px}
+   100→   100→.marquee-item.prod{border-color:rgba(0,230,118,.35)}
+   101→   101→.marquee-item .mi-lote{color:#f59e0b;font-weight:700;font-size:17px}
+   102→   102→.marquee-item .mi-sep{color:#2a2a5a}
+   103→   103→.marquee-item .mi-produto{color:#ccc;font-weight:600}
+   104→   104→.marquee-item .mi-desc{color:#5a5a7a;font-size:13px}
+   105→   105→.marquee-item .mi-info{color:#7a7a9a;font-size:13px}
+   106→   106→.marquee-item .mi-info b{color:#e0e0e0}
+   107→   107→.marquee-item .mi-badge{font-size:11px;padding:2px 9px;border-radius:8px;font-weight:700;text-transform:uppercase;margin-left:6px}
+   108→   108→.marquee-item .mi-badge.prod{background:rgba(0,230,118,.15);color:#00e676}
+   109→   109→.marquee-item .mi-badge.wait{background:rgba(245,158,11,.12);color:#f59e0b}
+   110→   110→@keyframes marqueeScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+   111→   111→
+   112→   112→/* ── TOUCH HINT ── */
+   113→   113→.touch-hint{text-align:center;padding:8px;font-size:12px;color:#5a5a7a;letter-spacing:1px;text-transform:uppercase;flex-shrink:0;animation:hintPulse 3s ease-in-out infinite}
+   114→   114→
+   115→   115→/* ── ANIMATIONS ── */
+   116→   116→@keyframes slideUp{from{transform:translateY(25px);opacity:0}to{transform:translateY(0);opacity:1}}
+   117→   117→@keyframes fadeInUp{from{transform:translateY(15px);opacity:0}to{transform:translateY(0);opacity:1}}
+   118→   118→@keyframes arrowFlow{0%{left:-12px;opacity:0}10%{opacity:1}90%{opacity:1}100%{left:calc(100% + 4px);opacity:0}}
+   119→   119→@keyframes nodeGlow{0%,100%{box-shadow:0 0 15px rgba(0,230,118,.2),inset 0 0 10px rgba(0,230,118,.05)}50%{box-shadow:0 0 30px rgba(0,230,118,.45),inset 0 0 20px rgba(0,230,118,.15)}}
+   120→   120→@keyframes livePulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+   121→   121→@keyframes hintPulse{0%,100%{opacity:.3}50%{opacity:.8}}
+   122→   122→@keyframes spin{to{transform:rotate(360deg)}}
+   123→   123→@keyframes countPulse{0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
+   124→   124→
+   125→   125→/* ── RESPONSIVE ── */
+   126→   126→@media(max-width:600px){
+   127→   127→  .p-node-box{width:38px;height:38px;font-size:14px}
+   128→   128→  .p-node-label{font-size:8px}
+   129→   129→  .p-arrow-head{border-top-width:6px;border-bottom-width:6px;border-left-width:10px}
+   130→   130→  .p-arrow-dot{width:7px;height:7px;top:-2px}
+   131→   131→  .p-node-worker{font-size:8px}
+   132→   132→  .kpi-value{font-size:26px}
+   133→   133→  .kpi-card{padding:8px 4px}
+   134→   134→  .kpi-label{font-size:9px}
+   135→   135→  .marquee-item{font-size:13px;padding:8px 12px}
+   136→   136→  .marquee-item .mi-lote{font-size:14px}
+   137→   137→  .marquee-container{height:58px}
+   138→   138→  .marquee-track{height:58px}
+   139→   139→}
+   140→   140→
+   141→   141→/* ══════════════════════════════════════════════════════════
+   142→   142→   SCREENS 2-4 (lotes / pecas / usuarios) — same as before
+   143→   143→   ══════════════════════════════════════════════════════════ */
+   144→   144→.header{background:#16213e;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;min-height:60px;border-bottom:3px solid #f59e0b}
+   145→   145→.header h1{font-size:20px;color:#f59e0b;font-weight:700;letter-spacing:1px}
+   146→   146→.header .clock{font-size:26px;color:#00e676;font-weight:700;font-variant-numeric:tabular-nums}
+   147→   147→.btn-touch{background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;font-size:20px;font-weight:700;padding:18px 32px;border:none;border-radius:12px;cursor:pointer;width:90%;max-width:500px;margin:10px auto;text-transform:uppercase;letter-spacing:1px;box-shadow:0 4px 20px rgba(245,158,11,.4)}
+   148→   148→.btn-touch:active{transform:scale(.97);box-shadow:0 2px 10px rgba(245,158,11,.3)}
+   149→   149→.btn-green{background:linear-gradient(135deg,#00e676,#00c853);color:#000}
+   150→   150→.btn-green:active{box-shadow:0 2px 10px rgba(0,230,118,.3)}
+   151→   151→.btn-red{background:linear-gradient(135deg,#ef5350,#c62828);color:#fff}
+   152→   152→.btn-red:active{box-shadow:0 2px 10px rgba(239,83,80,.3)}
+   153→   153→.btn-back{background:#2a2a5a;color:#aaa;font-size:16px;padding:12px 24px;border:none;border-radius:10px;cursor:pointer;width:90%;max-width:500px;margin:6px auto}
+   154→   154→.btn-back:active{background:#3a3a6a}
+   155→   155→.scroll-area{flex:1;overflow-y:auto;padding:12px 16px;-webkit-overflow-scrolling:touch}
+   156→   156→.lote-card{background:#16213e;border:2px solid #2a2a5a;border-radius:14px;padding:16px;margin-bottom:12px;cursor:pointer;transition:border-color .2s;display:flex;align-items:center;gap:12px}
+   157→   157→.lote-card:active{border-color:#f59e0b}
+   158→   158→.lote-card.ativo{border-color:#00e676}
+   159→   159→.lote-card .lote-left{flex:1;min-width:0}
+   160→   160→.lote-card .lote-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px}
+   161→   161→.lote-card .lote-codigo{font-size:20px;font-weight:700;color:#f59e0b}
+   162→   162→.lote-card .lote-prod-row{font-size:15px;color:#aaa;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+   163→   163→.lote-card .lote-desc-row{font-size:14px;color:#7a7a9a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+   164→   164→.lote-card .lote-info{display:flex;gap:14px;font-size:14px;color:#888;flex-wrap:wrap;margin-top:4px}
+   165→   165→.lote-card .lote-info span{display:flex;align-items:center;gap:4px}
+   166→   166→.lote-card .lote-qty{font-size:48px;font-weight:800;color:#f59e0b;line-height:1;text-align:center;flex-shrink:0;min-width:70px}
+   167→   167→.lote-card .lote-qty-label{font-size:10px;color:#5a5a7a;text-transform:uppercase;letter-spacing:1px;text-align:center}
+   168→   168→.lote-card .lote-qty-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0}
+   169→   169→.lote-card .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;text-transform:uppercase}
+   170→   170→.badge-prod{background:#00e676;color:#000}
+   171→   171→.badge-final{background:#42a5f5;color:#000}
+   172→   172→.peca-card{background:#16213e;border:1px solid #2a2a5a;border-radius:10px;padding:14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+   173→   173→.peca-card .peca-codigo{font-size:18px;font-weight:700;color:#e0e0e0}
+   174→   174→.peca-card .peca-qtd{font-size:20px;font-weight:800;color:#f59e0b}
+   175→   175→.peca-card .peca-tipo{font-size:11px;color:#888;margin-top:2px}
+   176→   176→.usuario-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:12px}
+   177→   177→.usuario-btn{background:#16213e;border:2px solid #2a2a5a;border-radius:14px;padding:20px 10px;text-align:center;cursor:pointer;font-size:18px;font-weight:700;color:#e0e0e0;transition:all .2s}
+   178→   178→.usuario-btn:active{border-color:#f59e0b;background:#1e2a4e}
+   179→   179→.usuario-btn .user-icon{font-size:28px;margin-bottom:6px;color:#f59e0b}
+   180→   180→.usuario-btn .user-setor{font-size:11px;color:#888;margin-top:4px}
+   181→   181→.section-title{font-size:14px;color:#888;padding:8px 16px;text-transform:uppercase;letter-spacing:1px}
+   182→   182→.prod-final{background:linear-gradient(135deg,#0d1b3e,#16213e);border:1px solid #42a5f5;border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
+   183→   183→.prod-final .pf-label{font-size:12px;color:#42a5f5;text-transform:uppercase}
+   184→   184→.prod-final .pf-codigo{font-size:18px;font-weight:700;color:#42a5f5}
+   185→   185→.status-bar{text-align:center;padding:8px;font-size:14px;color:#00e676;background:rgba(0,230,118,.1);border-top:1px solid rgba(0,230,118,.2)}
+   186→   186→.loading{text-align:center;padding:40px;color:#888;font-size:16px}
+   187→   187→.loading .spinner{display:inline-block;width:32px;height:32px;border:3px solid #2a2a5a;border-top-color:#f59e0b;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:12px}
+   188→   188→.dialog-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);z-index:100;justify-content:center;align-items:center}
+   189→   189→.dialog-overlay.active{display:flex}
+   190→   190→.dialog-box{background:#16213e;border:2px solid #f59e0b;border-radius:16px;padding:28px;max-width:420px;width:90%;text-align:center}
+   191→   191→.dialog-box h3{font-size:20px;color:#f59e0b;margin-bottom:12px}
+   192→   192→.dialog-box p{font-size:15px;color:#ccc;margin-bottom:20px}
+   193→   193→.dialog-btns{display:flex;gap:12px;justify-content:center}
+   194→   194→.dialog-btns button{flex:1;padding:14px;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer}
+   195→   195→.dialog-btns .sim{background:#00e676;color:#000}
+   196→   196→.dialog-btns .nao{background:#2a2a5a;color:#aaa}
+   197→   197→</style>
+   198→   198→</head>
+   199→   199→<body>
+   200→   200→
+   201→   201→<!-- ========== SCREEN 1: ANIMATED FACTORY DASHBOARD ========== -->
+   202→   202→<div id="screen1" class="screen active" onclick="dashClick(event)">
+   203→   203→  <div class="dash-header">
+   204→   204→    <h1>SERRALHERIA <span>Production Monitor</span></h1>
+   205→   205→    <div class="dash-clock" id="clock">00:00:00</div>
+   206→   206→  </div>
+   207→   207→
+   208→   208→  <!-- KPI Cards -->
+   209→   209→  <div class="kpi-row">
+   210→   210→    <div class="kpi-card">
+   211→   211→      <div class="kpi-value" id="kpiLotes">--</div>
+   212→   212→      <div class="kpi-label">Lotes Abertos</div>
+   213→   213→    </div>
+   214→   214→    <div class="kpi-card blue-border">
+   215→   215→      <div class="kpi-value blue" id="kpiPecas">--</div>
+   216→   216→      <div class="kpi-label">Pecas</div>
+   217→   217→    </div>
+   218→   218→    <div class="kpi-card green-border">
+   219→   219→      <div class="kpi-value green" id="kpiQtd">--</div>
+   220→   220→      <div class="kpi-label">Qtd Total</div>
+   221→   221→    </div>
+   222→   222→    <div class="kpi-card red-border">
+   223→   223→      <div class="kpi-value red" id="kpiAndamento">--</div>
+   224→   224→      <div class="kpi-label">Produzindo</div>
+   225→   225→    </div>
+   226→   226→  </div>
+   227→   227→
+   228→   228→  <!-- Production Pipeline -->
+   229→   229→  <div class="pipeline-section">
+   230→   230→    <div class="pipeline-title">Linha de Producao</div>
+   231→   231→    <div class="pipeline" id="pipeline">
+   232→   232→      <div class="p-node" id="node-0">
+   233→   233→        <div class="p-node-box">C</div>
+   234→   234→        <div class="p-node-label">CORTE</div>
+   235→   235→        <div class="p-node-worker" id="nw-0"></div>
+   236→   236→      </div>
+   237→   237→      <div class="p-arrow" id="arrow-0"><div class="p-arrow-line"><div class="p-arrow-dot"></div><div class="p-arrow-dot"></div><div class="p-arrow-dot"></div></div><div class="p-arrow-head"></div></div>
+   238→   238→      <div class="p-node" id="node-1">
+   239→   239→        <div class="p-node-box">D</div>
+   240→   240→        <div class="p-node-label">DOBRA</div>
+   241→   241→        <div class="p-node-worker" id="nw-1"></div>
+   242→   242→      </div>
+   243→   243→      <div class="p-arrow" id="arrow-1"><div class="p-arrow-line"><div class="p-arrow-dot"></div><div class="p-arrow-dot"></div><div class="p-arrow-dot"></div></div><div class="p-arrow-head"></div></div>
+   244→   244→      <div class="p-node" id="node-2">
+   245→   245→        <div class="p-node-box">S</div>
+   246→   246→        <div class="p-node-label">SOLDA</div>
+   247→   247→        <div class="p-node-worker" id="nw-2"></div>
+   248→   248→      </div>
+   249→   249→      <div class="p-arrow" id="arrow-2"><div class="p-arrow-line"><div class="p-arrow-dot"></div><div class="p-arrow-dot"></div><div class="p-arrow-dot"></div></div><div class="p-arrow-head"></div></div>
+   250→   250→      <div class="p-node" id="node-3">
+   251→   251→        <div class="p-node-box">A</div>
+   252→   252→        <div class="p-node-label">ACABAM.</div>
+   253→   253→        <div class="p-node-worker" id="nw-3"></div>
+   254→   254→      </div>
+   255→   255→      <div class="p-arrow" id="arrow-3"><div class="p-arrow-line"><div class="p-arrow-dot"></div><div class="p-arrow-dot"></div><div class="p-arrow-dot"></div></div><div class="p-arrow-head"></div></div>
+   256→   256→      <div class="p-node" id="node-4">
+   257→   257→        <div class="p-node-box">M</div>
+   258→   258→        <div class="p-node-label">MONTAGEM</div>
+   259→   259→        <div class="p-node-worker" id="nw-4"></div>
+   260→   260→      </div>
+   261→   261→    </div>
+   262→   262→  </div>
+   263→   263→
+   264→   264→  <!-- Lotes Marquee -->
+   265→   265→  <div class="lotes-dash-section">
+   266→   266→    <div class="lotes-dash-title">
+   267→   267→      LOTES EM ABERTO
+   268→   268→      <span class="ld-count" id="lotesDashCount">0</span>
+   269→   269→    </div>
+   270→   270→    <div class="marquee-container" id="marqueeContainer">
+   271→   271→      <div class="marquee-track" id="marqueeTrack">
+   272→   272→        <div style="padding:0 14px;color:#5a5a7a;font-size:12px">Carregando lotes...</div>
+   273→   273→      </div>
+   274→   274→    </div>
+   275→   275→  </div>
+   276→   276→
+   277→   277→  <!-- Active Workers -->
+   278→   278→  <div class="workers-section">
+   279→   279→    <div class="workers-title">
+   280→   280→      <div class="live-dot"></div>
+   281→   281→      OPERADORES EM PRODUCAO
+   282→   282→      <span id="activeCount" style="color:#00e676;margin-left:auto;font-size:13px;font-weight:700">0</span>
+   283→   283→    </div>
+   284→   284→    <div class="workers-scroll" id="workersGrid">
+   285→   285→      <div class="loading"><div class="spinner"></div><br>Carregando dados...</div>
+   286→   286→    </div>
+   287→   287→  </div>
+   288→   288→
+   289→   289→  <div class="touch-hint">Toque para acessar lotes de producao</div>
+   290→   290→</div>
+   291→   291→
+   292→   292→<!-- ========== SCREEN 2: LOTES ========== -->
+   293→   293→<div id="screen2" class="screen">
+   294→   294→  <div class="header">
+   295→   295→    <h1>LOTES DE PRODUCAO</h1>
+   296→   296→    <div class="clock" id="clock2">00:00:00</div>
+   297→   297→  </div>
+   298→   298→  <div class="scroll-area" id="lotesList">
+   299→   299→    <div class="loading"><div class="spinner"></div><br>Carregando lotes...</div>
+   300→   300→  </div>
+   301→   301→  <div style="padding:10px 16px">
+   302→   302→    <button class="btn-back" onclick="showScreen(1)">&#8592; Voltar ao Dashboard</button>
+   303→   303→  </div>
+   304→   304→</div>
+   305→   305→
+   306→   306→<!-- ========== SCREEN 3: PECAS ========== -->
+   307→   307→<div id="screen3" class="screen">
+   308→   308→  <div class="header">
+   309→   309→    <h1 id="pecasTitle">PECAS - LOTE</h1>
+   310→   310→    <div class="clock" id="clock3">00:00:00</div>
+   311→   311→  </div>
+   312→   312→  <div class="scroll-area" id="pecasContent">
+   313→   313→    <div class="loading"><div class="spinner"></div><br>Carregando...</div>
+   314→   314→  </div>
+   315→   315→  <div style="padding:10px 16px" id="pecasActions"></div>
+   316→   316→</div>
+   317→   317→
+   318→   318→<!-- ========== SCREEN 4: USUARIOS ========== -->
+   319→   319→<div id="screen4" class="screen">
+   320→   320→  <div class="header">
+   321→   321→    <h1>SELECIONAR OPERADOR</h1>
+   322→   322→    <div class="clock" id="clock4">00:00:00</div>
+   323→   323→  </div>
+   324→   324→  <div class="section-title" id="selInfo"></div>
+   325→   325→  <div class="usuario-grid" id="usuarioGrid"></div>
+   326→   326→  <div style="padding:10px 16px">
+   327→   327→    <button class="btn-back" onclick="showScreen(3)">&#8592; Voltar as Pecas</button>
+   328→   328→  </div>
+   329→   329→</div>
+   330→   330→
+   331→   331→<!-- ========== CONFIRM DIALOG ========== -->
+   332→   332→<div class="dialog-overlay" id="dialogConfirm">
+   333→   333→  <div class="dialog-box">
+   334→   334→    <h3 id="dialogTitle">Confirmar</h3>
+   335→   335→    <p id="dialogMsg">Tem certeza?</p>
+   336→   336→    <div class="dialog-btns">
+   337→   337→      <button class="nao" onclick="fecharDialog()">NAO</button>
+   338→   338→      <button class="sim" id="dialogSimBtn">SIM</button>
+   339→   339→    </div>
+   340→   340→  </div>
+   341→   341→</div>
+   342→   342→
+   343→   343→<!-- ========== FINALIZAR DIALOG ========== -->
+   344→   344→<div class="dialog-overlay" id="dialogFinalizar">
+   345→   345→  <div class="dialog-box">
+   346→   346→    <h3>Finalizar Producao</h3>
+   347→   347→    <p id="finalizarMsg">Finalizar este lote?</p>
+   348→   348→    <div class="dialog-btns">
+   349→   349→      <button class="nao" onclick="fecharFinalizar()">NAO</button>
+   350→   350→      <button class="sim" id="btnConfirmaFinalizar">SIM, FINALIZAR</button>
+   351→   351→    </div>
+   352→   352→  </div>
+   353→   353→</div>
+   354→   354→
+   355→   355→<script>
+   356→   356→var currentLote = null;
+   357→   357→var currentPecas = [];
+   358→   358→var DASH_REFRESH = 10000;
+   359→   359→var idleTimer = null;
+   360→   360→var IDLE_TIMEOUT = 60000;
+   361→   361→
+   362→   362→/* ── Idle Timer ── */
+   363→   363→function resetIdle() {
+   364→   364→  if (idleTimer) clearTimeout(idleTimer);
+   365→   365→  idleTimer = setTimeout(function() {
+   366→   366→    var s1 = document.getElementById('screen1');
+   367→   367→    if (!s1.classList.contains('active')) {
+   368→   368→      showScreen(1);
+   369→   369→    }
+   370→   370→  }, IDLE_TIMEOUT);
+   371→   371→}
+   372→   372→document.addEventListener('touchstart', resetIdle, {passive: true});
+   373→   373→document.addEventListener('click', resetIdle);
+   374→   374→resetIdle();
+   375→   375→
+   376→   376→/* ── Screen Management ── */
+   377→   377→function showScreen(n) {
+   378→   378→  var i, screens = document.querySelectorAll('.screen');
+   379→   379→  for (i = 0; i < screens.length; i++) { screens[i].classList.remove('active'); }
+   380→   380→  document.getElementById('screen' + n).classList.add('active');
+   381→   381→  if (n === 1) { loadDashboard(); }
+   382→   382→  if (n === 2) { loadLotes(); }
+   383→   383→  resetIdle();
+   384→   384→}
+   385→   385→
+   386→   386→/* ── Dashboard Click → go to Lotes ── */
+   387→   387→function dashClick(e) {
+   388→   388→  /* avoid triggering if clicking on a scrollable area that is being scrolled */
+   389→   389→  showScreen(2);
+   390→   390→}
+   391→   391→
+   392→   392→/* ── Clock ── */
+   393→   393→function updateClock() {
+   394→   394→  var now = new Date();
+   395→   395→  var h = String(now.getHours()).padStart(2, '0');
+   396→   396→  var m = String(now.getMinutes()).padStart(2, '0');
+   397→   397→  var s = String(now.getSeconds()).padStart(2, '0');
+   398→   398→  var t = h + ':' + m + ':' + s;
+   399→   399→  document.getElementById('clock').textContent = t;
+   400→   400→  var c2 = document.getElementById('clock2');
+   401→   401→  var c3 = document.getElementById('clock3');
+   402→   402→  var c4 = document.getElementById('clock4');
+   403→   403→  if (c2) c2.textContent = t;
+   404→   404→  if (c3) c3.textContent = t;
+   405→   405→  if (c4) c4.textContent = t;
+   406→   406→}
+   407→   407→setInterval(updateClock, 1000);
+   408→   408→updateClock();
+   409→   409→
+   410→   410→/* ── HTML Escape ── */
+   411→   411→function esc(s) {
+   412→   412→  if (!s) return '';
+   413→   413→  var d = document.createElement('div');
+   414→   414→  d.appendChild(document.createTextNode(String(s)));
+   415→   415→  return d.innerHTML;
+   416→   416→}
+   417→   417→
+   418→   418→/* ── Animate Number ── */
+   419→   419→function animateValue(el, end) {
+   420→   420→  var startVal = parseInt(el.textContent) || 0;
+   421→   421→  if (startVal === end) return;
+   422→   422→  var dur = 600;
+   423→   423→  var st = null;
+   424→   424→  function step(ts) {
+   425→   425→    if (!st) st = ts;
+   426→   426→    var p = Math.min((ts - st) / dur, 1);
+   427→   427→    var eased = 1 - Math.pow(1 - p, 3);
+   428→   428→    el.textContent = Math.round(startVal + (end - startVal) * eased);
+   429→   429→    if (p < 1) requestAnimationFrame(step);
+   430→   430→    else el.style.animation = 'countPulse .3s ease';
+   431→   431→  }
+   432→   432→  el.style.animation = '';
+   433→   433→  requestAnimationFrame(step);
+   434→   434→}
+   435→   435→
+   436→   436→/* ══════════════════════════════════════════════════════════
+   437→   437→   LOAD DASHBOARD — fetches /api/dashboard with real data
+   438→   438→   ══════════════════════════════════════════════════════════ */
+   439→   439→function loadDashboard() {
+   440→   440→  fetch('/api/dashboard').then(function(r) { return r.json(); }).then(function(data) {
+   441→   441→    if (data.error) {
+   442→   442→      console.error('Dashboard error:', data.error);
+   443→   443→      return;
+   444→   444→    }
+   445→   445→
+   446→   446→    /* KPIs */
+   447→   447→    animateValue(document.getElementById('kpiLotes'), data.total_lotes || 0);
+   448→   448→    animateValue(document.getElementById('kpiPecas'), data.total_pecas || 0);
+   449→   449→    animateValue(document.getElementById('kpiQtd'), data.total_qtd || 0);
+   450→   450→    animateValue(document.getElementById('kpiAndamento'), data.em_andamento || 0);
+   451→   451→
+   452→   452→    /* Pipeline nodes — assign active workers to sectors */
+   453→   453→    updatePipeline(data.ativos || []);
+   454→   454→
+   455→   455→    /* Lotes cards on dashboard */
+   456→   456→    renderLotesDash(data.lotes || []);
+   457→   457→
+   458→   458→    /* Worker cards */
+   459→   459→    renderWorkers(data.ativos || [], data);
+   460→   460→
+   461→   461→  }).catch(function(e) {
+   462→   462→    console.error('Dashboard fetch error:', e);
+   463→   463→  });
+   464→   464→}
+   465→   465→
+   466→   466→/* ── Update Pipeline with active workers ── */
+   467→   467→function updatePipeline(ativos) {
+   468→   468→  /* Clear all nodes first */
+   469→   469→  var i;
+   470→   470→  for (i = 0; i < 5; i++) {
+   471→   471→    document.getElementById('node-' + i).classList.remove('active');
+   472→   472→    document.getElementById('nw-' + i).textContent = '';
+   473→   473→  }
+   474→   474→
+   475→   475→  /* Assign active workers to sectors cyclically */
+   476→   476→  if (ativos.length === 0) return;
+   477→   477→
+   478→   478→  /* Group by unique worker (one entry per worker) */
+   479→   479→  var seen = {};
+   480→   480→  var workers = [];
+   481→   481→  for (i = 0; i < ativos.length; i++) {
+   482→   482→    var nome = ativos[i].usuario_nome;
+   483→   483→    if (!seen[nome]) {
+   484→   484→      seen[nome] = true;
+   485→   485→      workers.push(ativos[i]);
+   486→   486→    }
+   487→   487→  }
+   488→   488→
+   489→   489→  for (i = 0; i < workers.length && i < 5; i++) {
+   490→   490→    var node = document.getElementById('node-' + i);
+   491→   491→    node.classList.add('active');
+   492→   492→    document.getElementById('nw-' + i).textContent = workers[i].usuario_nome;
+   493→   493→  }
+   494→   494→
+   495→   495→  /* If there are active workers, keep all pipes active */
+   496→   496→  var arrows = document.querySelectorAll('.p-arrow');
+   497→   497→  var hasActive = workers.length > 0;
+   498→   498→  for (i = 0; i < arrows.length; i++) {
+   499→   499→    if (hasActive) {
+   500→   500→      arrows[i].classList.remove('inactive');
+
+[showing lines 1-500 of 855; use offset=501 with limit to continue reading]
