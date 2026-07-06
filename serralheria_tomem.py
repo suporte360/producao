@@ -28,7 +28,7 @@ MYSQL_PASS = 'senha123'
 # PostgreSQL (ERP) - para buscar nomes reais dos produtos
 PG_HOST = '192.168.1.17'
 PG_PORT = 5432
-PG_DB = 'erp'
+PG_DB = 'salutem'
 PG_USER = 'postgres'
 PG_PASS = 'postgres'
 
