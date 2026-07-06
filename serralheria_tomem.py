@@ -43,6 +43,9 @@ SYNC_INTERVAL = 300  # 5 minutes
 # In-memory cache for product names (loaded from PostgreSQL at startup)
 _produto_cache = {}
 
+# Set of lote_codigo that exist in ERP (updated each sync)
+_lotes_erp_ativos = set()
+
 # Mapeamento de setores ERP -> Sistema Local (mesmo do app.py)
 MAPEAMENTO_SETORES = {
     'ALMOXARIFADO': 'ALMOXARIFADO',
@@ -289,28 +292,19 @@ def _sync_erp_to_mariadb():
             if not lote_desc:
                 lote_desc = produto_final
 
+            # Descobrir quais colunas existem (sem ALTER TABLE)
             try:
                 db_execute("""
                     INSERT INTO lotes_producao
-                        (ordem, lote_codigo, codigo_produto, descricao_produto, qtde_ordem,
-                         unidade_medida, status_erp, data_previsao_erp, data_abertura_erp,
-                         status, data_ultima_sync)
-                    VALUES (%s, %s, %s, %s, %s, 'PC', %s, %s, %s, 'importado', NOW())
+                        (ordem, lote_codigo, codigo_produto, descricao_produto, qtde_ordem)
+                    VALUES (%s, %s, %s, %s, %s)
                     ON DUPLICATE KEY UPDATE
                         descricao_produto = VALUES(descricao_produto),
                         codigo_produto = VALUES(codigo_produto),
-                        qtde_ordem = VALUES(qtde_ordem),
-                        status_erp = VALUES(status_erp),
-                        data_previsao_erp = VALUES(data_previsao_erp),
-                        data_abertura_erp = VALUES(data_abertura_erp),
-                        data_ultima_sync = NOW(),
-                        status = IF(status = 'cancelado_erp', 'importado', status)
+                        qtde_ordem = VALUES(qtde_ordem)
                 """, (
                     maior_ordem, lotcod, produto_final, lote_desc,
                     qtd_final if qtd_final else 0,
-                    _str(lote_erp.get('status_erp')),
-                    lote_erp.get('data_previsao'),
-                    lote_erp.get('data_abertura'),
                 ))
                 lotes_synced += 1
             except Exception as e:
@@ -409,21 +403,9 @@ def _sync_erp_to_mariadb():
                     except Exception as e:
                         app.logger.warning('Sync op OF %s falhou: %s', of_num_str, e)
 
-        # 2. Marcar lotes que NAO existem mais no ERP como 'cancelado_erp'
-        if lotes_erp_codigos:
-            placeholders = ','.join(['%s'] * len(lotes_erp_codigos))
-            db_execute(
-                "UPDATE lotes_producao SET status = 'cancelado_erp' "
-                "WHERE status != 'cancelado_erp' "
-                "AND lote_codigo NOT IN (" + placeholders + ")",
-                list(lotes_erp_codigos)
-            )
-        else:
-            # Nenhum lote aberto no ERP: cancelar todos
-            db_execute(
-                "UPDATE lotes_producao SET status = 'cancelado_erp' "
-                "WHERE status != 'cancelado_erp'"
-            )
+        # 2. Salvar lista de lotes ativos no ERP (para filtrar na API)
+        global _lotes_erp_ativos
+        _lotes_erp_ativos = lotes_erp_codigos
 
         # 3. Reload product names cache
         _load_produto_cache()
@@ -497,27 +479,9 @@ def init_db():
         except Exception:
             db_execute('ALTER TABLE serralheria_producao ADD COLUMN ' + col + ' ' + col_def)
 
-    # Migration: ensure lotes_producao has columns needed by sync
-    for col, col_def in [
-        ('data_ultima_sync', 'DATETIME DEFAULT NULL'),
-        ('status_erp', "VARCHAR(20) DEFAULT ''"),
-        ('data_abertura_erp', 'DATETIME DEFAULT NULL'),
-        ('data_previsao_erp', 'DATETIME DEFAULT NULL'),
-        ('unidade_medida', "VARCHAR(10) DEFAULT 'UN'"),
-    ]:
-        try:
-            db_query_one('SELECT ' + col + ' FROM lotes_producao LIMIT 1')
-        except Exception:
-            db_execute('ALTER TABLE lotes_producao ADD COLUMN ' + col + ' ' + col_def)
-
-    # Migration: ensure status column is VARCHAR (not ENUM) to accept new values
-    try:
-        db_execute(
-            "ALTER TABLE lotes_producao MODIFY COLUMN status VARCHAR(50) DEFAULT 'importado'"
-        )
-        app.logger.info('Migration: status column changed to VARCHAR(50)')
-    except Exception as e:
-        app.logger.warning('Migration status column: %s', e)
+    # NOTE: Nao fazemos ALTER TABLE em lotes_producao (disco cheio).
+    # O sync usa apenas os valores que o ENUM de 'status' ja aceita.
+    # Se faltar alguma coluna, o sync vai falhar silenciosamente por lote/OF.
 
     # Initial ERP sync (loads lotes, OFs, operacoes, and product names)
     print('[SYNC] Sincronizando com ERP...')
@@ -542,21 +506,33 @@ def index():
 def api_kpis():
     """KPIs da serralheria: lotes ativos, pecas, total qtd, producoes."""
     try:
+        # Filtrar apenas lotes que existem no ERP
+        if _lotes_erp_ativos:
+            ph = ','.join(['%s'] * len(_lotes_erp_ativos))
+            kpi_where = 'WHERE lote_codigo IN (' + ph + ')'
+            kpi_params = tuple(_lotes_erp_ativos)
+            kpi_join = ' AND lp.lote_codigo IN (' + ph + ')'
+        else:
+            kpi_where = 'WHERE 1=0'
+            kpi_params = ()
+            kpi_join = ' AND 1=0'
+
         total_lotes = _int(db_query_one(
-            'SELECT COUNT(*) as t FROM lotes_producao WHERE status != %s', ('cancelado_erp',)
+            'SELECT COUNT(*) as t FROM lotes_producao ' + kpi_where,
+            kpi_params
         )['t'])
 
         total_pecas = _int(db_query_one("""
             SELECT COUNT(*) as t
             FROM ordens_fabricacao of2
             INNER JOIN lotes_producao lp ON of2.lote_ordem = lp.ordem
-            WHERE of2.tipo = 'filho' AND lp.status != %s
-        """, ('cancelado_erp',))['t'])
+            WHERE of2.tipo = 'filho'" + kpi_join + "
+        """, tuple(_lotes_erp_ativos) if _lotes_erp_ativos else ())['t'])
 
-        total_qtd = _int(db_query_one("""
-            SELECT COALESCE(SUM(qtde_ordem), 0) as t
-            FROM lotes_producao WHERE status != %s
-        """, ('cancelado_erp',))['t'])
+        total_qtd = _int(db_query_one(
+            'SELECT COALESCE(SUM(qtde_ordem), 0) as t FROM lotes_producao ' + kpi_where,
+            kpi_params
+        )['t'])
 
         em_andamento = _int(db_query_one(
             "SELECT COUNT(*) as t FROM serralheria_producao WHERE status = 'em_producao'"
@@ -583,22 +559,33 @@ def api_dashboard():
     """Dados completos para dashboard: KPIs + producoes ativas + lotes."""
     try:
         # ── KPIs ──
+        # Filtrar apenas lotes que existem no ERP
+        if _lotes_erp_ativos:
+            ph = ','.join(['%s'] * len(_lotes_erp_ativos))
+            dw_where = 'WHERE lote_codigo IN (' + ph + ')'
+            dw_params = tuple(_lotes_erp_ativos)
+            dw_join = ' AND lp.lote_codigo IN (' + ph + ')'
+        else:
+            dw_where = 'WHERE 1=0'
+            dw_params = ()
+            dw_join = ' AND 1=0'
+
         total_lotes = _int(db_query_one(
-            "SELECT COUNT(*) as t FROM lotes_producao WHERE status != %s",
-            ('cancelado_erp',)
+            'SELECT COUNT(*) as t FROM lotes_producao ' + dw_where,
+            dw_params
         )['t'])
 
         total_pecas = _int(db_query_one("""
             SELECT COUNT(*) as t
             FROM ordens_fabricacao of2
             INNER JOIN lotes_producao lp ON of2.lote_ordem = lp.ordem
-            WHERE of2.tipo = 'filho' AND lp.status != %s
-        """, ('cancelado_erp',))['t'])
+            WHERE of2.tipo = 'filho'" + dw_join + "
+        """, tuple(_lotes_erp_ativos) if _lotes_erp_ativos else ())['t'])
 
-        total_qtd = _int(db_query_one("""
-            SELECT COALESCE(SUM(qtde_ordem), 0) as t
-            FROM lotes_producao WHERE status != %s
-        """, ('cancelado_erp',))['t'])
+        total_qtd = _int(db_query_one(
+            'SELECT COALESCE(SUM(qtde_ordem), 0) as t FROM lotes_producao ' + dw_where,
+            dw_params
+        )['t'])
 
         em_andamento = _int(db_query_one(
             "SELECT COUNT(*) as t FROM serralheria_producao WHERE status = 'em_producao'"
@@ -647,13 +634,17 @@ def api_dashboard():
             )
             a['pecas_count'] = _int(r['t']) if r else 0
 
-        # ── Lotes ativos com detalhes (excluindo cancelados no ERP) ──
-        lotes_raw = db_query("""
-            SELECT ordem, lote_codigo, descricao_produto, status, codigo_produto, qtde_ordem
-            FROM lotes_producao
-            WHERE status != %s
-            ORDER BY lote_codigo DESC
-        """, ('cancelado_erp',))
+        # ── Lotes ativos com detalhes (apenas os que existem no ERP) ──
+        if _lotes_erp_ativos:
+            ph = ','.join(['%s'] * len(_lotes_erp_ativos))
+            lotes_raw = db_query("""
+                SELECT ordem, lote_codigo, descricao_produto, status, codigo_produto, qtde_ordem
+                FROM lotes_producao
+                WHERE lote_codigo IN (""" + ph + ")
+                ORDER BY lote_codigo DESC
+            """, tuple(_lotes_erp_ativos))
+        else:
+            lotes_raw = []
 
         lotes = []
         for lp in lotes_raw:
@@ -733,12 +724,16 @@ def api_dashboard():
 def api_lotes():
     """Lotes liberados/em producao com detalhes das OFs filhas."""
     try:
-        lotes_raw = db_query("""
-            SELECT ordem, lote_codigo, descricao_produto, status, codigo_produto, qtde_ordem
-            FROM lotes_producao
-            WHERE status != %s
-            ORDER BY lote_codigo DESC
-        """, ('cancelado_erp',))
+        if _lotes_erp_ativos:
+            ph = ','.join(['%s'] * len(_lotes_erp_ativos))
+            lotes_raw = db_query("""
+                SELECT ordem, lote_codigo, descricao_produto, status, codigo_produto, qtde_ordem
+                FROM lotes_producao
+                WHERE lote_codigo IN (""" + ph + ")
+                ORDER BY lote_codigo DESC
+            """, tuple(_lotes_erp_ativos))
+        else:
+            lotes_raw = []
 
         lotes = []
         for lp in lotes_raw:
