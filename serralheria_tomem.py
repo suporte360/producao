@@ -497,6 +497,28 @@ def init_db():
         except Exception:
             db_execute('ALTER TABLE serralheria_producao ADD COLUMN ' + col + ' ' + col_def)
 
+    # Migration: ensure lotes_producao has columns needed by sync
+    for col, col_def in [
+        ('data_ultima_sync', 'DATETIME DEFAULT NULL'),
+        ('status_erp', "VARCHAR(20) DEFAULT ''"),
+        ('data_abertura_erp', 'DATETIME DEFAULT NULL'),
+        ('data_previsao_erp', 'DATETIME DEFAULT NULL'),
+        ('unidade_medida', "VARCHAR(10) DEFAULT 'UN'"),
+    ]:
+        try:
+            db_query_one('SELECT ' + col + ' FROM lotes_producao LIMIT 1')
+        except Exception:
+            db_execute('ALTER TABLE lotes_producao ADD COLUMN ' + col + ' ' + col_def)
+
+    # Migration: ensure status column is VARCHAR (not ENUM) to accept new values
+    try:
+        db_execute(
+            "ALTER TABLE lotes_producao MODIFY COLUMN status VARCHAR(50) DEFAULT 'importado'"
+        )
+        app.logger.info('Migration: status column changed to VARCHAR(50)')
+    except Exception as e:
+        app.logger.warning('Migration status column: %s', e)
+
     # Initial ERP sync (loads lotes, OFs, operacoes, and product names)
     print('[SYNC] Sincronizando com ERP...')
     _sync_erp_to_mariadb()
