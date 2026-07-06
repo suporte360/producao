@@ -7,12 +7,17 @@ Auto-login, 4 telas touch:
   S1: Lista de lotes liberados/em producao
   S2: Pecas (OFs filhas) de um lote com selecao por setor
   S3: Selecao de operador (serra1-serra9)
+
+SYNC ERP: A cada 5 minutos, sincroniza lotes/OFs/operacoes do PostgreSQL
+para o MariaDB. Se o PCP cancelar um lote no ERP, ele some do totem.
 """
 
 import os
 import re
 import json
 import logging
+import threading
+import time
 from decimal import Decimal
 from flask import Flask, jsonify, request, render_template
 import pymysql
@@ -25,15 +30,35 @@ MYSQL_DB = 'producao_db'
 MYSQL_USER = 'producao'
 MYSQL_PASS = 'senha123'
 
-# PostgreSQL (ERP) - para buscar nomes reais dos produtos
+# PostgreSQL (ERP Logica)
 PG_HOST = '192.168.1.17'
 PG_PORT = 5432
 PG_DB = 'salutem'
 PG_USER = 'postgres'
 PG_PASS = 'postgres'
 
+# Sync interval in seconds
+SYNC_INTERVAL = 300  # 5 minutes
+
 # In-memory cache for product names (loaded from PostgreSQL at startup)
 _produto_cache = {}
+
+# Mapeamento de setores ERP -> Sistema Local (mesmo do app.py)
+MAPEAMENTO_SETORES = {
+    'ALMOXARIFADO': 'ALMOXARIFADO',
+    'SERRALHERIA':  'CORTE',
+    'FUNILARIA':    'FUNILARIA',
+    'PINTURA':      'PINTURA',
+    'POLIMENTO':    'ACABAMENTO',
+    'MARCENARIA':   'MARCENARIA',
+    'COSTURA':      'COSTURA',
+    'TAPECARIA':    'TAPECARIA',
+    'MONTAGEM':     'MONTAGEM',
+    'EMBALAGEM':    'EMBALAGEM',
+    'USINAGEM':     'USINAGEM',
+    'EXPEDIÇÃO':    'EXPEDIÇÃO',
+    'EXPEDICAO':    'EXPEDIÇÃO',
+}
 
 app = Flask(__name__, template_folder='templates/serralheria', static_folder='static')
 app.logger.setLevel(logging.INFO)
@@ -78,6 +103,42 @@ def db_execute(sql, params=None):
     finally:
         conn.close()
 
+# ── PostgreSQL helpers ───────────────────────────────────────────────
+
+def _pg_conn():
+    import psycopg2
+    return psycopg2.connect(
+        host=PG_HOST, port=PG_PORT, dbname=PG_DB,
+        user=PG_USER, password=PG_PASS,
+        connect_timeout=10
+    )
+
+def _pg_query(sql, params=None):
+    """Run query and return list of dicts."""
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+    conn = _pg_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(sql, params or ())
+            rows = cur.fetchall()
+            return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+def _pg_query_one(sql, params=None):
+    """Run query and return one dict or None."""
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+    conn = _pg_conn()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(sql, params or ())
+            r = cur.fetchone()
+            return dict(r) if r else None
+    finally:
+        conn.close()
+
 # ── Helpers ───────────────────────────────────────────────────────────
 
 def _int(val):
@@ -99,9 +160,8 @@ def _extract_s_code(codigo_produto):
     m = re.search(r'S-\d+', str(codigo_produto))
     return m.group(0) if m else str(codigo_produto).strip()
 
-# ── Init DB ──────────────────────────────────────────────────────────
 
-# ── Produto name helper (in-memory cache from PostgreSQL) ──
+# ── Produto name cache (in-memory from PostgreSQL) ──────────────────
 
 def _get_produto_nome(codigo_produto):
     """Get real product name from in-memory cache. No MariaDB table needed."""
@@ -112,31 +172,286 @@ def _get_produto_nome(codigo_produto):
 
 
 def _load_produto_cache():
-    """Load all product names from PostgreSQL into memory. No MariaDB table needed."""
+    """Load all product names from PostgreSQL into memory."""
     global _produto_cache
     try:
-        import psycopg2
-        conn = psycopg2.connect(
-            host=PG_HOST, port=PG_PORT, dbname=PG_DB,
-            user=PG_USER, password=PG_PASS, connect_timeout=10
+        rows = _pg_query(
+            "SELECT produto, pronome FROM public.produto "
+            "WHERE pronome IS NOT NULL AND pronome != ''"
         )
-        cur = conn.cursor()
-        cur.execute("SELECT produto, pronome FROM public.produto WHERE pronome IS NOT NULL AND pronome != ''")
-        rows = cur.fetchall()
-        cur.close()
-        conn.close()
         _produto_cache = {}
-        for codigo, nome in rows:
-            _produto_cache[str(codigo).strip()] = str(nome).strip()[:200]
+        for r in rows:
+            codigo = r.get('produto', '')
+            nome = r.get('pronome', '')
+            if codigo:
+                _produto_cache[str(codigo).strip()] = str(nome).strip()[:200]
         app.logger.info('Cache produtos carregado: %d produtos do ERP', len(_produto_cache))
-    except ImportError:
-        app.logger.warning('psycopg2 nao instalado, nomes de produtos nao disponiveis')
     except Exception as e:
         app.logger.warning('Cache produtos falhou: %s', e)
 
 
+# ── ERP Sync: PostgreSQL -> MariaDB ─────────────────────────────────
+
+def _sync_erp_to_mariadb():
+    """
+    Sincroniza dados do ERP (PostgreSQL) para o MariaDB.
+    - Lotes abertos (EP, ES) do loteprod -> lotes_producao
+    - OFs de cada lote (ordem) -> ordens_fabricacao
+    - Processos de cada OF (respror + fases) -> operacoes_producao
+    - Lotes que nao existem mais no ERP sao marcados 'cancelado_erp'
+    """
+    t0 = time.time()
+    lotes_synced = 0
+    ofs_synced = 0
+    ops_synced = 0
+
+    try:
+        # 1. Buscar lotes abertos no ERP
+        lotes_erp = _pg_query("""
+            SELECT
+                lp.lotcod AS lote_codigo,
+                lp.lotdes AS lote_descricao,
+                lp.lotdtini AS data_abertura,
+                lp.lotdtpre AS data_previsao,
+                lp.lotstatus AS status_erp
+            FROM public.loteprod lp
+            WHERE lp.lotcod IS NOT NULL
+              AND lp.lotcod <> ''
+              AND (lp.lotstatus IS NULL OR lp.lotstatus IN ('EP', 'ES', ''))
+            ORDER BY lp.lotcod DESC
+        """)
+
+        # Coletar codigos dos lotes ativos no ERP
+        lotes_erp_codigos = set()
+        for lote_erp in lotes_erp:
+            lotcod = _str(lote_erp['lote_codigo'])
+            if not lotcod:
+                continue
+            lotes_erp_codigos.add(lotcod)
+
+            # Buscar OFs deste lote no ERP (tabela ordem)
+            ordens_erp = _pg_query("""
+                SELECT
+                    o.ordem,
+                    o.tipoord AS tipo_ordem,
+                    o.ordquanti AS quantidade,
+                    o.ordproduto AS produto,
+                    o.lotcod AS lote_codigo,
+                    o.ordnivprod AS nivel_producao
+                FROM public.ordem o
+                WHERE o.lotcod = %s
+                ORDER BY o.ordem
+            """, (lotcod,))
+
+            # Maior ordem numerica do lote (usado como 'ordem' no sistema local)
+            maior_ordem = 0
+            for o in ordens_erp:
+                ordem_val = o.get('ordem')
+                if ordem_val is not None:
+                    try:
+                        num = int(float(ordem_val))
+                        if num > maior_ordem:
+                            maior_ordem = num
+                    except (ValueError, TypeError):
+                        pass
+
+            # Produto final (OF pai via ordem3)
+            produto_final = ''
+            descricao_final = ''
+            qtd_final = 0
+            try:
+                pai = _pg_query_one("""
+                    SELECT
+                        o3.ordproof AS codigo_produto,
+                        p.pronome AS nome_produto,
+                        (SELECT o2.ordquanti FROM public.ordem o2
+                         WHERE o2.ordem = o3.ordem LIMIT 1) AS quantidade
+                    FROM public.ordem3 o3
+                    LEFT JOIN public.produto p ON o3.ordproof::TEXT = p.produto::TEXT
+                    WHERE o3.ordoflote = %s AND o3.ordem != 0
+                    LIMIT 1
+                """, (lotcod,))
+                if pai:
+                    produto_final = _str(pai.get('codigo_produto'))
+                    descricao_final = _str(pai.get('nome_produto'))
+                    qtd_final = _int(pai.get('quantidade'))
+            except Exception:
+                pass
+
+            if not produto_final and ordens_erp:
+                # Fallback: usar a primeira OF
+                produto_final = _str(ordens_erp[0].get('produto'))
+
+            # Upsert lote no MariaDB
+            lote_desc = _str(lote_erp['lote_descricao'])
+            if not lote_desc and descricao_final:
+                lote_desc = descricao_final
+            if not lote_desc:
+                lote_desc = produto_final
+
+            try:
+                db_execute("""
+                    INSERT INTO lotes_producao
+                        (ordem, lote_codigo, codigo_produto, descricao_produto, qtde_ordem,
+                         unidade_medida, status_erp, data_previsao_erp, data_abertura_erp,
+                         status, data_ultima_sync)
+                    VALUES (%s, %s, %s, %s, %s, 'PC', %s, %s, %s, 'importado', NOW())
+                    ON DUPLICATE KEY UPDATE
+                        descricao_produto = VALUES(descricao_produto),
+                        codigo_produto = VALUES(codigo_produto),
+                        qtde_ordem = VALUES(qtde_ordem),
+                        status_erp = VALUES(status_erp),
+                        data_previsao_erp = VALUES(data_previsao_erp),
+                        data_abertura_erp = VALUES(data_abertura_erp),
+                        data_ultima_sync = NOW(),
+                        status = IF(status = 'cancelado_erp', 'importado', status)
+                """, (
+                    maior_ordem, lotcod, produto_final, lote_desc,
+                    qtd_final if qtd_final else 0,
+                    _str(lote_erp.get('status_erp')),
+                    lote_erp.get('data_previsao'),
+                    lote_erp.get('data_abertura'),
+                ))
+                lotes_synced += 1
+            except Exception as e:
+                app.logger.warning('Sync lote %s falhou: %s', lotcod, e)
+
+            # Sincronizar OFs deste lote
+            for o in ordens_erp:
+                of_num = o.get('ordem')
+                if of_num is None:
+                    continue
+                of_num_str = str(int(float(of_num)))
+                cod_produto = _str(o.get('produto'))
+                nivel = _str(o.get('nivel_producao'))
+                tipo = 'pai' if nivel == '1' else 'filho'
+                qtd = _int(o.get('quantidade'))
+
+                # Descricao: usar nome do produto do cache se disponivel
+                of_desc = _get_produto_nome(cod_produto) or cod_produto
+
+                try:
+                    db_execute("""
+                        INSERT INTO ordens_fabricacao
+                            (lote_ordem, of_numero, codigo_produto, descricao_produto,
+                             qtde_ordem, unidade_medida, tipo, data_previsao)
+                        VALUES (%s, %s, %s, %s, %s, 'PC', %s, NULL)
+                        ON DUPLICATE KEY UPDATE
+                            codigo_produto = VALUES(codigo_produto),
+                            descricao_produto = VALUES(descricao_produto),
+                            qtde_ordem = VALUES(qtde_ordem),
+                            tipo = VALUES(tipo)
+                    """, (maior_ordem, of_num_str, cod_produto, of_desc, qtd, tipo))
+                    ofs_synced += 1
+                except Exception as e:
+                    app.logger.warning('Sync OF %s falhou: %s', of_num_str, e)
+
+                # Buscar processos (roteiro) desta OF
+                try:
+                    processos = _pg_query("""
+                        SELECT
+                            rpr.rprnumero AS numero_sequencial,
+                            rpr.rprordem AS ordem,
+                            rpr.rprproce AS processo,
+                            rpr.rproper AS operacao,
+                            rpr.rproped AS descricao_processo,
+                            rpr.rprfase AS fase,
+                            f.fasnome AS nome_departamento
+                        FROM public.respror rpr
+                        INNER JOIN public.fases f ON rpr.rprfase::TEXT = f.fase::TEXT
+                        WHERE rpr.rprordem::TEXT = %s::TEXT
+                        ORDER BY rpr.rprproce
+                    """, (of_num_str,))
+                except Exception:
+                    # Fallback sem JOIN com fases
+                    try:
+                        processos = _pg_query("""
+                            SELECT
+                                rpr.rprnumero AS numero_sequencial,
+                                rpr.rprordem AS ordem,
+                                rpr.rprproce AS processo,
+                                rpr.rproper AS operacao,
+                                rpr.rproped AS descricao_processo,
+                                rpr.rprfase AS fase,
+                                NULL AS nome_departamento
+                            FROM public.respror rpr
+                            WHERE rpr.rprordem::TEXT = %s::TEXT
+                            ORDER BY rpr.rprproce
+                        """, (of_num_str,))
+                    except Exception as e2:
+                        app.logger.warning('Sync processos OF %s falhou: %s', of_num_str, e2)
+                        processos = []
+
+                for proc in processos:
+                    dept_original = (_str(proc.get('nome_departamento'))).upper().strip()
+                    dept = MAPEAMENTO_SETORES.get(dept_original, dept_original)
+                    if not dept:
+                        continue
+                    desc_op = _str(proc.get('descricao_processo')) or _str(proc.get('operacao'))
+
+                    try:
+                        db_execute("""
+                            INSERT INTO operacoes_producao
+                                (of_numero, lote_ordem, sequencia, fase,
+                                 descricao_operacao, departamento, codigo_barras)
+                            VALUES (%s, %s, %s, %s, %s, %s, NULL)
+                            ON DUPLICATE KEY UPDATE
+                                descricao_operacao = VALUES(descricao_operacao),
+                                departamento = VALUES(departamento),
+                                fase = VALUES(fase)
+                        """, (
+                            of_num_str, maior_ordem,
+                            _int(proc.get('numero_sequencial')),
+                            _str(proc.get('fase')),
+                            desc_op, dept
+                        ))
+                        ops_synced += 1
+                    except Exception as e:
+                        app.logger.warning('Sync op OF %s falhou: %s', of_num_str, e)
+
+        # 2. Marcar lotes que NAO existem mais no ERP como 'cancelado_erp'
+        if lotes_erp_codigos:
+            placeholders = ','.join(['%s'] * len(lotes_erp_codigos))
+            db_execute(
+                "UPDATE lotes_producao SET status = 'cancelado_erp' "
+                "WHERE status != 'cancelado_erp' "
+                "AND lote_codigo NOT IN (" + placeholders + ")",
+                list(lotes_erp_codigos)
+            )
+        else:
+            # Nenhum lote aberto no ERP: cancelar todos
+            db_execute(
+                "UPDATE lotes_producao SET status = 'cancelado_erp' "
+                "WHERE status != 'cancelado_erp'"
+            )
+
+        # 3. Reload product names cache
+        _load_produto_cache()
+
+        elapsed = time.time() - t0
+        app.logger.info(
+            'Sync ERP completo em %.1fs: %d lotes, %d OFs, %d ops',
+            elapsed, lotes_synced, ofs_synced, ops_synced
+        )
+
+    except Exception as e:
+        app.logger.error('Sync ERP falhou: %s', e)
+
+
+def _sync_loop():
+    """Background thread: sync ERP a cada SYNC_INTERVAL segundos."""
+    while True:
+        try:
+            _sync_erp_to_mariadb()
+        except Exception as e:
+            app.logger.error('Sync loop erro: %s', e)
+        time.sleep(SYNC_INTERVAL)
+
+
+# ── Init DB ──────────────────────────────────────────────────────────
+
 def init_db():
-    """Create serralheria tables if not exist, seed serra1-9, sync produtos."""
+    """Create serralheria tables if not exist, seed serra1-9, sync ERP."""
     db_execute("""
         CREATE TABLE IF NOT EXISTS serralheria_usuarios (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -182,8 +497,14 @@ def init_db():
         except Exception:
             db_execute('ALTER TABLE serralheria_producao ADD COLUMN ' + col + ' ' + col_def)
 
-    # Load product names from PostgreSQL into memory (no MariaDB table needed)
-    _load_produto_cache()
+    # Initial ERP sync (loads lotes, OFs, operacoes, and product names)
+    print('[SYNC] Sincronizando com ERP...')
+    _sync_erp_to_mariadb()
+
+    # Start background sync thread
+    t = threading.Thread(target=_sync_loop, daemon=True)
+    t.start()
+    print('[SYNC] Thread de sync ativa (a cada %d segundos)' % SYNC_INTERVAL)
 
     print('[OK] Tabelas serralheria verificadas no MariaDB')
 
@@ -200,19 +521,20 @@ def api_kpis():
     """KPIs da serralheria: lotes ativos, pecas, total qtd, producoes."""
     try:
         total_lotes = _int(db_query_one(
-            'SELECT COUNT(*) as t FROM lotes_producao'
+            'SELECT COUNT(*) as t FROM lotes_producao WHERE status != %s', ('cancelado_erp',)
         )['t'])
 
         total_pecas = _int(db_query_one("""
             SELECT COUNT(*) as t
-            FROM ordens_fabricacao
-            WHERE tipo = 'filho'
-        """)['t'])
+            FROM ordens_fabricacao of2
+            INNER JOIN lotes_producao lp ON of2.lote_ordem = lp.ordem
+            WHERE of2.tipo = 'filho' AND lp.status != %s
+        """, ('cancelado_erp',))['t'])
 
         total_qtd = _int(db_query_one("""
             SELECT COALESCE(SUM(qtde_ordem), 0) as t
-            FROM lotes_producao
-        """)['t'])
+            FROM lotes_producao WHERE status != %s
+        """, ('cancelado_erp',))['t'])
 
         em_andamento = _int(db_query_one(
             "SELECT COUNT(*) as t FROM serralheria_producao WHERE status = 'em_producao'"
@@ -240,19 +562,21 @@ def api_dashboard():
     try:
         # ── KPIs ──
         total_lotes = _int(db_query_one(
-            'SELECT COUNT(*) as t FROM lotes_producao'
+            "SELECT COUNT(*) as t FROM lotes_producao WHERE status != %s",
+            ('cancelado_erp',)
         )['t'])
 
         total_pecas = _int(db_query_one("""
             SELECT COUNT(*) as t
-            FROM ordens_fabricacao
-            WHERE tipo = 'filho'
-        """)['t'])
+            FROM ordens_fabricacao of2
+            INNER JOIN lotes_producao lp ON of2.lote_ordem = lp.ordem
+            WHERE of2.tipo = 'filho' AND lp.status != %s
+        """, ('cancelado_erp',))['t'])
 
         total_qtd = _int(db_query_one("""
             SELECT COALESCE(SUM(qtde_ordem), 0) as t
-            FROM lotes_producao
-        """)['t'])
+            FROM lotes_producao WHERE status != %s
+        """, ('cancelado_erp',))['t'])
 
         em_andamento = _int(db_query_one(
             "SELECT COUNT(*) as t FROM serralheria_producao WHERE status = 'em_producao'"
@@ -301,12 +625,13 @@ def api_dashboard():
             )
             a['pecas_count'] = _int(r['t']) if r else 0
 
-        # ── Lotes ativos com detalhes ──
+        # ── Lotes ativos com detalhes (excluindo cancelados no ERP) ──
         lotes_raw = db_query("""
             SELECT ordem, lote_codigo, descricao_produto, status, codigo_produto, qtde_ordem
             FROM lotes_producao
+            WHERE status != %s
             ORDER BY lote_codigo DESC
-        """)
+        """, ('cancelado_erp',))
 
         lotes = []
         for lp in lotes_raw:
@@ -389,8 +714,9 @@ def api_lotes():
         lotes_raw = db_query("""
             SELECT ordem, lote_codigo, descricao_produto, status, codigo_produto, qtde_ordem
             FROM lotes_producao
+            WHERE status != %s
             ORDER BY lote_codigo DESC
-        """)
+        """, ('cancelado_erp',))
 
         lotes = []
         for lp in lotes_raw:
@@ -464,7 +790,7 @@ def api_pecas(lotcod):
         if not lote:
             return jsonify({'error': 'Lote nao encontrado'}), 404
 
-        # Child OFs (pecas para fabricar - PC-/CJ-) 
+        # Child OFs (pecas para fabricar - PC-/CJ-)
         pecas = db_query("""
             SELECT of.of_numero, of.codigo_produto as codigo, of.descricao_produto as descricao,
                    of.qtde_ordem as quantidade, of.tipo
@@ -613,14 +939,18 @@ def api_finalizar():
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/api/sync_produtos', methods=['POST'])
-def api_sync_produtos():
-    """Forca recarga do cache de nomes de produtos do ERP."""
+@app.route('/api/sync_erp', methods=['POST'])
+def api_sync_erp():
+    """Forca sincronizacao manual com ERP."""
     try:
-        _load_produto_cache()
-        return jsonify({'success': True, 'total': len(_produto_cache)})
+        _sync_erp_to_mariadb()
+        total = db_query_one(
+            "SELECT COUNT(*) as t FROM lotes_producao WHERE status != %s",
+            ('cancelado_erp',)
+        )['t']
+        return jsonify({'success': True, 'lotes_ativos': total})
     except Exception as e:
-        app.logger.error('Erro sync produtos: %s', e)
+        app.logger.error('Erro sync ERP manual: %s', e)
         return jsonify({'error': str(e)}), 500
 
 
@@ -628,5 +958,5 @@ def api_sync_produtos():
 
 if __name__ == '__main__':
     init_db()
-    print('[TOTEM] Serralheria Totem rodando em http://0.0.0.0:5003 (MariaDB)')
+    print('[TOTEM] Serralheria Totem rodando em http://0.0.0.0:5003 (MariaDB + Sync ERP)')
     app.run(host='0.0.0.0', port=5003, debug=False, threaded=True)
