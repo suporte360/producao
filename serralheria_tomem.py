@@ -32,6 +32,9 @@ PG_DB = 'erp'
 PG_USER = 'postgres'
 PG_PASS = 'postgres'
 
+# In-memory cache for product names (loaded from PostgreSQL at startup)
+_produto_cache = {}
+
 app = Flask(__name__, template_folder='templates/serralheria', static_folder='static')
 app.logger.setLevel(logging.INFO)
 _fh = logging.FileHandler('/tmp/serralheria_tomem.log')
@@ -98,23 +101,19 @@ def _extract_s_code(codigo_produto):
 
 # ── Init DB ──────────────────────────────────────────────────────────
 
-# ── Produto name helper (uses cached produtos table) ─────────
+# ── Produto name helper (in-memory cache from PostgreSQL) ──
 
 def _get_produto_nome(codigo_produto):
-    """Get real product name from cached produtos table. Falls back to codigo."""
+    """Get real product name from in-memory cache. No MariaDB table needed."""
     if not codigo_produto:
         return ''
-    r = db_query_one(
-        "SELECT nome FROM produtos WHERE codigo = %s LIMIT 1",
-        (str(codigo_produto).strip(),)
-    )
-    if r and r.get('nome'):
-        return _str(r['nome'])
-    return ''
+    key = str(codigo_produto).strip()
+    return _produto_cache.get(key, '')
 
 
-def _sync_produtos_from_erp():
-    """Sync product names from PostgreSQL (ERP) to MariaDB cache table."""
+def _load_produto_cache():
+    """Load all product names from PostgreSQL into memory. No MariaDB table needed."""
+    global _produto_cache
     try:
         import psycopg2
         conn = psycopg2.connect(
@@ -126,21 +125,14 @@ def _sync_produtos_from_erp():
         rows = cur.fetchall()
         cur.close()
         conn.close()
-        if not rows:
-            app.logger.info('Sync produtos: 0 produtos encontrados no ERP')
-            return
-        # Upsert into MariaDB
-        db_execute("DELETE FROM produtos")
+        _produto_cache = {}
         for codigo, nome in rows:
-            db_execute(
-                "INSERT INTO produtos (codigo, nome) VALUES (%s, %s)",
-                (str(codigo).strip(), str(nome).strip()[:200])
-            )
-        app.logger.info('Sync produtos: %d produtos sincronizados do ERP', len(rows))
+            _produto_cache[str(codigo).strip()] = str(nome).strip()[:200]
+        app.logger.info('Cache produtos carregado: %d produtos do ERP', len(_produto_cache))
     except ImportError:
-        app.logger.warning('psycopg2 nao instalado, nao e possivel sincronizar produtos')
+        app.logger.warning('psycopg2 nao instalado, nomes de produtos nao disponiveis')
     except Exception as e:
-        app.logger.warning('Sync produtos falhou: %s', e)
+        app.logger.warning('Cache produtos falhou: %s', e)
 
 
 def init_db():
@@ -190,16 +182,8 @@ def init_db():
         except Exception:
             db_execute('ALTER TABLE serralheria_producao ADD COLUMN ' + col + ' ' + col_def)
 
-    # Create produtos cache table
-    db_execute("""
-        CREATE TABLE IF NOT EXISTS produtos (
-            codigo VARCHAR(50) PRIMARY KEY,
-            nome VARCHAR(200) NOT NULL,
-            INDEX idx_prod_nome (nome(50))
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    """)
-    # Sync product names from ERP
-    _sync_produtos_from_erp()
+    # Load product names from PostgreSQL into memory (no MariaDB table needed)
+    _load_produto_cache()
 
     print('[OK] Tabelas serralheria verificadas no MariaDB')
 
@@ -297,16 +281,14 @@ def api_dashboard():
             )
             a['lote_desc'] = _str(r['descricao_produto']) if r else ''
 
-            # Produto name - prefer real name from produtos table
+            # Produto name - prefer real name from ERP cache
             r = db_query_one(
-                "SELECT of.descricao_produto, COALESCE(p.nome, '') as nome_real "
-                "FROM ordens_fabricacao of "
-                "LEFT JOIN produtos p ON of.codigo_produto = p.codigo "
-                "WHERE of.of_numero = %s",
+                "SELECT descricao_produto, codigo_produto "
+                "FROM ordens_fabricacao WHERE of_numero = %s",
                 (a['produto'],)
             )
             if r:
-                nome_real = _str(r.get('nome_real'))
+                nome_real = _get_produto_nome(r.get('codigo_produto'))
                 a['produto_nome'] = nome_real if nome_real else _str(r['descricao_produto'])
             else:
                 a['produto_nome'] = _str(a['produto'])
@@ -482,13 +464,11 @@ def api_pecas(lotcod):
         if not lote:
             return jsonify({'error': 'Lote nao encontrado'}), 404
 
-        # Child OFs (pecas para fabricar - PC-/CJ-) with real product name
+        # Child OFs (pecas para fabricar - PC-/CJ-) 
         pecas = db_query("""
             SELECT of.of_numero, of.codigo_produto as codigo, of.descricao_produto as descricao,
-                   of.qtde_ordem as quantidade, of.tipo,
-                   COALESCE(p.nome, '') as nome_real
+                   of.qtde_ordem as quantidade, of.tipo
             FROM ordens_fabricacao of
-            LEFT JOIN produtos p ON of.codigo_produto = p.codigo
             WHERE of.lote_ordem = %s AND of.tipo = 'filho'
             ORDER BY of.codigo_produto
         """, (lote['ordem'],))
@@ -523,8 +503,8 @@ def api_pecas(lotcod):
                 op['departamento'] for op in ops if op.get('departamento')
             ))
 
-            # Use real product name (from produtos table) instead of "PRODUCAO DE S-XXX"
-            nome_real = _str(p.get('nome_real'))
+            # Use real product name from ERP cache instead of "PRODUCAO DE S-XXX"
+            nome_real = _get_produto_nome(p.get('codigo'))
             produto_nome = nome_real if nome_real else _str(p['descricao'])
 
             pecas_result.append({
@@ -635,11 +615,10 @@ def api_finalizar():
 
 @app.route('/api/sync_produtos', methods=['POST'])
 def api_sync_produtos():
-    """Forca sincronizacao de nomes de produtos do ERP."""
+    """Forca recarga do cache de nomes de produtos do ERP."""
     try:
-        _sync_produtos_from_erp()
-        count = db_query_one("SELECT COUNT(*) as t FROM produtos")['t']
-        return jsonify({'success': True, 'total': count})
+        _load_produto_cache()
+        return jsonify({'success': True, 'total': len(_produto_cache)})
     except Exception as e:
         app.logger.error('Erro sync produtos: %s', e)
         return jsonify({'error': str(e)}), 500
