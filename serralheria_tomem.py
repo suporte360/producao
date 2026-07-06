@@ -484,7 +484,7 @@ def api_usuarios():
     """Lista usuarios ativos da serralheria (serra1-serra9)."""
     try:
         usuarios = db_query(
-            "SELECT id, nome, setor FROM serralheria_usuarios WHERE ativo = 1 ORDER BY nome"
+            "SELECT MIN(id) as id, nome, MAX(setor) as setor FROM serralheria_usuarios WHERE ativo = 1 GROUP BY nome ORDER BY nome"
         )
         return jsonify({'usuarios': usuarios})
     except Exception as e:
