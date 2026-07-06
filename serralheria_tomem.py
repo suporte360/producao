@@ -25,6 +25,13 @@ MYSQL_DB = 'producao_db'
 MYSQL_USER = 'producao'
 MYSQL_PASS = 'senha123'
 
+# PostgreSQL (ERP) - para buscar nomes reais dos produtos
+PG_HOST = '192.168.1.17'
+PG_PORT = 5432
+PG_DB = 'erp'
+PG_USER = 'postgres'
+PG_PASS = 'postgres'
+
 app = Flask(__name__, template_folder='templates/serralheria', static_folder='static')
 app.logger.setLevel(logging.INFO)
 _fh = logging.FileHandler('/tmp/serralheria_tomem.log')
@@ -91,8 +98,53 @@ def _extract_s_code(codigo_produto):
 
 # ── Init DB ──────────────────────────────────────────────────────────
 
+# ── Produto name helper (uses cached produtos table) ─────────
+
+def _get_produto_nome(codigo_produto):
+    """Get real product name from cached produtos table. Falls back to codigo."""
+    if not codigo_produto:
+        return ''
+    r = db_query_one(
+        "SELECT nome FROM produtos WHERE codigo = %s LIMIT 1",
+        (str(codigo_produto).strip(),)
+    )
+    if r and r.get('nome'):
+        return _str(r['nome'])
+    return ''
+
+
+def _sync_produtos_from_erp():
+    """Sync product names from PostgreSQL (ERP) to MariaDB cache table."""
+    try:
+        import psycopg2
+        conn = psycopg2.connect(
+            host=PG_HOST, port=PG_PORT, dbname=PG_DB,
+            user=PG_USER, password=PG_PASS, connect_timeout=10
+        )
+        cur = conn.cursor()
+        cur.execute("SELECT produto, pronome FROM public.produto WHERE pronome IS NOT NULL AND pronome != ''")
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        if not rows:
+            app.logger.info('Sync produtos: 0 produtos encontrados no ERP')
+            return
+        # Upsert into MariaDB
+        db_execute("DELETE FROM produtos")
+        for codigo, nome in rows:
+            db_execute(
+                "INSERT INTO produtos (codigo, nome) VALUES (%s, %s)",
+                (str(codigo).strip(), str(nome).strip()[:200])
+            )
+        app.logger.info('Sync produtos: %d produtos sincronizados do ERP', len(rows))
+    except ImportError:
+        app.logger.warning('psycopg2 nao instalado, nao e possivel sincronizar produtos')
+    except Exception as e:
+        app.logger.warning('Sync produtos falhou: %s', e)
+
+
 def init_db():
-    """Create serralheria tables if not exist, seed serra1-9."""
+    """Create serralheria tables if not exist, seed serra1-9, sync produtos."""
     db_execute("""
         CREATE TABLE IF NOT EXISTS serralheria_usuarios (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -137,6 +189,17 @@ def init_db():
             db_query_one('SELECT ' + col + ' FROM serralheria_producao LIMIT 1')
         except Exception:
             db_execute('ALTER TABLE serralheria_producao ADD COLUMN ' + col + ' ' + col_def)
+
+    # Create produtos cache table
+    db_execute("""
+        CREATE TABLE IF NOT EXISTS produtos (
+            codigo VARCHAR(50) PRIMARY KEY,
+            nome VARCHAR(200) NOT NULL,
+            INDEX idx_prod_nome (nome(50))
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    """)
+    # Sync product names from ERP
+    _sync_produtos_from_erp()
 
     print('[OK] Tabelas serralheria verificadas no MariaDB')
 
@@ -234,12 +297,19 @@ def api_dashboard():
             )
             a['lote_desc'] = _str(r['descricao_produto']) if r else ''
 
-            # Produto name from OF
+            # Produto name - prefer real name from produtos table
             r = db_query_one(
-                "SELECT descricao_produto FROM ordens_fabricacao WHERE of_numero = %s",
+                "SELECT of.descricao_produto, COALESCE(p.nome, '') as nome_real "
+                "FROM ordens_fabricacao of "
+                "LEFT JOIN produtos p ON of.codigo_produto = p.codigo "
+                "WHERE of.of_numero = %s",
                 (a['produto'],)
             )
-            a['produto_nome'] = _str(r['descricao_produto']) if r else _str(a['produto'])
+            if r:
+                nome_real = _str(r.get('nome_real'))
+                a['produto_nome'] = nome_real if nome_real else _str(r['descricao_produto'])
+            else:
+                a['produto_nome'] = _str(a['produto'])
 
             # Count pecas for this user in this lote
             r = db_query_one(
@@ -281,9 +351,12 @@ def api_dashboard():
 
             # Extract S- code and build product info
             s_code = _extract_s_code(lp['codigo_produto'])
+            # Get real name for produto final (S-XXX)
+            pai_nome_real = ''
             if pai:
+                pai_nome_real = _get_produto_nome(pai.get('codigo_produto'))
                 produto_final = _str(pai['codigo_produto']) or s_code
-                produto_nome = _str(pai['descricao_produto'])
+                produto_nome = pai_nome_real or _str(pai['descricao_produto'])
                 qtd_final = _int(pai['qtde_ordem'])
             else:
                 # Fallback: no OF pai, use lote data
@@ -357,9 +430,12 @@ def api_lotes():
                 """, (lp['ordem'],))
 
             s_code = _extract_s_code(lp['codigo_produto'])
+            # Get real name for produto final (S-XXX)
+            pai_nome_real = ''
             if pai:
+                pai_nome_real = _get_produto_nome(pai.get('codigo_produto'))
                 produto_final = _str(pai['codigo_produto']) or s_code
-                produto_nome = _str(pai['descricao_produto'])
+                produto_nome = pai_nome_real or _str(pai['descricao_produto'])
                 qtd_final = _int(pai['qtde_ordem'])
             else:
                 produto_final = s_code
@@ -406,13 +482,15 @@ def api_pecas(lotcod):
         if not lote:
             return jsonify({'error': 'Lote nao encontrado'}), 404
 
-        # Child OFs (pecas para fabricar - PC-/CJ-)
+        # Child OFs (pecas para fabricar - PC-/CJ-) with real product name
         pecas = db_query("""
-            SELECT of_numero, codigo_produto as codigo, descricao_produto as descricao,
-                   qtde_ordem as quantidade, tipo
-            FROM ordens_fabricacao
-            WHERE lote_ordem = %s AND tipo = 'filho'
-            ORDER BY codigo_produto
+            SELECT of.of_numero, of.codigo_produto as codigo, of.descricao_produto as descricao,
+                   of.qtde_ordem as quantidade, of.tipo,
+                   COALESCE(p.nome, '') as nome_real
+            FROM ordens_fabricacao of
+            LEFT JOIN produtos p ON of.codigo_produto = p.codigo
+            WHERE of.lote_ordem = %s AND of.tipo = 'filho'
+            ORDER BY of.codigo_produto
         """, (lote['ordem'],))
 
         # Parent OF (produto final S-)
@@ -423,9 +501,10 @@ def api_pecas(lotcod):
 
         produto_final = None
         if pai:
+            pai_nome = _get_produto_nome(pai.get('codigo_produto'))
             produto_final = {
                 'codigo': _str(pai['codigo_produto']),
-                'descricao': _str(pai['descricao_produto']),
+                'descricao': pai_nome or _str(pai['descricao_produto']),
                 'quantidade': _int(pai['qtde_ordem']),
             }
 
@@ -444,12 +523,16 @@ def api_pecas(lotcod):
                 op['departamento'] for op in ops if op.get('departamento')
             ))
 
+            # Use real product name (from produtos table) instead of "PRODUCAO DE S-XXX"
+            nome_real = _str(p.get('nome_real'))
+            produto_nome = nome_real if nome_real else _str(p['descricao'])
+
             pecas_result.append({
                 'of_numero': p['of_numero'],
                 'ordem': p['of_numero'],
                 'codigo': _str(p['codigo']),
                 'quantidade': _int(p['quantidade']),
-                'produto_nome': _str(p['descricao']),
+                'produto_nome': produto_nome,
                 'setores': setores,
                 'operacoes': ops,
             })
@@ -547,6 +630,18 @@ def api_finalizar():
         return jsonify({'success': True, 'mensagem': 'Producao finalizada!'})
     except Exception as e:
         app.logger.error('Erro finalizar: %s', e)
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/sync_produtos', methods=['POST'])
+def api_sync_produtos():
+    """Forca sincronizacao de nomes de produtos do ERP."""
+    try:
+        _sync_produtos_from_erp()
+        count = db_query_one("SELECT COUNT(*) as t FROM produtos")['t']
+        return jsonify({'success': True, 'total': count})
+    except Exception as e:
+        app.logger.error('Erro sync produtos: %s', e)
         return jsonify({'error': str(e)}), 500
 
 
