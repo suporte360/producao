@@ -99,7 +99,7 @@
               <span class="text-xs font-normal text-gray-500 ml-1">{% if lote.maior_ordem %}OP #{{ lote.maior_ordem }}{% endif %}</span>
             </div>
             {% if lote.lote_descricao %}
-            <div class="text-xs text-gray-400 leading-tight line-clamp-1 mt-0.5">{{ lote.lote_descricao }}</div>
+            <div class="text-xs text-gray-500 leading-tight line-clamp-1 mt-0.5">{{ lote.lote_descricao }}</div>
             {% endif %}
             <div class="text-sm font-semibold text-gray-700 leading-tight line-clamp-2" title="{{ lote.nome_produto or '' }}">
               {% if lote.produto_final_codigo or lote.codigo_produto %}<span class="text-blue-600 font-mono font-bold text-[13px]">{{ lote.produto_final_codigo or lote.codigo_produto }}</span>{% if lote.nome_produto %} <span class="text-gray-400 mx-1">|</span> {{ lote.nome_produto }}{% endif %}{% else %}{{ lote.nome_produto or '—' }}{% endif %}
