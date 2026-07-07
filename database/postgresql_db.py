@@ -127,24 +127,25 @@ class DatabasePostgreSQL:
         return self.query(sql)
 
     def get_produto_pronto_por_lote(self, lote_codigo):
-        """Retorna o produto PAI (final) do lote usando loteprod.lotdes -> produto.pronome."""
-        # Metodo 1: lotdes -> pronome (mais confiavel)
+        """Retorna o produto PAI (final) do lote.
+        Usa ordem3.ordproof como codigo real do produto, busca pronome na tabela produto."""
+        # Metodo 1: ordem3.ordproof -> produto.pronome
         sql = """
             SELECT 
-                lp.lotdes AS codigo_produto,
+                o3.ordproof AS codigo_produto,
                 p.pronome AS nome_produto,
                 (SELECT COALESCE(o.ordquanti, 0)::float
                  FROM public.ordem o
-                 WHERE o.lotcod = lp.lotcod AND o.ordnivprod = '1'
+                 WHERE o.lotcod = %s AND o.ordnivprod = '1'
                  LIMIT 1) AS quantidade
-            FROM public.loteprod lp
-            LEFT JOIN public.produto p ON TRIM(lp.lotdes) = TRIM(p.produto)
-            WHERE lp.lotcod = %s
+            FROM public.ordem3 o3
+            LEFT JOIN public.produto p ON TRIM(o3.ordproof) = TRIM(p.produto)
+            WHERE o3.ordoflote = %s AND o3.ordem != 0
             LIMIT 1
         """
         try:
-            result = self.query_one(sql, (lote_codigo,))
-            if result and result.get('nome_produto'):
+            result = self.query_one(sql, (lote_codigo, lote_codigo))
+            if result and result.get('codigo_produto'):
                 return result
         except Exception:
             pass

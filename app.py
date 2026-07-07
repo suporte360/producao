@@ -456,9 +456,11 @@ def pcp_importar_erp():
         # Para cada lote busca o produto final
         for lote in lotes_raw:
             prod = pg.get_produto_pronto_por_lote(lote['lote_codigo'])
-            lote['nome_produto']        = prod['nome_produto']   if prod else None
-            lote['produto_final_codigo']= prod['codigo_produto'] if prod else lote.get('produto_final_codigo')
-            lote['maior_ordem']         = prod['quantidade']     if prod else None
+            lote['nome_produto'] = prod.get('nome_produto') if prod else None
+            # produto_final_codigo ja vem correto do ordem3, so sobrescreve se pronome foi encontrado
+            if prod and prod.get('nome_produto') and prod.get('codigo_produto'):
+                lote['produto_final_codigo'] = prod['codigo_produto']
+            lote['maior_ordem'] = prod.get('quantidade') if prod else None
             # busca a maior ordem numerica do lote
             ordens = pg.get_ordens_por_lote(lote['lote_codigo'])
             if ordens:
