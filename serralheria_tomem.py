@@ -17,6 +17,7 @@ import time
 from decimal import Decimal
 from flask import Flask, jsonify, request, render_template
 import pymysql
+import psycopg2
 from pymysql.cursors import DictCursor
 
 # ── Config ────────────────────────────────────────────────────────────
@@ -26,7 +27,14 @@ MYSQL_DB = 'producao_db'
 MYSQL_USER = 'producao'
 MYSQL_PASS = 'senha123'
 
-# In-memory cache for product names (loaded from MariaDB)
+# PostgreSQL config (same as config/config.py)
+PG_HOST = os.environ.get('PG_HOST', '192.168.1.17')
+PG_PORT = int(os.environ.get('PG_PORT', '5432'))
+PG_DB   = os.environ.get('PG_DB', 'erp')
+PG_USER = os.environ.get('PG_USER', 'postgres')
+PG_PASS = os.environ.get('PG_PASSWORD', 'postgres')
+
+# In-memory cache for product names (loaded from PostgreSQL produto.pronome)
 _produto_cache = {}
 
 # Set of lote_codigo ativos (loaded from MariaDB, no ERP needed)
@@ -118,29 +126,70 @@ def _extract_s_code(codigo_produto):
 # ── Produto name cache (from MariaDB) ──────────────────────────────
 
 def _get_produto_nome(codigo_produto):
-    """Get real product name from in-memory cache."""
+    """Get real product name from in-memory cache (PostgreSQL produto.pronome)."""
     if not codigo_produto:
         return ''
     key = str(codigo_produto).strip()
     return _produto_cache.get(key, '')
 
 
+def _pg_query_one(sql, params=None):
+    """Query PostgreSQL and return one row as dict."""
+    conn = psycopg2.connect(host=PG_HOST, port=PG_PORT, dbname=PG_DB,
+                            user=PG_USER, password=PG_PASS, connect_timeout=5)
+    conn.autocommit = True
+    try:
+        with conn.cursor() as cur:
+            cur.execute(sql, params or ())
+            cols = [d[0] for d in cur.description] if cur.description else []
+            row = cur.fetchone()
+            if row:
+                return dict(zip(cols, row))
+            return None
+    finally:
+        conn.close()
+
+
 def _load_produto_cache():
+    """Load product names from PostgreSQL produto.pronome + MariaDB fallback."""
     global _produto_cache
+    _produto_cache = {}
+    # 1) PostgreSQL: tabela produto (pronome real)
+    try:
+        conn = psycopg2.connect(host=PG_HOST, port=PG_PORT, dbname=PG_DB,
+                                user=PG_USER, password=PG_PASS, connect_timeout=5)
+        conn.autocommit = True
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT produto, pronome FROM public.produto WHERE produto IS NOT NULL AND pronome IS NOT NULL")
+                cols = [d[0] for d in cur.description]
+                for row in cur.fetchall():
+                    r = dict(zip(cols, row))
+                    cod = str(r.get('produto', '')).strip()
+                    nome = str(r.get('pronome', '')).strip()
+                    if cod and nome:
+                        _produto_cache[cod] = nome[:200]
+                print('[OK] Cache de produtos (PostgreSQL): %d' % len(_produto_cache))
+        finally:
+            conn.close()
+    except Exception as e:
+        print('[WARN] Cache PostgreSQL falhou: %s' % e)
+    # 2) Fallback MariaDB: lotes_producao (preenche codigos que o PG nao tem)
     try:
         rows = db_query(
             "SELECT codigo_produto, descricao_produto FROM lotes_producao "
             "WHERE codigo_produto IS NOT NULL AND descricao_produto IS NOT NULL"
         )
-        _produto_cache = {}
+        added = 0
         for r in rows:
             cod = str(r.get('codigo_produto', '')).strip()
             nome = str(r.get('descricao_produto', '')).strip()
-            if cod and nome:
+            if cod and cod not in _produto_cache and nome:
                 _produto_cache[cod] = nome[:200]
-        print('[OK] Cache de produtos: %d (MariaDB)' % len(_produto_cache))
+                added += 1
+        print('[OK] Cache produtos (MariaDB fallback): +%d' % added)
     except Exception as e:
-        print('[WARN] Cache de produtos falhou: %s' % e)
+        print('[WARN] Cache MariaDB falhou: %s' % e)
 
 
 # ── Lotes ativos (from MariaDB, no ERP) ────────────────────────────
