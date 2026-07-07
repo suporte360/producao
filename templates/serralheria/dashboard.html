@@ -581,7 +581,17 @@ function confirmarFinalizar(lotcod){
 }
 function fecharFinalizar(){document.getElementById('dialogFinalizar').classList.remove('active');}
 
-setInterval(function(){if(document.getElementById('screen1').classList.contains('active'))loadDashboard();},DASH_REFRESH);
+/* ══ AUTO-REFRESH TODAS AS TELAS ══ */
+var refreshTimer = setInterval(function(){
+  var s1=document.getElementById('screen1'),s2=document.getElementById('screen2'),s3=document.getElementById('screen3');
+  if(s1&&s1.classList.contains('active'))loadDashboard();
+  else if(s2&&s2.classList.contains('active'))loadLotes();
+  else if(s3&&s3.classList.contains('active')&&currentLote){
+    fetch('/api/lotes/'+currentLote+'/pecas').then(function(r){return r.json();}).then(function(data){
+      if(!data.error){currentPecas=data.pecas||[];currentPecasAtivas=data.pecas_ativas||{};renderPecas(data);}
+    }).catch(function(){});
+  }
+},DASH_REFRESH);
 loadDashboard();
 </script>
 </body>
