@@ -431,16 +431,29 @@ def api_dashboard():
                 """, (lp['ordem'],))
 
             s_code = _extract_s_code(lp['codigo_produto'])
-            pai_nome_real = ''
+
+            # Busca pecas filhas para exibir codigos + nomes reais
+            filhas = db_query(
+                "SELECT codigo_produto FROM ordens_fabricacao "
+                "WHERE lote_ordem = %s AND tipo = 'filho' ORDER BY codigo_produto",
+                (lp['ordem'],)
+            )
+            filhas_codigos = [_str(f['codigo_produto']) for f in filhas if _str(f['codigo_produto'])]
+
             if pai:
-                pai_nome_real = _get_produto_nome(pai.get('codigo_produto'))
-                produto_final = _str(pai['codigo_produto']) or s_code
-                produto_nome = pai_nome_real or _str(pai['descricao_produto'])
                 qtd_final = _int(pai['qtde_ordem'])
+                produto_final = _str(pai['codigo_produto']) or s_code
+                produto_nome = _get_produto_nome(produto_final) or _str(lp['descricao_produto'])
             else:
+                qtd_final = _int(lp['qtde_ordem'])
                 produto_final = s_code
                 produto_nome = _str(lp['descricao_produto'])
-                qtd_final = _int(lp['qtde_ordem'])
+
+            # Texto com codigos das pecas e nome real da primeira
+            pecas_texto = ', '.join(filhas_codigos[:4])
+            if len(filhas_codigos) > 4:
+                pecas_texto += '... (+' + str(len(filhas_codigos) - 4) + ')'
+            peca_nome1 = _get_produto_nome(filhas_codigos[0]) if filhas_codigos else ''
 
             prod = db_query_one(
                 "SELECT status, usuario_nome FROM serralheria_producao "
@@ -455,6 +468,8 @@ def api_dashboard():
                 'status': lp['status'],
                 'produto_final': produto_final,
                 'produto_nome': produto_nome,
+                'pecas_codigos': pecas_texto,
+                'peca_nome1': peca_nome1,
                 'qtd_produto_final': qtd_final,
                 'qtd_pecas': _int(ofs['qtd_pecas']) if ofs else 0,
                 'qtd_total': _int(ofs['qtd_total']) if ofs else 0,
@@ -510,16 +525,28 @@ def api_lotes():
                 """, (lp['ordem'],))
 
             s_code = _extract_s_code(lp['codigo_produto'])
-            pai_nome_real = ''
+
+            # Busca pecas filhas
+            filhas = db_query(
+                "SELECT codigo_produto FROM ordens_fabricacao "
+                "WHERE lote_ordem = %s AND tipo = 'filho' ORDER BY codigo_produto",
+                (lp['ordem'],)
+            )
+            filhas_codigos = [_str(f['codigo_produto']) for f in filhas if _str(f['codigo_produto'])]
+
             if pai:
-                pai_nome_real = _get_produto_nome(pai.get('codigo_produto'))
-                produto_final = _str(pai['codigo_produto']) or s_code
-                produto_nome = pai_nome_real or _str(pai['descricao_produto'])
                 qtd_final = _int(pai['qtde_ordem'])
+                produto_final = _str(pai['codigo_produto']) or s_code
+                produto_nome = _get_produto_nome(produto_final) or _str(lp['descricao_produto'])
             else:
+                qtd_final = _int(lp['qtde_ordem'])
                 produto_final = s_code
                 produto_nome = _str(lp['descricao_produto'])
-                qtd_final = _int(lp['qtde_ordem'])
+
+            pecas_texto = ', '.join(filhas_codigos[:4])
+            if len(filhas_codigos) > 4:
+                pecas_texto += '... (+' + str(len(filhas_codigos) - 4) + ')'
+            peca_nome1 = _get_produto_nome(filhas_codigos[0]) if filhas_codigos else ''
 
             prod = db_query_one(
                 "SELECT status, usuario_nome FROM serralheria_producao "
@@ -534,6 +561,8 @@ def api_lotes():
                 'status': lp['status'],
                 'produto_final': produto_final,
                 'produto_nome': produto_nome,
+                'pecas_codigos': pecas_texto,
+                'peca_nome1': peca_nome1,
                 'qtd_produto_final': qtd_final,
                 'qtd_pecas': _int(ofs['qtd_pecas']) if ofs else 0,
                 'qtd_total': _int(ofs['qtd_total']) if ofs else 0,
@@ -594,7 +623,20 @@ def api_pecas(lotcod):
                 op['departamento'] for op in ops if op.get('departamento')
             ))
 
-            nome_real = _get_produto_nome(p.get('codigo'))
+            peca_cod = str(p.get('codigo', '')).strip()
+            nome_real = _get_produto_nome(peca_cod)
+            # Fallback: consulta direta ao PG se cache falhou
+            if not nome_real and peca_cod:
+                try:
+                    pg_row = _pg_query_one(
+                        "SELECT pronome FROM public.produto WHERE TRIM(produto) = %s LIMIT 1",
+                        (peca_cod,)
+                    )
+                    if pg_row and pg_row.get('pronome'):
+                        nome_real = str(pg_row['pronome']).strip()[:200]
+                        _produto_cache[peca_cod] = nome_real
+                except Exception:
+                    pass
             produto_nome = nome_real if nome_real else _str(p['descricao'])
 
             pecas_result.append({

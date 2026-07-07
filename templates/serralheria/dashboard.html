@@ -420,8 +420,9 @@ function loadLotes(){
         +'<div class="lote-header"><span class="lote-codigo">LOTE '+esc(l.lotcod)+'</span>'
         +(descInline?'<span class="lote-desc-inline">'+esc(descInline)+'</span>':'')
         +badge+'</div>'
-        +'<div class="lote-prod-row"><span style="color:#42a5f5;font-weight:700;font-size:15px">'+esc(l.produto_final)+'</span>'
-        +(l.produto_nome?'<span style="color:#888;margin:0 4px">|</span><span style="color:#ccc;font-size:13px">'+esc(l.produto_nome)+'</span>':'')
+        +'<div class="lote-prod-row">'
+        +(l.pecas_codigos?'<span style="color:#42a5f5;font-weight:700;font-size:14px">'+esc(l.pecas_codigos)+'</span>':'<span style="color:#42a5f5;font-weight:700;font-size:15px">'+esc(l.produto_final)+'</span>')
+        +(l.peca_nome1?'<span style="color:#888;margin:0 4px">|</span><span style="color:#ccc;font-size:12px">'+esc(l.peca_nome1)+'</span>':'')
         +'<span style="color:#888;margin:0 4px">|</span>'
         +'<span style="color:#bbb;font-size:13px">'+qtdPecas+' un</span></div>'
         +'</div>'
