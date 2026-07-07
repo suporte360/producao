@@ -302,6 +302,16 @@ def kanban_board():
     depto = session.get('usuario_departamento', '')
     departamento_filtro = None if role in ('admin', 'gerente', 'pcp', 'diretor') else depto
 
+    # Verifica se o ERP esta acessivel
+    pg_ok = False
+    pg_erro = ''
+    try:
+        pg = DatabasePostgreSQL()
+        pg.query_one("SELECT 1")
+        pg_ok = True
+    except Exception as e:
+        pg_erro = str(e)[:120]
+
     cards = db.get_kanban_cards(departamento=departamento_filtro)
     stats = db.get_kanban_stats(departamento=departamento_filtro)
     concluidos_hoje = db.get_kanban_concluidos_hoje(departamento=departamento_filtro)
@@ -310,7 +320,8 @@ def kanban_board():
                            cards=cards, stats=stats,
                            concluidos_hoje=concluidos_hoje,
                            usuario_role=role,
-                           usuario_departamento=depto)
+                           usuario_departamento=depto,
+                           pg_ok=pg_ok, pg_erro=pg_erro)
 
 ####@app.route('/kanban/tv')
 ####@login_required
@@ -322,10 +333,22 @@ def kanban_board():
 @app.route('/kanban/tv')
 def kanban_tv():
     depto = request.args.get('departamento')
+
+    # Verifica se o ERP esta acessivel
+    pg_ok = False
+    pg_erro = ''
+    try:
+        pg = DatabasePostgreSQL()
+        pg.query_one("SELECT 1")
+        pg_ok = True
+    except Exception as e:
+        pg_erro = str(e)[:120]
+
     cards = db.get_kanban_cards(departamento=depto)
     return render_template('kanban/tv.html',
                            cards=cards,
-                           departamento=depto)
+                           departamento=depto,
+                           pg_ok=pg_ok, pg_erro=pg_erro)
 
 # =============================================
 # Kanban por Setor
@@ -1147,7 +1170,15 @@ def api_kanban_cards():
     depto = session.get('usuario_departamento', '')
     departamento_filtro = None if role in ('admin', 'gerente', 'pcp', 'diretor') else depto
     cards = db.get_kanban_cards(departamento=departamento_filtro)
-    return jsonify({'status': 'success', 'cards': cards})
+    # Verifica ERP para alerta no TV
+    pg_ok = False
+    try:
+        pg = DatabasePostgreSQL()
+        pg.query_one("SELECT 1")
+        pg_ok = True
+    except Exception:
+        pass
+    return jsonify({'status': 'success', 'cards': cards, 'pg_ok': pg_ok})
 
 @app.route('/api/kanban/status')
 @login_required
@@ -1157,7 +1188,15 @@ def api_kanban_status():
     departamento_filtro = None if role in ('admin', 'gerente', 'pcp', 'diretor') else depto
     stats = db.get_kanban_stats(departamento=departamento_filtro)
     concluidos_hoje = db.get_kanban_concluidos_hoje(departamento=departamento_filtro)
-    return jsonify({'status': 'success', 'stats': stats, 'concluidos_hoje': concluidos_hoje})
+    # Verifica ERP para alerta no TV
+    pg_ok = False
+    try:
+        pg = DatabasePostgreSQL()
+        pg.query_one("SELECT 1")
+        pg_ok = True
+    except Exception:
+        pass
+    return jsonify({'status': 'success', 'stats': stats, 'concluidos_hoje': concluidos_hoje, 'pg_ok': pg_ok})
 
 @app.route('/api/almoxarifado/tv')
 @login_required

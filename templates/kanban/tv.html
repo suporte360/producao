@@ -332,6 +332,17 @@
 </div>
 <div class="particles" id="particles"></div>
 
+<!-- ALERTA ERP OFFLINE -->
+{% if not pg_ok %}
+<div id="erpAlert" style="background:rgba(220,38,38,.95);border-bottom:2px solid #fca5a5;padding:8px 16px;text-align:center;z-index:100;position:relative;flex-shrink:0">
+  <div style="display:flex;align-items:center;justify-content:center;gap:8px;color:#fff;font-size:13px">
+    <i class="fa-solid fa-triangle-exclamation" style="font-size:16px"></i>
+    <span style="font-weight:700">ERP Lógica OFFLINE</span>
+    <span style="opacity:.85;font-size:11px">— Dados do banco local, podem estar desatualizados</span>
+  </div>
+</div>
+{% endif %}
+
 <!-- HEADER -->
 <header>
   <div class="h-left">
@@ -596,8 +607,21 @@ function loadData() {
   ]).then(([cardsRes, statsRes]) => {
     const cards = cardsRes.cards || cardsRes.data || [];
     const stats = {};
-    (statsRes.stats || []).forEach(s => { stats[s.etapa] = s.total; });
+    (statsRes.stats || []).forEach(function(s) { stats[s.etapa] = s.total; });
     const concluidos = statsRes.concluidos_hoje || 0;
+
+    /* Atualiza alerta ERP offline via AJAX */
+    var pgOk = (cardsRes.pg_ok === true || statsRes.pg_ok === true);
+    var alertEl = document.getElementById('erpAlert');
+    if (!pgOk && !alertEl) {
+      var a = document.createElement('div');
+      a.id = 'erpAlert';
+      a.style.cssText = 'background:rgba(220,38,38,.95);border-bottom:2px solid #fca5a5;padding:8px 16px;text-align:center;z-index:100;position:relative;flex-shrink:0';
+      a.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;gap:8px;color:#fff;font-size:13px"><i class="fa-solid fa-triangle-exclamation" style="font-size:16px"></i><span style="font-weight:700">ERP Lógica OFFLINE</span><span style="opacity:.85;font-size:11px">— Dados do banco local, podem estar desatualizados</span></div>';
+      document.body.insertBefore(a, document.querySelector('header'));
+    } else if (pgOk && alertEl) {
+      alertEl.remove();
+    }
 
     renderFluxo(cards);
     renderKanban(cards);
