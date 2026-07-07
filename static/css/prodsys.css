@@ -1,0 +1,151 @@
+/* ============================================================
+   PRODSYS v4.2.0 - CSS unificado
+   ============================================================ */
+:root {
+  --prodsys-blue: #1e3a8a;
+  --prodsys-blue-light: #3b82f6;
+  --prodsys-blue-dark: #1e293b;
+  --prodsys-slate: #0f172a;
+  --prodsys-slate-2: #1e293b;
+  --prodsys-success: #16a34a;
+  --prodsys-success-bg: #dcfce7;
+  --prodsys-warning: #d97706;
+  --prodsys-warning-bg: #fef3c7;
+  --prodsys-danger: #dc2626;
+  --prodsys-danger-bg: #fee2e2;
+  --prodsys-info: #0891b2;
+  --prodsys-info-bg: #cffafe;
+  --dept-almoxarifado: #0891b2;
+  --dept-corte: #ea580c;
+  --dept-solda: #dc2626;
+  --dept-acabamento: #7c3aed;
+  --dept-montagem: #2563eb;
+  --dept-embalagem: #16a34a;
+  --dept-serralheria: #ca8a04;
+  --dept-pintura: #db2777;
+  --header-h: 56px;
+  --sidebar-w: 250px;
+  --sidebar-w-tablet: 270px;
+}
+body {
+  font-family: 'Plus Jakarta Sans','Inter','Segoe UI',system-ui,sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.011em;
+}
+input,textarea,select { user-select: text; }
+h1,h2,h3,h4,h5 {
+  font-family: 'Plus Jakarta Sans','Inter',system-ui,sans-serif;
+  font-weight: 700; letter-spacing: -0.025em;
+  text-rendering: optimizeLegibility;
+}
+h1 { font-weight: 800; letter-spacing: -0.03em; }
+.tabular-nums { font-variant-numeric: tabular-nums; }
+.eyebrow { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.6875rem; font-weight: 700; color: #64748b; }
+.section-title { font-size: 1rem; font-weight: 700; color: #0f172a; letter-spacing: -0.02em; display: flex; align-items: center; gap: 8px; }
+.kpi-display { font-family: 'Plus Jakarta Sans',system-ui,sans-serif; font-weight: 800; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; line-height: 1; }
+
+/* SIDEBAR */
+.prodsys-sidebar { width: var(--sidebar-w) !important; min-width: var(--sidebar-w) !important; }
+.prodsys-main-wrap { padding-left: 0; }
+@media (min-width: 768px) {
+  .prodsys-main-wrap { padding-left: var(--sidebar-w) !important; }
+}
+@media (max-width: 1023px) {
+  .prodsys-sidebar {
+    position: fixed !important; inset: 0 auto 0 0; z-index: 50;
+    transform: translateX(-100%); transition: transform 0.3s ease;
+    width: var(--sidebar-w-tablet) !important; min-width: var(--sidebar-w-tablet) !important;
+    box-shadow: 0 0 40px rgba(0,0,0,0.4);
+  }
+  .prodsys-sidebar.open { transform: translateX(0); }
+  .prodsys-sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 40; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+  .prodsys-sidebar-overlay.open { opacity: 1; pointer-events: auto; }
+  .prodsys-main-wrap { padding-left: 0 !important; }
+}
+.nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 10px; font-size: 0.875rem; font-weight: 600; color: #cbd5e1; transition: all 0.15s; text-decoration: none; white-space: nowrap; }
+.nav-item:hover { background: #1e293b; color: #fff; }
+.nav-item.active { background: var(--prodsys-blue-light); color: #fff; }
+.nav-item i:first-child { width: 22px; text-align: center; font-size: 0.95rem; flex-shrink: 0; }
+
+/* BUTTONS */
+.btn-touch { min-height: 56px; font-weight: 700; font-size: 0.95rem; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 20px; transition: all 0.15s ease; cursor: pointer; border: none; }
+.btn-touch:active { transform: scale(0.96); }
+.btn-touch i { font-size: 1.25rem; }
+.btn-touch.btn-start { background: var(--prodsys-success); color: #fff; }
+.btn-touch.btn-pause { background: var(--prodsys-warning); color: #fff; }
+.btn-touch.btn-finish { background: var(--prodsys-blue-light); color: #fff; }
+.btn-touch.btn-cancel { background: #e2e8f0; color: #475569; }
+.btn-touch.btn-danger { background: var(--prodsys-danger); color: #fff; }
+.btn-giant { min-height: 80px; font-size: 1.05rem; font-weight: 800; border-radius: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 14px 12px; cursor: pointer; border: none; text-align: center; line-height: 1.1; }
+.btn-giant:active { transform: scale(0.95); }
+.btn-giant i { font-size: 1.8rem; }
+
+/* CARDS */
+.prodsys-card { background: #fff; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: box-shadow 0.2s, transform 0.2s; }
+.prodsys-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+.prodsys-card-lg { background: #fff; border-radius: 18px; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.kpi-card { background: #fff; border-radius: 14px; border: 1px solid #e2e8f0; padding: 16px; display: flex; align-items: center; gap: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: all 0.2s; }
+.kpi-card:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(0,0,0,0.08); }
+.kpi-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0; }
+.kpi-num { font-size: 1.7rem; font-weight: 900; color: #0f172a; line-height: 1; }
+.kpi-lbl { font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; font-weight: 600; }
+
+/* BADGES */
+.badge-priority { display: inline-flex; align-items: center; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; padding: 3px 8px; border-radius: 8px; }
+.badge-priority.urgente { background: #fee2e2; color: #b91c1c; }
+.badge-priority.alta { background: #ffedd5; color: #c2410c; }
+.badge-priority.media { background: #fef9c3; color: #a16207; }
+.badge-priority.baixa { background: #dcfce7; color: #15803d; }
+.badge-status { display: inline-flex; align-items: center; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; padding: 3px 8px; border-radius: 8px; }
+.badge-status.importado { background: #dbeafe; color: #1d4ed8; }
+.badge-status.liberado { background: #dcfce7; color: #15803d; }
+.badge-status.em_producao { background: #ffedd5; color: #c2410c; }
+.badge-status.pausado { background: #fef3c7; color: #b45309; }
+.badge-status.finalizado { background: #f1f5f9; color: #475569; }
+.badge-status.cancelado { background: #fee2e2; color: #b91c1c; }
+.chip-dept { display: inline-flex; align-items: center; gap: 4px; font-size: 0.65rem; font-weight: 700; padding: 3px 9px; border-radius: 10px; color: #fff; }
+
+/* TIMER */
+.timer-display { font-family: 'JetBrains Mono','Courier New',monospace; font-weight: 800; letter-spacing: 0.05em; font-variant-numeric: tabular-nums; }
+
+/* ANIMACOES */
+@keyframes prodsys-pulse-glow { 0%,100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); } 50% { box-shadow: 0 0 0 12px rgba(34,197,94,0); } }
+.anim-pulse-glow { animation: prodsys-pulse-glow 1.6s infinite; }
+@keyframes prodsys-slide-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.anim-slide-in { animation: prodsys-slide-in 0.3s ease-out; }
+@keyframes prodsys-flash-attention { 0%,100% { background-color: #fef3c7; } 50% { background-color: #fde047; } }
+.anim-flash-attention { animation: prodsys-flash-attention 1s infinite; }
+
+/* MODAIS */
+.prodsys-modal-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,0.6); backdrop-filter: blur(4px); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.prodsys-modal { background: #fff; border-radius: 20px; max-width: 420px; width: 100%; padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: prodsys-slide-in 0.25s ease-out; }
+.prodsys-modal h3 { font-size: 1.25rem; font-weight: 800; color: #0f172a; }
+.prodsys-modal p { font-size: 0.875rem; color: #64748b; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f1f5f9; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* TOAST */
+.prodsys-toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 200; padding: 14px 22px; border-radius: 14px; font-size: 0.9rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); animation: prodsys-slide-in 0.25s ease-out; min-width: 240px; justify-content: center; }
+.prodsys-toast.success { background: var(--prodsys-success); }
+.prodsys-toast.error { background: var(--prodsys-danger); }
+.prodsys-toast.info { background: var(--prodsys-blue-light); }
+
+/* HEADER */
+.prodsys-header { height: var(--header-h); background: #fff; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; position: sticky; top: 0; z-index: 30; }
+
+/* DEPT CORES */
+.dept-ALMOXARIFADO { background: var(--dept-almoxarifado); }
+.dept-CORTE { background: var(--dept-corte); }
+.dept-SOLDA { background: var(--dept-solda); }
+.dept-ACABAMENTO { background: var(--dept-acabamento); }
+.dept-MONTAGEM { background: var(--dept-montagem); }
+.dept-EMBALAGEM { background: var(--dept-embalagem); }
+.dept-SERRALHERIA { background: var(--dept-serralheria); }
+.dept-PINTURA { background: var(--dept-pintura); }

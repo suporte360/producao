@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+{% block title %}Importar do ERP — PCP{% endblock %}
+{% block header_title %}
+  <span class="flex items-center gap-2">
+    <i class="fa-solid fa-file-import text-blue-500"></i>
+    <span class="hidden sm:inline">Importar do ERP</span>
+  </span>
+{% endblock %}
+
+{% block content %}
+
+
+
+{# ═══════════════ STATUS DA CONEXÃO ═══════════════ #}
+<div class="flex flex-wrap items-center gap-3 mb-4">
+  <div class="flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-bold
+    {{ 'bg-green-50 border-green-200 text-green-700' if pg_ok else 'bg-red-50 border-red-200 text-red-700' }}">
+    <span class="w-2 h-2 rounded-full {{ 'bg-green-500' if pg_ok else 'bg-red-500' }} {{ 'animate-pulse' if pg_ok else '' }}"></span>
+    <i class="fa-solid fa-database text-xs"></i>
+    ERP Lógica (PostgreSQL)
+    <span class="px-1.5 py-0.5 rounded text-[10px] {{ 'bg-green-100 text-green-800' if pg_ok else 'bg-red-100 text-red-800' }}">{{ 'CONECTADO' if pg_ok else 'OFFLINE' }}</span>
+  </div>
+  {% if pg_ok %}
+  <div class="text-xs text-gray-500 flex items-center gap-3">
+    <span><i class="fa-solid fa-server mr-1 text-gray-400"></i>192.168.1.17:5432</span>
+    <span><i class="fa-solid fa-layer-group mr-1 text-blue-400"></i><strong class="text-gray-700">{{ lotes_erp|length }}</strong> lote(s) disponíveis</span>
+  </div>
+  {% endif %}
+</div>
+
+{% if not pg_ok %}
+{# ═══════════════ ERRO DE CONEXÃO ═══════════════ #}
+<div class="prodsys-card p-8 text-center border-l-4 border-red-500">
+  <div class="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-3">
+    <i class="fa-solid fa-plug-circle-xmark text-red-500 text-3xl"></i>
+  </div>
+  <h3 class="font-bold text-red-700 text-lg mb-1">Não foi possível conectar ao ERP</h3>
+  <p class="text-sm text-red-600 mb-4 font-mono bg-red-50 px-3 py-2 rounded-lg inline-block">{{ pg_erro }}</p>
+  <p class="text-xs text-gray-500">Verifique se o servidor PostgreSQL está acessível em <strong>192.168.1.17:5432</strong></p>
+</div>
+
+{% else %}
+
+{# ═══════════════ AÇÕES EM LOTE ═══════════════ #}
+<div class="prodsys-card p-3 mb-4 flex flex-wrap items-center gap-3">
+  <label class="flex items-center gap-2 text-sm font-bold text-gray-600 cursor-pointer select-none">
+    <input type="checkbox" id="selecionarTodos" onchange="toggleTodos(this)"
+      class="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+    Selecionar todos
+  </label>
+  <select id="filtroLotes" onchange="filtrarLotes(this.value)"
+    class="text-sm font-bold border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
+    <option value="a_importar">A Importar</option>
+    <option value="importados">Importados</option>
+    <option value="todos">Todos</option>
+  </select>
+  <div class="flex-1"></div>
+  <span id="contadorSelecionados" class="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full">0 selecionado(s)</span>
+  <button onclick="importarSelecionados()"
+    class="btn-touch btn-finish text-sm" style="min-height:40px" id="btnImportar" disabled>
+    <i class="fa-solid fa-file-import"></i>Importar Selecionados
+  </button>
+  <a href="{{ url_for('dashboard_pcp') }}" class="btn-touch btn-cancel text-sm" style="min-height:40px">
+    <i class="fa-solid fa-arrow-left"></i>Voltar ao PCP
+  </a>
+</div>
+
+{# ═══════════════ CARDS DOS LOTES (visual) ═══════════════ #}
+{% if lotes_erp %}
+<div class="mb-3 flex items-center justify-between">
+  <h2 class="text-sm font-bold text-gray-700 flex items-center gap-2">
+    <i class="fa-solid fa-database text-purple-500"></i>
+    Ordens de Produção no ERP
+    <span id="totalFiltrados" class="bg-purple-50 text-purple-700 text-xs font-bold px-2.5 py-0.5 rounded-full">0 registros</span>
+  </h2>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+  {% for lote in lotes_erp %}
+  {% set ja_importado = lote.lote_codigo in lotes_ja_importados %}
+  {% set atrasado = lote.data_previsao and lote.data_previsao < now.date() %}
+
+  <article class="card-lote prodsys-card border-l-4 {{ 'border-amber-400' if ja_importado else ('border-red-500' if atrasado else 'border-blue-400') }} overflow-hidden {{ 'bg-amber-50/30' if ja_importado }}" data-importado="{{ 'sim' if ja_importado else 'nao' }}">
+
+    <div class="px-4 py-3">
+      <div class="flex items-start justify-between gap-2 mb-2">
+        <div class="flex items-center gap-2">
+          <input type="checkbox"
+            class="chk-lote w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer flex-shrink-0"
+            value="{{ lote.lote_codigo }}"
+            data-ordem="{{ lote.maior_ordem or lote.lote_codigo }}"
+            data-produto="{{ lote.nome_produto or lote.produto_final_codigo or lote.lote_descricao or '' }}"
+            data-qtd="{{ lote.quantidade_total or 0 }}"
+            data-previsao="{{ lote.data_previsao or '' }}"
+            data-abertura="{{ lote.data_abertura or '' }}"
+            onchange="atualizarContador()">
+          <div>
+            <div class="font-black text-gray-800 text-base">{{ lote.lote_codigo }}</div>
+            {% if lote.maior_ordem %}<div class="text-[11px] text-gray-400">OP #{{ lote.maior_ordem }}</div>{% endif %}
+          </div>
+        </div>
+        {% if ja_importado %}
+        <span class="badge-status" style="background:#fef3c7;color:#b45309"><i class="fa-solid fa-rotate"></i> Já importado</span>
+        {% elif atrasado %}
+        <span class="badge-priority urgente">ATRASADO</span>
+        {% else %}
+        <span class="badge-priority" style="background:#dbeafe;color:#1d4ed8">NOVO</span>
+        {% endif %}
+      </div>
+
+      <h3 class="text-sm font-bold text-gray-800 leading-tight mb-1 line-clamp-2" title="{{ lote.lote_descricao or '—' }}">
+        {{ lote.lote_descricao or '—' }}
+      </h3>
+      {% if lote.nome_produto and lote.nome_produto != lote.lote_descricao %}
+      <div class="text-[11px] text-gray-400 mb-1 line-clamp-1" title="{{ lote.nome_produto }}">{{ lote.nome_produto }}</div>
+      {% endif %}
+
+      <div class="grid grid-cols-3 gap-2 text-center mb-2">
+        <div class="bg-slate-50 rounded-lg py-1.5 px-1">
+          <div class="text-[9px] text-gray-500 uppercase font-bold tracking-wide">Qtd</div>
+          <div class="text-sm font-black text-gray-800">{{ lote.quantidade_total|int if lote.quantidade_total else '—' }}</div>
+        </div>
+        <div class="bg-slate-50 rounded-lg py-1.5 px-1">
+          <div class="text-[9px] text-gray-500 uppercase font-bold tracking-wide">OFs</div>
+          <div class="text-sm font-black text-gray-800">{{ lote.total_ofs or '—' }}</div>
+        </div>
+        <div class="bg-slate-50 rounded-lg py-1.5 px-1">
+          <div class="text-[9px] text-gray-500 uppercase font-bold tracking-wide">Previsão</div>
+          <div class="text-xs font-bold {{ 'text-red-600' if atrasado else 'text-gray-700' }}">
+            {% if lote.data_previsao %}{{ lote.data_previsao.strftime('%d/%m') }}{% else %}—{% endif %}
+          </div>
+        </div>
+      </div>
+
+      {% if lote.data_abertura %}
+      <div class="text-[10px] text-gray-400 mb-2">
+        <i class="fa-regular fa-calendar mr-1"></i>Abertura: {{ lote.data_abertura.strftime('%d/%m/%Y') }}
+      </div>
+      {% endif %}
+
+      <button onclick="importarUm('{{ lote.lote_codigo }}', '{{ lote.maior_ordem or lote.lote_codigo }}', '{{ (lote.nome_produto or lote.produto_final_codigo or lote.lote_descricao or '')|replace("'","") }}', {{ lote.quantidade_total or 0 }}, '{{ lote.data_previsao or '' }}', '{{ lote.data_abertura or '' }}')"
+        class="btn-touch {{ 'btn-cancel' if ja_importado else 'btn-finish' }} w-full text-sm">
+        <i class="fa-solid {{ 'fa-rotate' if ja_importado else 'fa-download' }}"></i>
+        {{ 'ATUALIZAR' if ja_importado else 'IMPORTAR' }}
+      </button>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+
+{% else %}
+{# ═══════════════ ESTADO VAZIO ═══════════════ #}
+<div class="prodsys-card p-12 text-center">
+  <i class="fa-solid fa-inbox text-5xl text-gray-300 mb-3"></i>
+  <h3 class="text-base font-bold text-gray-700 mb-1">Nenhuma ordem encontrada no ERP</h3>
+  <p class="text-sm text-gray-400">Verifique se existem Ordens de Produção abertas no ERP Lógica.</p>
+</div>
+{% endif %}
+{% endif %}
+
+{# ═══════════════ MODAL PROGRESSO ═══════════════ #}
+<div id="modalImportando" class="prodsys-modal-backdrop hidden">
+  <div class="prodsys-modal text-center">
+    <div class="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
+      <i class="fa-solid fa-gear fa-spin text-blue-600 text-2xl"></i>
+    </div>
+    <h3>Importando do ERP...</h3>
+    <p id="modalImportandoMsg" class="mt-1 mb-4">Aguarde enquanto processamos as ordens.</p>
+    <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+      <div id="progressBar" class="bg-blue-600 h-2 rounded-full transition-all duration-500" style="width:0%"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="prodsys-toast hidden"></div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showToast(msg, tipo='success') {
+  const t = document.getElementById('toast');
+  t.className = 'prodsys-toast ' + tipo;
+  t.innerHTML = `<i class="fa-solid ${tipo==='success'?'fa-check-circle':'fa-exclamation-circle'}"></i> ${msg}`;
+  t.classList.remove('hidden');
+  setTimeout(()=>t.classList.add('hidden'), 4000);
+}
+
+function atualizarContador() {
+  const sel = document.querySelectorAll('.card-lote:not([style*="display: none"]) .chk-lote:checked').length;
+  document.getElementById('contadorSelecionados').textContent = `${sel} selecionado(s)`;
+  document.getElementById('btnImportar').disabled = sel === 0;
+}
+
+function toggleTodos(cb) {
+  document.querySelectorAll('.card-lote:not([style*="display: none"]) .chk-lote').forEach(c => c.checked = cb.checked);
+  atualizarContador();
+}
+
+function filtrarLotes(filtro) {
+  const cards = document.querySelectorAll('.card-lote');
+  let visiveis = 0;
+  cards.forEach(card => {
+    const imp = card.dataset.importado;
+    let mostrar = true;
+    if (filtro === 'a_importar') mostrar = imp === 'nao';
+    else if (filtro === 'importados') mostrar = imp === 'sim';
+    card.style.display = mostrar ? '' : 'none';
+    if (mostrar) visiveis++;
+  });
+  document.getElementById('totalFiltrados').textContent = visiveis + ' registro' + (visiveis !== 1 ? 's' : '');
+  // desmarcar todos ao trocar filtro
+  document.getElementById('selecionarTodos').checked = false;
+  document.querySelectorAll('.chk-lote').forEach(c => c.checked = false);
+  atualizarContador();
+}
+
+// Ao carregar, aplicar filtro padrão "A Importar"
+document.addEventListener('DOMContentLoaded', () => filtrarLotes('a_importar'));
+
+function importarUm(loteCod, ordem, produto, qtd, previsao, abertura) {
+  executarImportacao([{
+    lote_codigo: loteCod, ordem: ordem, produto: produto,
+    qtd: qtd, previsao: previsao, abertura: abertura
+  }]);
+}
+
+function importarSelecionados() {
+  const checks = document.querySelectorAll('.chk-lote:checked');
+  const itens = Array.from(checks).map(c => ({
+    lote_codigo: c.value, ordem: c.dataset.ordem, produto: c.dataset.produto,
+    qtd: c.dataset.qtd, previsao: c.dataset.previsao, abertura: c.dataset.abertura
+  }));
+  if (itens.length === 0) return;
+  executarImportacao(itens);
+}
+
+function executarImportacao(itens) {
+  const modal = document.getElementById('modalImportando');
+  const msg   = document.getElementById('modalImportandoMsg');
+  const bar   = document.getElementById('progressBar');
+  modal.classList.remove('hidden');
+
+  fetch('/pcp/importar_erp', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({lotes: itens})
+  })
+  .then(r => r.json())
+  .then(d => {
+    bar.style.width = '100%';
+    setTimeout(() => {
+      modal.classList.add('hidden');
+      bar.style.width = '0%';
+      if (d.status === 'success') {
+        showToast(`${d.importados} importado(s), ${d.atualizados} atualizado(s).`, 'success');
+        setTimeout(() => location.reload(), 1200);
+      } else {
+        showToast('Erro: ' + (d.message || 'Falha na importação'), 'error');
+      }
+    }, 600);
+  })
+  .catch(() => {
+    modal.classList.add('hidden');
+    showToast('Erro de conexão com o servidor', 'error');
+  });
+
+  // Progresso visual
+  let p = 0;
+  const iv = setInterval(() => {
+    p = Math.min(p + Math.random() * 15, 90);
+    bar.style.width = p + '%';
+    msg.textContent = `Processando... ${Math.round(p)}%`;
+  }, 300);
+  setTimeout(() => clearInterval(iv), 5000);
+}
+</script>
+{% endblock %}

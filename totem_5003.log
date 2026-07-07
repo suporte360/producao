@@ -1,0 +1,704 @@
+nohup: ignorando entrada
+[OK] Lotes ativos (MariaDB): 2
+[OK] Cache de produtos: 3 (MariaDB)
+[OK] Tabelas serralheria verificadas no MariaDB
+[TOTEM] Serralheria Totem rodando em http://0.0.0.0:5003 (MariaDB - Somente exibicao)
+ * Serving Flask app 'serralheria_tomem'
+ * Debug mode: off
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5003
+ * Running on http://192.168.1.14:5003
+[33mPress CTRL+C to quit[0m
+[2026-07-07 09:32:15,302] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:32:15] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+192.168.1.14 - - [07/Jul/2026 09:32:24] "GET / HTTP/1.1" 200 -
+[2026-07-07 09:32:24,712] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:32:24] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+192.168.1.14 - - [07/Jul/2026 09:32:24] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+192.168.1.14 - - [07/Jul/2026 09:32:33] "GET / HTTP/1.1" 200 -
+[2026-07-07 09:32:33,316] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:32:33] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+192.168.1.14 - - [07/Jul/2026 09:32:33] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+[2026-07-07 09:32:44,034] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:32:44] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:32:54,062] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:32:54] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:33:04,073] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:33:04] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:33:14,086] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:33:14] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:33:24,097] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:33:24] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:33:34,108] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:33:34] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:33:44,178] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:33:44] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:33:54,224] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:33:54] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:34:04,234] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:34:04] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:34:14,245] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:34:14] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:34:24,256] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:34:24] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:34:34,269] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:34:34] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:34:44,310] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:34:44] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:34:54,323] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:34:54] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:35:04,334] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:35:04] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:35:14,337] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:35:14] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:35:24,444] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:35:24] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:35:34,455] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:35:34] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:35:44,466] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:35:44] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:35:54,470] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:35:54] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:36:04,480] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:36:04] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:36:14,491] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:36:14] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:36:24,495] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:36:24] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:36:34,497] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:36:34] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:36:44,508] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:36:44] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:36:54,511] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:36:54] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:37:04,523] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:37:04] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:37:14,535] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:37:14] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:37:25,321] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:37:25] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:37:35,345] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:37:35] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:37:45,429] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:37:45] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:37:55,467] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:37:55] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:38:05,483] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:38:05] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:38:15,513] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:38:15] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:38:25,542] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:38:25] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:38:35,554] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:38:35] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:38:45,701] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:38:45] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:38:55,716] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:38:55] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:39:05,724] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:39:05] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:39:15,804] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:39:15] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:39:25,826] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:39:25] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:39:35,882] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:39:35] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:39:45,913] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:39:45] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:39:55,949] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:39:55] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:40:05,961] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:40:05] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:40:16,026] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:40:16] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:40:26,079] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:40:26] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:40:36,089] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:40:36] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:40:46,140] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:40:46] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:40:56,194] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:40:56] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:41:06,264] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:41:06] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:41:16,276] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:41:16] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:41:26,356] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:41:26] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:41:36,375] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:41:36] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:41:46,401] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:41:46] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:41:56,472] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:41:56] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:42:06,525] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:42:06] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:42:16,587] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:42:16] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:42:26,597] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:42:26] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:42:36,624] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:42:36] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:42:46,644] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:42:46] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:42:56,655] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:42:56] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:43:06,683] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:43:06] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:43:16,733] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:43:16] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:43:26,747] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:43:26] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:43:36,799] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:43:36] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:43:46,849] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:43:46] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:43:56,949] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:43:56] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:44:06,966] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:44:06] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:44:17,041] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:44:17] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:44:27,072] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:44:27] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:44:37,087] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:44:37] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:44:47,144] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:44:47] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:44:57,183] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:44:57] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:45:07,203] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:45:07] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:45:17,240] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:45:17] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:45:27,253] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:45:27] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:45:37,313] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:45:37] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:45:47,381] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:45:47] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:45:57,394] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:45:57] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:46:07,409] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:46:07] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:46:17,459] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:46:17] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:46:27,470] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:46:27] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:46:37,499] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:46:37] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:46:47,548] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:46:47] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:46:57,559] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:46:57] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:47:07,607] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:47:07] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:47:17,667] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:47:17] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:47:27,707] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:47:27] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:47:37,720] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:47:37] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:47:47,748] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:47:47] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:47:57,760] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:47:57] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:48:07,771] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:48:07] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:48:17,782] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:48:17] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:48:27,795] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:48:27] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:48:37,806] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:48:37] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:48:47,856] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:48:47] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:48:57,919] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:48:57] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:49:07,931] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:49:07] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:49:17,979] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:49:17] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:49:27,990] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:49:27] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:49:38,001] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:49:38] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:49:48,012] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:49:48] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:49:58,053] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:49:58] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:50:08,065] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:50:08] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:50:18,100] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:50:18] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:50:28,111] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:50:28] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:50:38,155] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:50:38] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:50:48,205] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:50:48] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:50:58,324] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:50:58] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:51:08,371] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:51:08] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:51:18,424] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:51:18] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:51:28,438] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:51:28] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:51:38,486] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:51:38] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:51:48,545] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:51:48] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:51:58,560] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:51:58] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:52:08,626] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:52:08] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:52:18,678] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:52:18] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:52:28,690] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:52:28] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:52:38,702] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:52:38] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:52:48,750] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:52:48] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:52:58,761] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:52:58] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:53:08,791] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:53:08] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:53:18,840] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:53:18] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:53:28,850] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:53:28] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:53:38,879] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:53:38] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:53:48,926] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:53:48] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:53:58,969] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:53:58] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:54:09,016] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:54:09] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:54:19,059] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:54:19] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:54:29,071] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:54:29] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:54:39,098] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:54:39] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:54:49,162] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:54:49] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:54:59,175] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:54:59] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:55:09,203] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:55:09] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:55:19,215] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:55:19] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:55:29,229] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:55:29] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:55:39,274] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:55:39] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:55:49,323] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:55:49] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:55:59,334] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:55:59] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:56:09,383] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:56:09] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:56:19,422] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:56:19] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:56:29,433] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:56:29] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:56:39,461] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:56:39] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:56:49,509] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:56:49] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:56:59,559] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:56:59] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:57:09,609] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:57:09] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:57:19,678] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:57:19] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:57:29,689] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:57:29] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:57:39,728] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:57:39] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:57:49,763] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:57:49] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:57:59,780] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:57:59] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:58:09,945] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:58:09] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:58:19,955] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:58:19] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:58:29,963] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:58:29] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:58:39,986] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:58:39] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:58:50,020] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:58:50] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:59:00,037] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:59:00] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:59:10,060] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:59:10] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:59:20,085] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:59:20] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:59:30,092] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:59:30] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:59:40,115] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:59:40] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 09:59:50,125] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 09:59:50] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:00:00,138] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:00:00] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:00:10,161] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:00:10] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:00:20,169] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:00:20] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:00:30,176] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:00:30] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:00:40,200] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:00:40] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:00:50,234] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:00:50] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:01:00,252] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:01:00] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:01:10,275] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:01:10] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:01:20,300] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:01:20] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:01:30,307] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:01:30] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:01:40,331] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:01:40] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:01:50,339] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:01:50] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:02:00,352] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:02:00] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:02:10,376] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:02:10] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:02:20,385] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:02:20] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:02:30,393] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:02:30] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:02:40,417] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:02:40] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:02:50,451] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:02:50] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:03:00,468] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:03:00] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:03:10,492] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:03:10] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:03:20,518] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:03:20] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:03:30,527] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:03:30] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:03:40,552] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:03:40] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:03:50,560] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:03:50] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:04:00,573] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:04:00] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:04:10,597] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:04:10] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:04:20,615] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:04:20] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:04:30,623] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:04:30] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:04:40,630] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:04:40] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:04:50,677] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:04:50] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:05:00,778] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:05:00] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:05:10,794] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:05:10] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:05:20,821] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:05:20] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:05:30,829] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:05:30] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:05:40,838] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:05:40] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:05:50,859] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:05:50] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:06:00,877] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:06:00] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:06:10,883] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:06:10] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:06:20,929] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:06:20] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:06:30,956] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:06:30] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:06:40,982] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:06:40] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:06:51,037] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:06:51] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:07:01,054] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:07:01] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:07:11,062] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:07:11] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:07:21,134] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:07:21] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:07:31,159] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:07:31] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:07:41,165] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:07:41] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:07:51,202] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:07:51] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:08:01,224] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:08:01] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:08:11,265] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:08:11] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:08:21,281] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:08:21] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:08:31,288] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:08:31] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:08:41,297] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:08:41] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:08:51,334] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:08:51] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:09:01,370] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:09:01] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:09:11,377] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:09:11] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:09:21,392] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:09:21] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:09:31,450] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:09:31] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:09:41,459] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:09:41] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:09:51,497] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:09:51] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:10:01,539] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:10:01] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:10:11,565] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:10:11] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:10:21,581] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:10:21] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:10:31,590] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:10:31] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:10:41,629] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:10:41] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:10:51,666] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:10:51] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:11:01,675] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:11:01] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:11:11,679] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:11:11] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:11:21,694] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:11:21] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:11:31,701] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:11:31] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:11:41,708] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:11:41] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:11:51,743] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:11:51] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:12:01,763] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:12:01] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:12:11,806] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:12:11] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:12:21,831] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:12:21] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:12:31,837] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:12:31] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:12:41,861] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:12:41] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:12:51,886] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:12:51] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:13:01,921] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:13:01] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:13:11,980] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:13:11] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:13:21,988] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:13:21] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:13:31,996] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:13:31] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:13:42,021] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:13:42] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:13:52,057] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:13:52] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:14:02,075] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:14:02] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:14:12,100] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:14:12] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:14:22,125] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:14:22] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:14:32,138] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:14:32] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:14:42,145] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:14:42] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:14:52,183] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:14:52] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:15:02,225] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:15:02] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:15:12,233] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:15:12] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:15:22,272] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:15:22] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:15:32,295] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:15:32] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:15:42,302] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:15:42] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:15:52,334] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:15:52] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:16:02,372] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:16:02] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:16:12,430] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:16:12] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:16:22,467] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:16:22] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:16:32,491] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:16:32] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:16:42,499] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:16:42] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:16:52,533] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:16:52] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:17:02,585] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:17:02] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:17:12,593] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:17:12] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:17:22,651] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:17:22] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:17:32,724] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:17:32] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:17:42,753] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:17:42] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:17:52,786] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:17:52] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:18:02,819] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:18:02] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:18:12,827] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:18:12] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:18:22,865] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:18:22] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:18:32,874] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:18:32] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:18:42,982] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:18:42] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:18:53,017] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:18:53] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:19:03,069] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:19:03] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:19:13,077] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:19:13] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:19:23,088] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:19:23] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:19:33,097] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:19:33] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:19:43,116] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:19:43] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:19:53,165] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:19:53] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:20:03,183] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:20:03] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:20:13,291] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:20:13] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:20:23,338] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:20:23] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:20:33,353] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:20:33] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:20:43,376] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:20:43] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:20:53,446] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:20:53] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:21:03,482] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:21:03] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:21:13,531] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:21:13] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:21:23,583] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:21:23] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:21:33,597] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:21:33] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:21:43,627] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:21:43] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:21:53,738] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:21:53] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:22:03,773] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:22:03] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:22:13,820] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:22:13] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:22:23,928] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:22:23] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:22:33,942] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:22:33] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:22:43,956] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:22:43] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:22:54,009] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:22:54] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:23:04,048] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:23:04] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:23:14,072] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:23:14] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:23:24,130] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:23:24] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:23:34,141] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:23:34] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:23:44,145] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:23:44] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:23:54,213] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:23:54] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:24:04,250] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:24:04] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:24:14,263] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:24:14] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:24:24,325] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:24:24] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:24:34,345] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:24:34] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:24:44,357] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:24:44] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:24:54,408] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:24:54] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:25:04,477] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:25:04] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:25:14,490] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:25:14] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:25:24,545] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:25:24] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:25:34,577] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:25:34] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:25:44,592] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:25:44] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:25:54,652] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:25:54] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:26:04,732] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:26:04] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:26:14,781] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:26:14] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:26:24,817] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:26:24] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:26:34,847] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:26:34] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:26:44,860] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:26:44] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:26:54,905] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:26:54] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:27:04,949] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:27:04] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:27:14,965] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:27:14] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:27:25,087] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:27:25] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:27:35,104] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:27:35] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:27:45,118] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:27:45] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:27:55,168] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:27:55] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:28:05,183] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:28:05] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:28:15,202] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:28:15] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:28:25,285] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:28:25] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:28:35,299] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:28:35] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:28:45,332] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:28:45] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:28:55,416] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:28:55] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:29:05,466] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:29:05] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:29:15,480] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:29:15] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:29:25,568] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:29:25] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -
+[2026-07-07 10:29:35,584] ERROR in serralheria_tomem: Erro Dashboard: not all arguments converted during string formatting
+192.168.1.14 - - [07/Jul/2026 10:29:35] "[35m[1mGET /api/dashboard HTTP/1.1[0m" 500 -

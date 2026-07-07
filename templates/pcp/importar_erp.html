@@ -89,7 +89,7 @@
             class="chk-lote w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer flex-shrink-0"
             value="{{ lote.lote_codigo }}"
             data-ordem="{{ lote.maior_ordem or lote.lote_codigo }}"
-            data-produto="{{ lote.lote_descricao or lote.nome_produto or lote.produto_final_codigo or '' }}"
+            data-produto="{{ lote.produto_final_codigo or lote.codigo_produto or '' }}" data-nome="{{ lote.nome_produto or '' }}"
             data-qtd="{{ lote.quantidade_total or 0 }}"
             data-previsao="{{ lote.data_previsao or '' }}"
             data-abertura="{{ lote.data_abertura or '' }}"
@@ -108,12 +108,12 @@
         {% endif %}
       </div>
 
-      <h3 class="text-sm font-bold text-gray-800 leading-tight mb-1 line-clamp-2" title="{{ lote.lote_descricao or '—' }}">
+      <h3 class="text-sm font-bold text-gray-800 leading-tight mb-1 line-clamp-2" title="{{ lote.nome_produto or lote.lote_descricao or '—' }}">
         {{ lote.lote_descricao or '—' }}
+        {% if lote.nome_produto %}
+        <span class="text-xs font-normal text-blue-600 ml-2">{{ lote.nome_produto }}</span>
+        {% endif %}
       </h3>
-      {% if lote.nome_produto and lote.nome_produto != lote.lote_descricao %}
-      <div class="text-[11px] text-gray-400 mb-1 line-clamp-1" title="{{ lote.nome_produto }}">{{ lote.nome_produto }}</div>
-      {% endif %}
 
       <div class="grid grid-cols-3 gap-2 text-center mb-2">
         <div class="bg-slate-50 rounded-lg py-1.5 px-1">
@@ -138,7 +138,7 @@
       </div>
       {% endif %}
 
-      <button onclick="importarUm('{{ lote.lote_codigo }}', '{{ lote.maior_ordem or lote.lote_codigo }}', '{{ (lote.lote_descricao or lote.nome_produto or lote.produto_final_codigo or '')|replace("'","") }}', {{ lote.quantidade_total or 0 }}, '{{ lote.data_previsao or '' }}', '{{ lote.data_abertura or '' }}')"
+      <button onclick="importarUm('{{ lote.lote_codigo }}', '{{ lote.maior_ordem or lote.lote_codigo }}', '{{ (lote.nome_produto or lote.produto_final_codigo or lote.lote_descricao or '')|replace("'","") }}', {{ lote.quantidade_total or 0 }}, '{{ lote.data_previsao or '' }}', '{{ lote.data_abertura or '' }}')"
         class="btn-touch {{ 'btn-cancel' if ja_importado else 'btn-finish' }} w-full text-sm">
         <i class="fa-solid {{ 'fa-rotate' if ja_importado else 'fa-download' }}"></i>
         {{ 'ATUALIZAR' if ja_importado else 'IMPORTAR' }}
@@ -227,10 +227,13 @@ function importarUm(loteCod, ordem, produto, qtd, previsao, abertura) {
 }
 
 function importarSelecionados() {
+  var n = document.querySelectorAll('.chk-lote:checked').length;
+  if (n === 0) { alert('Selecione ao menos um lote.'); return; }
+  if (!confirm('Importar ' + n + ' lote(s) do ERP?')) return;
   const checks = document.querySelectorAll('.chk-lote:checked');
   const itens = Array.from(checks).map(c => ({
     lote_codigo: c.value, ordem: c.dataset.ordem, produto: c.dataset.produto,
-    qtd: c.dataset.qtd, previsao: c.dataset.previsao, abertura: c.dataset.abertura
+    qtd: c.dataset.qtd, previsao: c.dataset.previsao, abertura: c.dataset.abertura, nome: c.dataset.nome || ''
   }));
   if (itens.length === 0) return;
   executarImportacao(itens);

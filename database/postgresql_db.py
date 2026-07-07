@@ -120,34 +120,28 @@ class DatabasePostgreSQL:
         return self.query(sql)
 
     def get_produto_pronto_por_lote(self, lote_codigo):
-        """
-        Retorna o produto PAI (produto final) do lote.
-        Usa a tabela ordem3 para identificar qual OP é a PAI (ordem != 0).
-        """
+        """Retorna o produto PAI (final) do lote usando loteprod.lotdes -> produto.pronome."""
+        # Metodo 1: lotdes -> pronome (mais confiavel)
         sql = """
-            SELECT
-                o3.ordproof AS codigo_produto,
+            SELECT 
+                lp.lotdes AS codigo_produto,
                 p.pronome AS nome_produto,
-                (SELECT o.ordquanti FROM public.ordem o
-                 WHERE o.ordem = o3.ordem LIMIT 1) AS quantidade
-            FROM
-                public.ordem3 o3
-            LEFT JOIN
-                public.produto p ON o3.ordproof::TEXT = p.produto::TEXT
-            WHERE
-                o3.ordoflote = %s
-                AND o3.ordem != 0
+                (SELECT MAX(o.ordquanti)::float FROM public.ordem o WHERE o.lotcod = lp.lotcod) AS quantidade
+            FROM public.loteprod lp
+            LEFT JOIN public.produto p ON TRIM(lp.lotdes) = TRIM(p.produto)
+            WHERE lp.lotcod = %s
             LIMIT 1
         """
         try:
             result = self.query_one(sql, (lote_codigo,))
-            if result:
+            if result and result.get('nome_produto'):
                 return result
-            # Fallback: se não tem ordem3, pega a primeira OP do lote
-            return self._fallback_produto_lote(lote_codigo)
-        except Exception as e:
-            return self._fallback_produto_lote(lote_codigo)
+        except Exception:
+            pass
+        # Fallback
+        return self._fallback_produto_lote(lote_codigo)
 
+    
     def _fallback_produto_lote(self, lote_codigo):
         """Fallback: pega a primeira OP do lote se ordem3 não tiver dados."""
         sql = """

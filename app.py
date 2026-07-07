@@ -18,6 +18,51 @@ from app_apontamentos_tempo import apontamentos_bp
 # Inicialização
 # =============================================
 
+
+
+# =============================================
+# Cache de nomes de produtos do ERP (pronome)
+# =============================================
+_produto_cache = {}
+
+def _load_produto_cache():
+    """Carrega nomes reais dos produtos do PostgreSQL."""
+    global _produto_cache
+    try:
+        pg = DatabasePostgreSQL()
+        rows = pg.query(
+            "SELECT produto, pronome FROM public.produto "
+            "WHERE pronome IS NOT NULL AND pronome != ''"
+        )
+        _produto_cache = {}
+        for r in rows:
+            cod = str(r.get('produto', '')).strip()
+            nome = str(r.get('pronome', '')).strip()
+            if cod:
+                _produto_cache[cod] = nome[:200]
+        print('[OK] Cache de produtos carregado: %d produtos do ERP' % len(_produto_cache))
+    except Exception as e:
+        print('[WARN] Cache de produtos falhou: %s' % e)
+
+def _get_nome_produto(codigo):
+    """Retorna nome real do produto pelo codigo."""
+    if not codigo:
+        return ''
+    return _produto_cache.get(str(codigo).strip(), '')
+
+def _resolver_nome_lote(lote):
+    """Resolve nome real para descricao_produto de um lote/OF."""
+    desc = lote.get('descricao_produto', '') or ''
+    cod = lote.get('codigo_produto', '') or ''
+    if not desc or desc.upper().startswith('PRODUCAO DE'):
+        nome = _get_nome_produto(cod)
+        if nome:
+            return nome
+    return desc
+
+# Carregar cache na inicializacao
+_load_produto_cache()
+
 app = Flask(__name__)
 app.config.from_object(Config)
 app.config['PERMANENT_SESSION_LIFETIME'] = Config.PERMANENT_SESSION_LIFETIME
@@ -447,7 +492,7 @@ def pcp_executar_importacao():
                 'ordem':             int(ordem_num) if str(ordem_num).isdigit() else 0,
                 'lote_codigo':       lote_cod,
                 'codigo_produto':    item.get('produto',''),
-                'descricao_produto': item.get('produto',''),  # agora envia lote_descricao do template
+                'descricao_produto': item.get('nome','') or item.get('produto',''),
                 'qtde_ordem':        float(item.get('qtd', 0) or 0),
                 'unidade_medida':    'PC',
                 'status_erp':        'A',
@@ -468,7 +513,7 @@ def pcp_executar_importacao():
                     'lote_ordem':       lote_ordem_local,
                     'of_numero':        str(of_num),
                     'codigo_produto':   of.get('produto',''),
-                    'descricao_produto':item.get('produto',''),
+                    'descricao_produto': item.get('nome','') or item.get('produto',''),
                     'qtde_ordem':       float(of.get('quantidade') or 0),
                     'unidade_medida':   'PC',
                     'tipo':             'filho' if of.get('nivel_producao','') != '1' else 'pai',
@@ -526,6 +571,11 @@ def dashboard_pcp():
     prioridade_f= request.args.get('prioridade')
     lotes = db.get_lotes(status=status_f, prioridade=prioridade_f,
                          pagina=1, por_pagina=200)
+    # Resolver nomes reais dos produtos
+    for l in lotes:
+        l['descricao_produto'] = _resolver_nome_lote(l)
+        if not l.get('descricao_produto'):
+            l['descricao_produto'] = _get_nome_produto(l.get('codigo_produto'))
     stats = db.get_estatisticas_gerais()
     departamentos = db.listar_departamentos()
     return render_template('pcp/dashboard.html',

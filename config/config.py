@@ -24,7 +24,7 @@ class Config:
     PG_PORT     = os.environ.get('PG_PORT',     '5432')
     PG_DATABASE = os.environ.get('PG_DATABASE', 'salutem')
     PG_USERNAME = os.environ.get('PG_USERNAME', 'postgres')
-    PG_PASSWORD = os.environ.get('PG_PASSWORD', '')
+    PG_PASSWORD = os.environ.get('PG_PASSWORD', 'postgres')
 
     # =============================================
     # MariaDB/MySQL (Sistema Local - Leitura/Escrita)
@@ -33,7 +33,7 @@ class Config:
     MYSQL_PORT     = int(os.environ.get('MYSQL_PORT', 3306))
     MYSQL_DATABASE = os.environ.get('MYSQL_DATABASE', 'producao_db')
     MYSQL_USERNAME = os.environ.get('MYSQL_USERNAME', 'producao')
-    MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD', '')
+    MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD', 'senha123')
 
     # =============================================
     # Ambiente — DEBUG desligado por padrão
