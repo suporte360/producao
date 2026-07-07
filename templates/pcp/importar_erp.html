@@ -90,7 +90,7 @@
             value="{{ lote.lote_codigo }}"
             data-ordem="{{ lote.maior_ordem or lote.lote_codigo }}"
             data-produto="{{ lote.produto_final_codigo or lote.codigo_produto or '' }}" data-nome="{{ lote.nome_produto or '' }}"
-            data-qtd="{{ lote.quantidade_total or 0 }}"
+            data-qtd="{{ lote.quantidade_pai or lote.quantidade_total or 0 }}"
             data-previsao="{{ lote.data_previsao or '' }}"
             data-abertura="{{ lote.data_abertura or '' }}"
             onchange="atualizarContador()">
@@ -117,8 +117,8 @@
 
       <div class="grid grid-cols-3 gap-2 text-center mb-2">
         <div class="bg-slate-50 rounded-lg py-1.5 px-1">
-          <div class="text-[9px] text-gray-500 uppercase font-bold tracking-wide">Qtd</div>
-          <div class="text-sm font-black text-gray-800">{{ lote.quantidade_total|int if lote.quantidade_total else '—' }}</div>
+          <div class="text-[9px] text-gray-500 uppercase font-bold tracking-wide">Qtd Prod</div>
+          <div class="text-sm font-black text-gray-800">{{ lote.quantidade_pai|int if lote.quantidade_pai else (lote.quantidade_total|int if lote.quantidade_total else '—') }}</div>
         </div>
         <div class="bg-slate-50 rounded-lg py-1.5 px-1">
           <div class="text-[9px] text-gray-500 uppercase font-bold tracking-wide">OFs</div>

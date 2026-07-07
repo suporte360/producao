@@ -98,12 +98,19 @@ class DatabasePostgreSQL:
                  FROM public.ordem o
                  WHERE o.lotcod = lp.lotcod) AS total_ofs,
 
-                -- Quantidade total (soma das OFs)
+                -- Quantidade do produto final (OP PAI, nivel_producao = '1')
+                (SELECT COALESCE(o.ordquanti, 0)
+                 FROM public.ordem o
+                 WHERE o.lotcod = lp.lotcod
+                   AND o.ordnivprod = '1'
+                 LIMIT 1) AS quantidade_pai,
+
+                -- Quantidade total de pecas (soma de TODAS as OFs)
                 (SELECT COALESCE(SUM(o.ordquanti), 0)
                  FROM public.ordem o
                  WHERE o.lotcod = lp.lotcod) AS quantidade_total,
 
-                -- Maior número de OP (para usar como "ordem" no sistema local)
+                -- Maior numero de OP (para usar como "ordem" no sistema local)
                 (SELECT MAX(o.ordem)
                  FROM public.ordem o
                  WHERE o.lotcod = lp.lotcod) AS maior_ordem
@@ -126,7 +133,10 @@ class DatabasePostgreSQL:
             SELECT 
                 lp.lotdes AS codigo_produto,
                 p.pronome AS nome_produto,
-                (SELECT MAX(o.ordquanti)::float FROM public.ordem o WHERE o.lotcod = lp.lotcod) AS quantidade
+                (SELECT COALESCE(o.ordquanti, 0)::float
+                 FROM public.ordem o
+                 WHERE o.lotcod = lp.lotcod AND o.ordnivprod = '1'
+                 LIMIT 1) AS quantidade
             FROM public.loteprod lp
             LEFT JOIN public.produto p ON TRIM(lp.lotdes) = TRIM(p.produto)
             WHERE lp.lotcod = %s
@@ -143,7 +153,7 @@ class DatabasePostgreSQL:
 
     
     def _fallback_produto_lote(self, lote_codigo):
-        """Fallback: pega a primeira OP do lote se ordem3 não tiver dados."""
+        """Fallback: pega a OP PAI (nivel 1) do lote, senao a primeira."""
         sql = """
             SELECT
                 o.ordproduto AS codigo_produto,
@@ -156,6 +166,7 @@ class DatabasePostgreSQL:
             WHERE
                 o.lotcod = %s
             ORDER BY
+                CASE WHEN o.ordnivprod = '1' THEN 0 ELSE 1 END,
                 o.ordem DESC
             LIMIT 1
         """
