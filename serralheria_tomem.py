@@ -30,8 +30,8 @@ MYSQL_PASS = 'senha123'
 # PostgreSQL config (same as config/config.py)
 PG_HOST = os.environ.get('PG_HOST', '192.168.1.17')
 PG_PORT = int(os.environ.get('PG_PORT', '5432'))
-PG_DB   = os.environ.get('PG_DB', 'erp')
-PG_USER = os.environ.get('PG_USER', 'postgres')
+PG_DB   = os.environ.get('PG_DATABASE', 'salutem')
+PG_USER = os.environ.get('PG_USERNAME', 'postgres')
 PG_PASS = os.environ.get('PG_PASSWORD', 'postgres')
 
 # In-memory cache for product names (loaded from PostgreSQL produto.pronome)
