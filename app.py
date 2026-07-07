@@ -544,6 +544,12 @@ def pcp_executar_importacao():
                 except Exception:
                     pass
 
+                # Atualiza departamento_atual baseado na primeira op pendente
+                try:
+                    db.atualizar_departamento_atual(lote_ordem_local)
+                except Exception:
+                    pass
+
             db.add_log(session['usuario_id'], 'importar_erp',
                        f'Lote {lote_cod} importado do ERP', 'lotes_producao', lote_ordem_local)
 
@@ -866,6 +872,11 @@ def api_alterar_status_lote(ordem):
         # Baixa automatica no estoque da fabrica quando OF e liberada
         if status == 'liberado':
             _baixar_estoque_por_of(ordem)
+        # Atualiza departamento_atual ao mudar status
+        try:
+            db.atualizar_departamento_atual(ordem)
+        except Exception:
+            pass
     return jsonify({'status': 'success' if ok else 'error'})
 
 # =============================================

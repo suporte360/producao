@@ -257,6 +257,50 @@ class DatabaseMySQL:
     def atualizar_prioridade_lote(self, ordem, prioridade):
         return self.execute("UPDATE lotes_producao SET prioridade = %s WHERE ordem = %s", (prioridade, ordem))
 
+    def atualizar_departamento_atual(self, lote_ordem):
+        """Calcula e atualiza o departamento_atual, setor_atual_seq e total_setores
+        de um lote baseado na primeira operacao pendente (nao concluida)."""
+        # Busca OFs do lote
+        ofs = self.query(
+            "SELECT of_numero FROM ordens_fabricacao WHERE lote_ordem = %s",
+            (lote_ordem,)
+        )
+        if not ofs:
+            return
+
+        of_nums = [o['of_numero'] for o in ofs]
+        if not of_nums:
+            return
+
+        ph = ','.join(['%s'] * len(of_nums))
+
+        # Total de departamentos unicos (setores) do lote
+        total = self.query_one(
+            "SELECT COUNT(DISTINCT departamento) as t FROM operacoes_producao "
+            "WHERE of_numero IN (" + ph + ") AND departamento IS NOT NULL AND departamento != ''",
+            tuple(of_nums)
+        )
+        total_setores = int(total['t'] or 0) if total else 0
+
+        # Primeira operacao pendente (nao concluida) ordenada por sequencia
+        primeira = self.query_one(
+            "SELECT departamento, sequencia FROM operacoes_producao "
+            "WHERE of_numero IN (" + ph + ") "
+            "AND status != 'concluido' "
+            "ORDER BY sequencia ASC LIMIT 1",
+            tuple(of_nums)
+        )
+
+        dept = primeira['departamento'] if primeira else None
+        seq = int(primeira['sequencia']) if primeira else 0
+
+        self.execute(
+            "UPDATE lotes_producao "
+            "SET departamento_atual = %s, setor_atual_seq = %s, total_setores = %s "
+            "WHERE ordem = %s",
+            (dept, seq, total_setores, lote_ordem)
+        )
+
     # =============================================
     # ORDENS DE FABRICAÇÃO (OFs)
     # =============================================
@@ -484,6 +528,11 @@ class DatabaseMySQL:
         concluidas = self.query_one("SELECT COUNT(*) as t FROM operacoes_producao WHERE lote_ordem = %s AND status = 'concluido'", (lote_ordem,))['t']
         if total > 0 and total == concluidas:
             self.execute("UPDATE lotes_producao SET status = 'finalizado', data_fim_producao = NOW() WHERE ordem = %s", (lote_ordem,))
+        # Sempre recalcula departamento_atual ao finalizar uma operacao
+        try:
+            self.atualizar_departamento_atual(lote_ordem)
+        except Exception:
+            pass
 
     # =============================================
     # APONTAMENTOS DE TEMPO
