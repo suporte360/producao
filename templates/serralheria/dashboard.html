@@ -414,17 +414,17 @@ function loadLotes(){
       var borderClass=l.status_producao==='em_producao'?' ativo':'';
       var badge=l.status_producao==='em_producao'?'<span class="badge badge-prod">Produzindo - '+esc(l.operador)+'</span>':'';
       var descInline='';if(l.descricao){descInline=l.descricao.length>40?l.descricao.substring(0,40)+'...':l.descricao;}
-      var prodInfo='';if(l.produto_final){prodInfo='<span style="color:#42a5f5;font-weight:700">'+esc(l.produto_final)+'</span>';}
-      if(l.produto_nome){prodInfo+=(prodInfo?' ':'')+'<span style="color:#ccc">'+esc(l.produto_nome)+'</span>';}
       var qtdPecas=0;if(l.qtd_produto_final){qtdPecas=Math.round(parseFloat(l.qtd_produto_final));}
       html+='<div class="lote-card'+borderClass+'" onclick="verLote(\''+esc(l.lotcod)+'\')">'
         +'<div class="lote-left">'
         +'<div class="lote-header"><span class="lote-codigo">LOTE '+esc(l.lotcod)+'</span>'
         +(descInline?'<span class="lote-desc-inline">'+esc(descInline)+'</span>':'')
         +badge+'</div>'
-        +(prodInfo?'<div class="lote-prod-row">'+prodInfo+'</div>':'')
+        +'<div class="lote-prod-row"><span style="color:#42a5f5;font-weight:700;font-size:15px">'+esc(l.produto_final)+'</span>'
+        +'<span style="color:#888;margin:0 4px">|</span>'
+        +'<span style="color:#bbb;font-size:13px">'+qtdPecas+' un</span></div>'
         +'</div>'
-        +'<div class="lote-qty-wrap"><div class="lote-qty">'+qtdPecas+'</div><div class="lote-qty-label">pecas</div></div>'
+        +'<div class="lote-qty-wrap"><div class="lote-qty">'+(l.qtd_pecas||0)+'</div><div class="lote-qty-label">pecas</div></div>'
         +'</div>';
     }
     document.getElementById('lotesList').innerHTML=html;
