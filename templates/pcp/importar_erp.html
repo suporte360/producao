@@ -83,10 +83,10 @@
   <article class="card-lote prodsys-card border-l-4 {{ 'border-amber-400' if ja_importado else ('border-red-500' if atrasado else 'border-blue-400') }} overflow-hidden {{ 'bg-amber-50/30' if ja_importado }}" data-importado="{{ 'sim' if ja_importado else 'nao' }}">
 
     <div class="px-4 py-3">
-      <div class="flex items-start justify-between gap-2 mb-2">
-        <div class="flex items-center gap-2">
+      <div class="flex items-start justify-between gap-2 mb-1">
+        <div class="flex items-start gap-2 min-w-0 flex-1">
           <input type="checkbox"
-            class="chk-lote w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer flex-shrink-0"
+            class="chk-lote w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer flex-shrink-0 mt-0.5"
             value="{{ lote.lote_codigo }}"
             data-ordem="{{ lote.maior_ordem or lote.lote_codigo }}"
             data-produto="{{ lote.produto_final_codigo or lote.codigo_produto or '' }}" data-nome="{{ lote.nome_produto or '' }}"
@@ -94,26 +94,26 @@
             data-previsao="{{ lote.data_previsao or '' }}"
             data-abertura="{{ lote.data_abertura or '' }}"
             onchange="atualizarContador()">
-          <div>
-            <div class="font-black text-gray-800 text-base">{{ lote.lote_codigo }}</div>
-            {% if lote.maior_ordem %}<div class="text-[11px] text-gray-400">OP #{{ lote.maior_ordem }}</div>{% endif %}
+          <div class="min-w-0">
+            <div class="font-black text-gray-800 text-base">{{ lote.lote_codigo }}
+              <span class="text-xs font-normal text-gray-500 ml-1">{% if lote.maior_ordem %}OP #{{ lote.maior_ordem }}{% endif %}</span>
+            </div>
+            <div class="text-sm font-semibold text-gray-700 leading-tight line-clamp-2" title="{{ lote.nome_produto or lote.lote_descricao or '' }}">
+              {{ lote.nome_produto or lote.lote_descricao or '—' }}
+            </div>
+            {% if lote.produto_final_codigo or lote.codigo_produto %}
+            <div class="text-[11px] text-blue-500 font-mono mt-0.5">{{ lote.produto_final_codigo or lote.codigo_produto }}</div>
+            {% endif %}
           </div>
         </div>
         {% if ja_importado %}
-        <span class="badge-status" style="background:#fef3c7;color:#b45309"><i class="fa-solid fa-rotate"></i> Já importado</span>
+        <span class="badge-status flex-shrink-0" style="background:#fef3c7;color:#b45309"><i class="fa-solid fa-rotate"></i> Já importado</span>
         {% elif atrasado %}
-        <span class="badge-priority urgente">ATRASADO</span>
+        <span class="badge-priority urgente flex-shrink-0">ATRASADO</span>
         {% else %}
-        <span class="badge-priority" style="background:#dbeafe;color:#1d4ed8">NOVO</span>
+        <span class="badge-priority flex-shrink-0" style="background:#dbeafe;color:#1d4ed8">NOVO</span>
         {% endif %}
       </div>
-
-      <h3 class="text-sm font-bold text-gray-800 leading-tight mb-1 line-clamp-2" title="{{ lote.nome_produto or lote.lote_descricao or '—' }}">
-        {{ lote.lote_descricao or '—' }}
-        {% if lote.nome_produto %}
-        <span class="text-xs font-normal text-blue-600 ml-2">{{ lote.nome_produto }}</span>
-        {% endif %}
-      </h3>
 
       <div class="grid grid-cols-3 gap-2 text-center mb-2">
         <div class="bg-slate-50 rounded-lg py-1.5 px-1">
