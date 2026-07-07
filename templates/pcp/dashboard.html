@@ -9,6 +9,20 @@
 
 {% block content %}
 
+{# ═══════════════ ALERTA ERP OFFLINE ═══════════════ #}
+{% if not pg_ok %}
+<div class="mb-4 p-3 rounded-xl border-2 border-red-300 bg-red-50 flex items-start gap-3">
+  <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+    <i class="fa-solid fa-triangle-exclamation text-red-500"></i>
+  </div>
+  <div class="min-w-0">
+    <div class="text-sm font-bold text-red-700">ERP Lógica OFFLINE</div>
+    <div class="text-xs text-red-600 mt-0.5">Os dados abaixo são do banco local (MariaDB) e podem estar desatualizados. Não é possível importar ou sincronizar com o ERP neste momento.
+    {% if pg_erro %}<br><span class="font-mono text-[10px] bg-red-100 px-2 py-0.5 rounded mt-1 inline-block">{{ pg_erro }}</span>{% endif %}
+    </div>
+</div>
+{% endif %}
+
 {# ═══════════════ FLUXO VISUAL: 3 PASSOS ═══════════════ #}
 <div class="prodsys-card p-4 mb-5">
   <div class="grid grid-cols-1 md:grid-cols-3 gap-3">

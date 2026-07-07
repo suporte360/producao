@@ -584,10 +584,22 @@ def dashboard_pcp():
             l['descricao_produto'] = _get_nome_produto(l.get('codigo_produto'))
     stats = db.get_estatisticas_gerais()
     departamentos = db.listar_departamentos()
+
+    # Verifica se o ERP esta acessivel
+    pg_ok = False
+    pg_erro = ''
+    try:
+        pg = DatabasePostgreSQL()
+        pg.query_one("SELECT 1")
+        pg_ok = True
+    except Exception as e:
+        pg_erro = str(e)[:120]
+
     return render_template('pcp/dashboard.html',
                            lotes=lotes, stats=stats,
                            departamentos=departamentos,
                            usuario_nome=session['usuario_nome'],
+                           pg_ok=pg_ok, pg_erro=pg_erro,
                            now=datetime.now())
 
 # =============================================
