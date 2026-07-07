@@ -86,11 +86,10 @@ class DatabasePostgreSQL:
                 lp.lotdtpre AS data_previsao,
                 lp.lotstatus AS status_erp,
 
-                -- OP PAI (produto final): pega a ordem3 onde ordem != 0
-                (SELECT o3.ordproof
-                 FROM public.ordem3 o3
-                 WHERE o3.ordoflote = lp.lotcod
-                   AND o3.ordem != 0
+                -- OP PAI (produto final): pega da ordem onde ordnivprod = '1'
+                (SELECT o.ordproduto
+                 FROM public.ordem o
+                 WHERE o.lotcod = lp.lotcod AND o.ordnivprod = '1'
                  LIMIT 1) AS produto_final_codigo,
 
                 -- Total de OFs do lote
@@ -128,28 +127,24 @@ class DatabasePostgreSQL:
 
     def get_produto_pronto_por_lote(self, lote_codigo):
         """Retorna o produto PAI (final) do lote.
-        Usa ordem3.ordproof como codigo real do produto, busca pronome na tabela produto."""
-        # Metodo 1: ordem3.ordproof -> produto.pronome
+        Usa ordem.ordnivprod = '1' para identificar o produto final."""
         sql = """
             SELECT 
-                o3.ordproof AS codigo_produto,
+                o.ordproduto AS codigo_produto,
                 p.pronome AS nome_produto,
-                (SELECT COALESCE(o.ordquanti, 0)::float
-                 FROM public.ordem o
-                 WHERE o.lotcod = %s AND o.ordnivprod = '1'
-                 LIMIT 1) AS quantidade
-            FROM public.ordem3 o3
-            LEFT JOIN public.produto p ON TRIM(o3.ordproof) = TRIM(p.produto)
-            WHERE o3.ordoflote = %s AND o3.ordem != 0
+                o.ordquanti::float AS quantidade
+            FROM public.ordem o
+            LEFT JOIN public.produto p ON TRIM(o.ordproduto) = TRIM(p.produto)
+            WHERE o.lotcod = %s AND o.ordnivprod = '1'
             LIMIT 1
         """
         try:
-            result = self.query_one(sql, (lote_codigo, lote_codigo))
+            result = self.query_one(sql, (lote_codigo,))
             if result and result.get('codigo_produto'):
                 return result
         except Exception:
             pass
-        # Fallback
+        # Fallback: pega qualquer ordem do lote
         return self._fallback_produto_lote(lote_codigo)
 
     
