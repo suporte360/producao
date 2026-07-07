@@ -347,6 +347,10 @@ def kanban_tv():
         pg_erro = str(e)[:120]
 
     cards = db.get_kanban_cards(departamento=depto)
+    # Resolve nome real das pecas via PostgreSQL
+    for c in cards:
+        cod = c.get('cod_peca') or ''
+        c['nome_peca'] = _get_nome_produto(cod) if cod else ''
     return render_template('kanban/tv.html',
                            cards=cards,
                            departamento=depto,
@@ -1174,6 +1178,10 @@ def api_kanban_cards():
     depto = session.get('usuario_departamento', '')
     departamento_filtro = None if role in ('admin', 'gerente', 'pcp', 'diretor') else depto
     cards = db.get_kanban_cards(departamento=departamento_filtro)
+    # Resolve nome real das pecas via PostgreSQL
+    for c in cards:
+        cod = c.get('cod_peca') or ''
+        c['nome_peca'] = _get_nome_produto(cod) if cod else ''
     # Verifica ERP para alerta no TV
     pg_ok = False
     try:

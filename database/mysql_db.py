@@ -633,6 +633,7 @@ class DatabaseMySQL:
                    l.data_previsao_erp, l.prioridade AS prioridade_lote,
                    op.descricao_operacao, op.sequencia, op.status AS status_operacao,
                    op.qtde_produzida, op.data_inicio,
+                   of2.codigo_produto AS cod_peca,
                    u.nome AS operador_nome,
                    (SELECT CASE WHEN COUNT(*) = 0 THEN 0
                        ELSE ROUND(SUM(CASE WHEN status = 'concluido' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 0)
@@ -642,6 +643,7 @@ class DatabaseMySQL:
             FROM kanban_cards k
             LEFT JOIN lotes_producao l ON k.lote_ordem = l.ordem
             LEFT JOIN operacoes_producao op ON k.operacao_id = op.id
+            LEFT JOIN ordens_fabricacao of2 ON k.of_numero = of2.of_numero
             LEFT JOIN usuarios u ON k.operador_id = u.id
             WHERE 1=1
         """
