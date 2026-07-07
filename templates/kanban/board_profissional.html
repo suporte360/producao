@@ -29,15 +29,15 @@
 {% endif %}
 
 {# ═══════════════ KPIs SUPERIORES ═══════════════ #}
-<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-4">
+<div class="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
   {% for stat in stats %}
   <div class="kpi-card">
-    <div class="kpi-icon" style="background:{% if stat.etapa == 'aguardando' %}rgba(37,99,235,.15);color:#3b82f6{% elif stat.etapa == 'em_producao' %}rgba(217,119,6,.15);color:#f97316{% elif stat.etapa == 'pausado' %}rgba(146,64,14,.2);color:#f59e0b{% else %}rgba(22,163,74,.15);color:#16a34a{% endif %}">
-      <i class="fa-solid {% if stat.etapa == 'aguardando' %}fa-hourglass-start{% elif stat.etapa == 'em_producao' %}fa-gear{% elif stat.etapa == 'pausado' %}fa-pause{% else %}fa-circle-check{% endif %}"></i>
+    <div class="kpi-icon" style="background:{% if stat.etapa == 'aguardando' %}rgba(37,99,235,.15);color:#3b82f6{% elif stat.etapa == 'em_producao' %}rgba(217,119,6,.15);color:#f97316{% else %}rgba(22,163,74,.15);color:#16a34a{% endif %}">
+      <i class="fa-solid {% if stat.etapa == 'aguardando' %}fa-hourglass-start{% elif stat.etapa == 'em_producao' %}fa-gear{% else %}fa-circle-check{% endif %}"></i>
     </div>
     <div>
-      <div class="kpi-num" style="color:{% if stat.etapa == 'aguardando' %}#3b82f6{% elif stat.etapa == 'em_producao' %}#f97316{% elif stat.etapa == 'pausado' %}#f59e0b{% else %}#16a34a{% endif %}">{{ stat.total }}</div>
-      <div class="kpi-lbl">{% if stat.etapa == 'aguardando' %}Aguardando{% elif stat.etapa == 'em_producao' %}Em Produção{% elif stat.etapa == 'pausado' %}Pausados{% else %}Concluídos{% endif %}</div>
+      <div class="kpi-num" style="color:{% if stat.etapa == 'aguardando' %}#3b82f6{% elif stat.etapa == 'em_producao' %}#f97316{% else %}#16a34a{% endif %}">{{ stat.total }}</div>
+      <div class="kpi-lbl">{% if stat.etapa == 'aguardando' %}Aguardando{% elif stat.etapa == 'em_producao' %}Em Produção{% else %}{{ stat.etapa }}{% endif %}</div>
     </div>
   </div>
   {% endfor %}
@@ -69,13 +69,12 @@
   </div>
 </div>
 
-{# ═══════════════ KANBAN BOARD (4 colunas) ═══════════════ #}
-<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+{# ═══════════════ KANBAN BOARD (3 colunas + progresso) ═══════════════ #}
+<div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
 
   {% set colunas = [
     ('aguardando',  'Aguardando',  'fa-hourglass-start', 'blue',   'border-blue-400',   'bg-blue-50',   'text-blue-700'),
     ('em_producao', 'Em Produção', 'fa-gear',            'orange', 'border-orange-400', 'bg-orange-50', 'text-orange-700'),
-    ('pausado',     'Pausados',    'fa-pause',           'amber',  'border-amber-400',  'bg-amber-50',  'text-amber-700'),
     ('concluido',   'Concluídos',  'fa-circle-check',    'green',  'border-green-400',  'bg-green-50',  'text-green-700')
   ] %}
 
@@ -159,6 +158,41 @@
     {% endif %}
   </section>
   {% endfor %}
+</div>
+
+{# ═══════════════ PROGRESSO DOS LOTES ═══════════════ #}
+<div class="prodsys-card p-3">
+  <div class="flex items-center gap-2 mb-3">
+    <div class="kpi-icon" style="background:rgba(147,51,234,.12);color:#a855f7"><i class="fa-solid fa-chart-simple"></i></div>
+    <h2 class="text-xs font-black text-purple-700 uppercase tracking-wide">Progresso dos Lotes</h2>
+  </div>
+  <div class="space-y-2 max-h-[40vh] overflow-y-auto" id="progressoLista">
+    {% set vistos = [] %}
+    {% for card in cards %}
+      {% if card.etapa != 'concluido' and card.lote_ordem not in vistos %}
+        {% if vistos.append(card.lote_ordem) %}{% endif %}
+        {% set prog = card.progresso | int %}
+        <div class="flex items-center gap-3 p-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-bold text-gray-800">OP #{{ card.lote_ordem }}{% if card.lote_codigo %} <span class="text-gray-400 font-normal">· {{ card.lote_codigo }}</span>{% endif %}</span>
+              <span class="text-xs font-black {% if prog >= 75 %}text-green-600{% elif prog >= 40 %}text-yellow-600{% else %}text-red-500{% endif %}">{{ prog }}%</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2">
+              <div class="h-2 rounded-full transition-all {% if prog >= 75 %}bg-green-500{% elif prog >= 40 %}bg-yellow-400{% else %}bg-red-400{% endif %}" style="width:{{ prog }}%"></div>
+            </div>
+            {% if card.descricao_produto %}<div class="text-[10px] text-gray-500 mt-0.5 truncate">{{ card.descricao_produto }}</div>{% endif %}
+          </div>
+          {% if card.departamento %}
+          <span class="chip-dept dept-{{ card.departamento }} text-[9px] flex-shrink-0">{{ card.departamento }}</span>
+          {% endif %}
+        </div>
+      {% endif %}
+    {% endfor %}
+    {% if not cards or cards | selectattr('etapa', 'ne', 'concluido') | list | length == 0 %}
+    <div class="text-center text-xs text-gray-400 py-4">Nenhum lote em andamento</div>
+    {% endif %}
+  </div>
 </div>
 
 <!-- Toast -->

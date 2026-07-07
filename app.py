@@ -89,10 +89,10 @@ app.register_blueprint(apontamentos_bp)
 #   50=MONTAGEM, 80=EMBALAGEM, 90=USINAGEM, 95=EXPEDIÇÃO
 MAPEAMENTO_SETORES = {
     'ALMOXARIFADO': 'ALMOXARIFADO',
-    'SERRALHERIA':  'CORTE',         # cliente confirmou: fase 10 (Serralheria) = CORTE no sistema
+    'SERRALHERIA':  'SERRALHERIA',
     'FUNILARIA':    'FUNILARIA',
     'PINTURA':      'PINTURA',
-    'POLIMENTO':    'ACABAMENTO',    # cliente confirmou: fase 30 (Polimento) = ACABAMENTO
+    'POLIMENTO':    'ACABAMENTO',
     'MARCENARIA':   'MARCENARIA',
     'COSTURA':      'COSTURA',
     'TAPECARIA':    'TAPECARIA',
@@ -101,6 +101,8 @@ MAPEAMENTO_SETORES = {
     'USINAGEM':     'USINAGEM',
     'EXPEDIÇÃO':    'EXPEDIÇÃO',
     'EXPEDICAO':    'EXPEDIÇÃO',
+    'CORTE':        'CORTE',
+    'SOLDA':        'SOLDA',
 }
 
 # =============================================

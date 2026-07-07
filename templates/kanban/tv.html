@@ -249,7 +249,6 @@
     /* cores por status */
     .sg-aguardando  .sg-header { background:#0a1628; color:#60a5fa; border-left:3px solid #2563eb; }
     .sg-em_producao .sg-header { background:#1a0e00; color:#fb923c; border-left:3px solid #d97706; }
-    .sg-pausado     .sg-header { background:#180f00; color:#fbbf24; border-left:3px solid #92400e; }
     .sg-concluido   .sg-header { background:#001a0a; color:#4ade80; border-left:3px solid #16a34a; }
 
     /* Indicador "AGORA" no header em produção */
@@ -379,12 +378,12 @@
     </div>
   </div>
   <div class="stat-card">
-    <div class="stat-icon" style="background:rgba(146,64,14,.25);color:#fbbf24">
-      <i class="fa-solid fa-pause"></i>
+    <div class="stat-icon" style="background:rgba(168,85,247,.15);color:#c084fc">
+      <i class="fa-solid fa-chart-simple"></i>
     </div>
     <div>
-      <div class="stat-num" style="color:#fbbf24" id="sPausado">0</div>
-      <div class="stat-lbl">Pausados</div>
+      <div class="stat-num" style="color:#c084fc" id="sProgresso">0%</div>
+      <div class="stat-lbl">Progresso Médio</div>
     </div>
   </div>
   <div class="stat-card">
@@ -443,7 +442,6 @@ const SETORES = [
 const STATUS_CONFIG = [
   { key:'aguardando',  label:'Aguardando',  icon:'fa-hourglass-start' },
   { key:'em_producao', label:'Em Produção', icon:'fa-gear'            },
-  { key:'pausado',     label:'Pausados',    icon:'fa-pause'           },
   { key:'concluido',   label:'Concluídos',  icon:'fa-circle-check'   },
 ];
 
@@ -505,20 +503,25 @@ function renderFluxo(cards) {
 function buildCard(card) {
   const prio = (card.prioridade||'media').toLowerCase();
   const timer = card.etapa === 'em_producao' && card.data_inicio
-    ? `<span class="kc-timer" style="color:#4ade80" data-inicio="${card.data_inicio}">${tempoDecorrido(card.data_inicio)}</span>`
+    ? '<span class="kc-timer" style="color:#4ade80" data-inicio="' + card.data_inicio + '">' + tempoDecorrido(card.data_inicio) + '</span>'
     : '';
-  const badge = `<span class="badge-p ${prio}">${(card.prioridade||'MEDIA').toUpperCase()}</span>`;
+  const badge = '<span class="badge-p ' + prio + '">' + ((card.prioridade||'MEDIA')).toUpperCase() + '</span>';
   const prod = (card.descricao_produto || card.descricao_operacao || 'Produto').substring(0,45);
   const op2  = card.descricao_operacao && card.descricao_produto
-    ? `<div class="kc-op2"><i class="fa-solid fa-screwdriver-wrench" style="font-size:.55rem;margin-right:3px"></i>${card.descricao_operacao.substring(0,38)}</div>` : '';
-  const qtd  = card.qtde_ordem ? `<span style="font-size:.6rem;color:var(--muted)">${Math.round(card.qtde_ordem)}pc</span>` : '';
-  return `
-    <div class="k-card p-${prio}">
-      <div class="kc-op">OP #${card.lote_ordem}${card.lote_codigo?' · '+card.lote_codigo:''}</div>
-      <div class="kc-prod">${prod}</div>
-      ${op2}
-      <div class="kc-meta">${badge}${qtd}${timer}</div>
-    </div>`;
+    ? '<div class="kc-op2"><i class="fa-solid fa-screwdriver-wrench" style="font-size:.55rem;margin-right:3px"></i>' + card.descricao_operacao.substring(0,38) + '</div>' : '';
+  const qtd  = card.qtde_ordem ? '<span style="font-size:.6rem;color:var(--muted)">' + Math.round(card.qtde_ordem) + 'pc</span>' : '';
+  var prog = card.progresso || 0;
+  var progColor = prog >= 75 ? '#4ade80' : (prog >= 40 ? '#fbbf24' : '#f87171');
+  var progBar = card.etapa !== 'concluido'
+    ? '<div style="display:flex;align-items:center;gap:4px;margin-top:4px"><div style="flex:1;height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden"><div style="height:100%;width:' + prog + '%;background:' + progColor + ';border-radius:2px;transition:width .5s"></div></div><span style="font-size:.55rem;color:' + progColor + ';font-weight:700">' + prog + '%</span></div>'
+    : '';
+  return '<div class="k-card p-' + prio + '">'
+    + '<div class="kc-op">OP #' + card.lote_ordem + (card.lote_codigo ? ' &middot; ' + card.lote_codigo : '') + '</div>'
+    + '<div class="kc-prod">' + prod + '</div>'
+    + op2
+    + '<div class="kc-meta">' + badge + qtd + timer + '</div>'
+    + progBar
+    + '</div>';
 }
 
 function renderKanban(cards) {
@@ -583,12 +586,26 @@ function renderKanban(cards) {
 function renderStats(stats, concluidos, cards) {
   document.getElementById('sAguardando').textContent = stats.aguardando  || 0;
   document.getElementById('sEmProd').textContent     = stats.em_producao || 0;
-  document.getElementById('sPausado').textContent    = stats.pausado     || 0;
   document.getElementById('sConcluido').textContent  = concluidos        || 0;
   document.getElementById('sTotal').textContent      = cards.length      || 0;
 
+  /* Progresso medio dos lotes ativos */
+  var ativos = cards.filter(function(c) { return c.etapa !== 'concluido'; });
+  var vistos = {};
+  var totalProg = 0;
+  var countProg = 0;
+  ativos.forEach(function(c) {
+    if (!vistos[c.lote_ordem]) {
+      vistos[c.lote_ordem] = true;
+      totalProg += (c.progresso || 0);
+      countProg += 1;
+    }
+  });
+  var media = countProg > 0 ? Math.round(totalProg / countProg) : 0;
+  document.getElementById('sProgresso').textContent = media + '%';
+
   // Destaque pulsante quando há OPs em produção
-  const cardProd = document.getElementById('cardProd');
+  var cardProd = document.getElementById('cardProd');
   if ((stats.em_producao||0) > 0) cardProd.classList.add('highlight');
   else cardProd.classList.remove('highlight');
 }
