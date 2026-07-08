@@ -629,14 +629,27 @@ function confirmarFinalizarPecas(){
 function fecharFinalizar(){document.getElementById('dialogFinalizar').classList.remove('active');}
 
 /* ══ EVENT DELEGATION: cliques nas pecas ══ */
+function _findCard(el){
+  while(el && el.nodeType===1){
+    if(el.className && el.className.indexOf('peca-card')>=0)return el;
+    el=el.parentNode;
+  }
+  return null;
+}
+function _debugToast(msg){
+  var t=document.getElementById('_dbgToast');
+  if(!t){t=document.createElement('div');t.id='_dbgToast';t.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(245,158,11,.95);color:#000;padding:14px 24px;border-radius:12px;font-size:16px;font-weight:700;z-index:9999;pointer-events:none;transition:opacity .3s';document.body.appendChild(t);}
+  t.textContent=msg;t.style.opacity='1';
+  setTimeout(function(){t.style.opacity='0';},2000);
+}
 function _bindPecaClicks(){
   var container=document.getElementById('pecasContent');
   if(!container)return;
   container.onclick=function(e){
-    var card=e.target.closest('.peca-card');
-    if(!card)return;
+    var card=_findCard(e.target);
+    if(!card){_debugToast('CLIQUE FORA DO CARD');return;}
     var codigo=card.getAttribute('data-codigo');
-    if(!codigo)return;
+    if(!codigo){_debugToast('CODIGO VAZIO: '+codigo);return;}
     /* Usa estado global em vez de data-action para evitar condicao de corrida */
     var isActive=currentPecasAtivas[codigo];
     if(finalizarMode){
