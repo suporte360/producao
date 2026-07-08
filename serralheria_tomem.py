@@ -268,6 +268,11 @@ def init_db():
     #             "INSERT INTO serralheria_usuarios (nome, setor, ativo) VALUES (%s, 'Serralheria', 1)",
     #             (nome,)
     #         )
+    # Cleanup: remove qualquer usuario serra* restante
+    try:
+        db_execute("DELETE FROM serralheria_usuarios WHERE nome LIKE 'serra%' OR nome LIKE 'serral%'")
+    except Exception:
+        pass
     # Migration: add missing columns if table already existed
     for col, col_def in [
         ('setor', "VARCHAR(50) DEFAULT ''"),
