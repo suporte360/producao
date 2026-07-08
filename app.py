@@ -96,15 +96,15 @@ except Exception:
             ativo TINYINT(1) DEFAULT 1
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     """)
-    # Seed serra1-9 se não existirem
-    for i in range(1, 10):
-        nome = 'serra' + str(i)
-        existing = db.query_one("SELECT id FROM serralheria_usuarios WHERE nome = %s", (nome,))
-        if not existing:
-            db.execute(
-                "INSERT INTO serralheria_usuarios (nome, setor, ativo) VALUES (%s, 'Serralheria', 1)",
-                (nome,)
-            )
+# Seed serra1-9 se não existirem (roda sempre, fora do except)
+for i in range(1, 10):
+    nome = 'serra' + str(i)
+    existing = db.query_one("SELECT id FROM serralheria_usuarios WHERE nome = %s", (nome,))
+    if not existing:
+        db.execute(
+            "INSERT INTO serralheria_usuarios (nome, setor, ativo) VALUES (%s, 'Serralheria', 1)",
+            (nome,)
+        )
 
 # Migration: limpar nomes de departamentos com parênteses (ex: "CORTE()" → "CORTE")
 try:
