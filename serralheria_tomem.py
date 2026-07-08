@@ -731,22 +731,35 @@ def api_iniciar():
 
 @app.route('/api/finalizar', methods=['POST'])
 def api_finalizar():
-    """Finalizar producao do lote no totem (atualiza serralheria_producao)."""
+    """Finalizar producao de pecas especificas no totem."""
     try:
         data = request.get_json()
         lotcod = data.get('lote')
+        pecas = data.get('pecas', [])
 
         if not lotcod:
             return jsonify({'error': 'Lote obrigatorio'}), 400
 
-        db_execute(
-            "UPDATE serralheria_producao "
-            "SET status = 'finalizado', data_fim = NOW() "
-            "WHERE lote = %s AND status = 'em_producao'",
-            (lotcod,)
-        )
+        if pecas:
+            # Finalizar apenas as pecas selecionadas
+            placeholders = ','.join(['%s'] * len(pecas))
+            db_execute(
+                f"UPDATE serralheria_producao "
+                f"SET status = 'finalizado', data_fim = NOW() "
+                f"WHERE lote = %s AND produto IN ({placeholders}) AND status = 'em_producao'",
+                [lotcod] + pecas
+            )
+            app.logger.info('Lote %s: %d peca(s) finalizada(s) no totem', lotcod, len(pecas))
+        else:
+            # Finalizar todas as pecas do lote (comportamento original)
+            db_execute(
+                "UPDATE serralheria_producao "
+                "SET status = 'finalizado', data_fim = NOW() "
+                "WHERE lote = %s AND status = 'em_producao'",
+                (lotcod,)
+            )
+            app.logger.info('Lote %s finalizado no totem', lotcod)
 
-        app.logger.info('Lote %s finalizado no totem', lotcod)
         return jsonify({'success': True, 'mensagem': 'Producao finalizada!'})
     except Exception as e:
         app.logger.error('Erro finalizar: %s', e)

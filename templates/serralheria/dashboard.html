@@ -107,6 +107,8 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 .peca-card{background:#16213e;border:1px solid #2a2a5a;border-radius:10px;padding:14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-start;cursor:pointer;transition:all .2s}
 .peca-card:active{border-color:#f59e0b}
 .peca-card.em_producao{border-color:#00e676;opacity:.6;cursor:default}
+.peca-card.em_producao.finalizar-select{opacity:1;cursor:pointer}
+.peca-card.em_producao.finalizar-select:active{opacity:.8}
 .peca-card.selected{border-color:#f59e0b;background:rgba(245,158,11,.1)}
 .peca-card .peca-left{flex:1;min-width:0}
 .peca-card .peca-codigo{font-size:18px;font-weight:700;color:#e0e0e0}
@@ -295,6 +297,8 @@ var currentPecas = [];
 var currentPecasAtivas = {};
 var selectedSetor = null;
 var selectedPecas = [];
+var finalizarMode = false;
+var selectedPecasFinalizar = [];
 var DASH_REFRESH = 10000;
 var idleTimer = null;
 var IDLE_TIMEOUT = 60000;
@@ -471,7 +475,7 @@ function renderPecas(data){
     var isActive=currentPecasAtivas[p.codigo];
     var cardClass='peca-card';var clickAction='';var checkIcon='';
 
-    if(isActive){cardClass+=' em_producao';checkIcon='<div class="pecas-check-icon">&#10003;</div>';hasAtivas=true;}
+    if(isActive){cardClass+=' em_producao';hasAtivas=true;if(finalizarMode){cardClass+=' finalizar-select';var isSelFinal=selectedPecasFinalizar.indexOf(p.codigo)>=0;if(isSelFinal){cardClass+=' selected';checkIcon='<div class="pecas-check-icon">&#10003;</div>';}else{checkIcon='<div class="pecas-check-icon"></div>';}clickAction=' onclick="toggleFinalizarPeca(\''+esc(p.codigo)+'\')"';}else{checkIcon='<div class="pecas-check-icon">&#10003;</div>';}}
     else if(selectedSetor){clickAction=' onclick="togglePecaSelection(\''+esc(p.codigo)+'\')"';var isSelected=selectedPecas.indexOf(p.codigo)>=0;if(isSelected){cardClass+=' selected';checkIcon='<div class="pecas-check-icon">&#10003;</div>';}else{checkIcon='<div class="pecas-check-icon"></div>';}}
     else{var pecaSetores=p.setores||[];clickAction=' onclick="abrirSetor(\''+esc(p.codigo)+'\','+JSON.stringify(pecaSetores).replace(/'/g, "&#39;")+')"';checkIcon='<div class="pecas-check-icon"></div>';}
 
@@ -526,7 +530,10 @@ function renderPecas(data){
 
   /* Actions */
   var actions='<button class="btn-back" onclick="showScreen(2)">&#8592; Voltar aos Lotes</button>';
-  if(hasAtivas){actions='<button class="btn-touch btn-red" onclick="confirmarFinalizar(\''+esc(currentLote)+'\')">FINALIZAR PRODUCAO</button>'+actions;}
+  if(hasAtivas&&!finalizarMode){actions='<button class="btn-touch btn-red" onclick="entrarModoFinalizar()">FINALIZAR PRODUCAO</button>'+actions;}
+  else if(finalizarMode){actions='<button class="btn-touch btn-red" onclick="confirmarFinalizarPecas()">FINALIZAR ('+selectedPecasFinalizar.length+')</button>';
+  if(selectedPecasFinalizar.length===0)actions='<div style="text-align:center;padding:6px;color:#f59e0b;font-size:13px">Selecione as pecas para finalizar</div>'+actions;
+  actions+='<button class="btn-back" onclick="sairModoFinalizar()" style="margin-left:8px">Cancelar</button>';}
   if(selectedSetor&&selectedPecas.length>0){actions='<button class="btn-touch btn-green" onclick="iniciarProducaoSetor()">INICIAR PRODUCAO ('+selectedPecas.length+')</button>'+actions;}
   else if(selectedSetor&&selectedPecas.length===0){actions='<div style="text-align:center;padding:6px;color:#f59e0b;font-size:13px">Selecione as pecas para '+esc(selectedSetor)+'</div>'+actions;}
   document.getElementById('pecasActions').innerHTML=actions;
@@ -581,12 +588,26 @@ function selecionarUsuario(id,nome){
   fetch('/api/iniciar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lote:currentLote,usuario_id:id,usuario_nome:nome,setor:selectedSetor,pecas:pecas})}).then(function(r){return r.json();}).then(function(data){if(data.success)showScreen(1);else alert('Erro: '+(data.error||'Erro desconhecido'));}).catch(function(e){alert('Erro de conexao');});
 }
 
-function confirmarFinalizar(lotcod){
-  document.getElementById('finalizarMsg').textContent='Finalizar producao do Lote '+lotcod+'? As pecas serao marcadas como concluidas no totem.';
+function entrarModoFinalizar(){finalizarMode=true;selectedPecasFinalizar=[];selectedSetor=null;selectedPecas=[];renderPecas({pecas:currentPecas,pecas_ativas:currentPecasAtivas,descricao:document.querySelector('.section-title')?document.querySelector('.section-title').textContent:''});}
+function sairModoFinalizar(){finalizarMode=false;selectedPecasFinalizar=[];renderPecas({pecas:currentPecas,pecas_ativas:currentPecasAtivas,descricao:''});}
+function toggleFinalizarPeca(codigo){
+  var idx=selectedPecasFinalizar.indexOf(codigo);if(idx>=0)selectedPecasFinalizar.splice(idx,1);else selectedPecasFinalizar.push(codigo);
+  var cards=document.querySelectorAll('.peca-card.em_producao');
+  for(var i=0;i<cards.length;i++){var card=cards[i];var codeEl=card.querySelector('.peca-codigo');if(!codeEl)continue;var code=codeEl.textContent;var checkIcon=card.querySelector('.pecas-check-icon');if(selectedPecasFinalizar.indexOf(code)>=0){card.classList.add('selected');if(checkIcon)checkIcon.innerHTML='&#10003;';}else{card.classList.remove('selected');if(checkIcon)checkIcon.innerHTML='';}}
+  var actionsEl=document.getElementById('pecasActions');var actions='';
+  if(selectedPecasFinalizar.length>0)actions='<button class="btn-touch btn-red" onclick="confirmarFinalizarPecas()">FINALIZAR ('+selectedPecasFinalizar.length+')</button>';
+  else actions='<div style="text-align:center;padding:6px;color:#f59e0b;font-size:13px">Selecione as pecas para finalizar</div>';
+  actions+='<button class="btn-back" onclick="sairModoFinalizar()" style="margin-left:8px">Cancelar</button>';
+  actions+='<button class="btn-back" onclick="showScreen(2)" style="margin-left:8px">&#8592; Voltar</button>';
+  actionsEl.innerHTML=actions;
+}
+function confirmarFinalizarPecas(){
+  if(selectedPecasFinalizar.length===0)return;
+  document.getElementById('finalizarMsg').textContent='Finalizar '+selectedPecasFinalizar.length+' peca(s) do Lote '+currentLote+'?';
   document.getElementById('dialogFinalizar').classList.add('active');
   document.getElementById('btnConfirmaFinalizar').onclick=function(){
     fecharFinalizar();
-    fetch('/api/finalizar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lote:lotcod})}).then(function(r){return r.json();}).then(function(data){if(data.success)showScreen(1);else alert('Erro: '+(data.error||'Erro desconhecido'));}).catch(function(e){alert('Erro de conexao');});
+    fetch('/api/finalizar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lote:currentLote,pecas:selectedPecasFinalizar})}).then(function(r){return r.json();}).then(function(data){if(data.success)showScreen(1);else alert('Erro: '+(data.error||'Erro desconhecido'));}).catch(function(e){alert('Erro de conexao');});
   };
 }
 function fecharFinalizar(){document.getElementById('dialogFinalizar').classList.remove('active');}
