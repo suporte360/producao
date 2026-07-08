@@ -50,6 +50,14 @@ def _get_nome_produto(codigo):
         return ''
     return _produto_cache.get(str(codigo).strip(), '')
 
+def _is_sob_medida(codigo):
+    """Verifica se o produto codigo termina com -X (sob medida)."""
+    if not codigo:
+        return False
+    c = str(codigo).strip().upper()
+    # S-0440-X, CJ-0174-X, qualquer codigo terminado em -X
+    return c.endswith('-X')
+
 def _resolver_nome_lote(lote):
     """Resolve nome real para descricao_produto de um lote/OF."""
     desc = lote.get('descricao_produto', '') or ''
@@ -351,6 +359,7 @@ def kanban_tv():
     for c in cards:
         cod = c.get('cod_peca') or ''
         c['nome_peca'] = _get_nome_produto(cod) if cod else ''
+        c['sob_medida'] = _is_sob_medida(cod) or _is_sob_medida(c.get('lote_codigo'))
     return render_template('kanban/tv.html',
                            cards=cards,
                            departamento=depto,
@@ -471,6 +480,7 @@ def pcp_importar_erp():
             ordens = pg.get_ordens_por_lote(lote['lote_codigo'])
             if ordens:
                 lote['maior_ordem'] = max(int(o['ordem']) for o in ordens if o.get('ordem') and str(o['ordem']).isdigit())
+            lote['sob_medida'] = _is_sob_medida(lote.get('produto_final_codigo')) or _is_sob_medida(lote.get('lote_codigo'))
         lotes_erp = lotes_raw
         pg_ok = True
     except Exception as e:
@@ -613,6 +623,7 @@ def dashboard_pcp():
         l['descricao_produto'] = _resolver_nome_lote(l)
         if not l.get('descricao_produto'):
             l['descricao_produto'] = _get_nome_produto(l.get('codigo_produto'))
+        l['sob_medida'] = _is_sob_medida(l.get('codigo_produto')) or _is_sob_medida(l.get('lote_codigo'))
     stats = db.get_estatisticas_gerais()
     departamentos = db.listar_departamentos()
 
@@ -1199,6 +1210,7 @@ def api_kanban_cards():
     for c in cards:
         cod = c.get('cod_peca') or ''
         c['nome_peca'] = _get_nome_produto(cod) if cod else ''
+        c['sob_medida'] = _is_sob_medida(cod) or _is_sob_medida(c.get('lote_codigo'))
     # Verifica ERP para alerta no TV
     pg_ok = False
     try:

@@ -115,6 +115,13 @@ def _str(val):
         return ''
     return str(val).strip()
 
+def _is_sob_medida(codigo):
+    """Verifica se o produto codigo termina com -X (sob medida)."""
+    if not codigo:
+        return False
+    c = str(codigo).strip().upper()
+    return c.endswith('-X')
+
 def _extract_s_code(codigo_produto):
     """Extract S-XXXX from strings like 'PRODUCAO DE S-0240'."""
     if not codigo_produto:
@@ -475,6 +482,7 @@ def api_dashboard():
                 'qtd_total': _int(ofs['qtd_total']) if ofs else 0,
                 'status_producao': prod['status'] if prod else None,
                 'operador': prod['usuario_nome'] if prod else None,
+                'sob_medida': _is_sob_medida(produto_final) or _is_sob_medida(lp.get('lote_codigo')),
             })
 
         return jsonify({
@@ -568,6 +576,7 @@ def api_lotes():
                 'qtd_total': _int(ofs['qtd_total']) if ofs else 0,
                 'status_producao': prod['status'] if prod else None,
                 'operador': prod['usuario_nome'] if prod else None,
+                'sob_medida': _is_sob_medida(produto_final) or _is_sob_medida(lp.get('lote_codigo')),
             })
 
         return jsonify({'lotes': lotes})

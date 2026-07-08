@@ -419,7 +419,7 @@ function loadLotes(){
         +'<div class="lote-header"><span class="lote-codigo">LOTE '+esc(l.lotcod)+'</span>'
         +(descInline?'<span class="lote-desc-inline">'+esc(descInline)+'</span>':'')
         +badge+'</div>'
-        +(l.pecas_codigos?'<div class="lote-prod-row"><span style="color:#42a5f5;font-weight:700;font-size:14px">'+esc(l.pecas_codigos)+'</span></div>':'')
+        +(l.pecas_codigos?'<div class="lote-prod-row"><span style="color:#42a5f5;font-weight:700;font-size:14px">'+esc(l.pecas_codigos)+'</span>'+(l.sob_medida?' <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:9999px;background:#e9d5ff;color:#a855f7;vertical-align:middle">SOB MEDIDA</span>':'')+'</div>':'')
         +'</div>'
         +'<div class="lote-qty-wrap"><div class="lote-qty">'+(l.qtd_pecas||0)+'</div><div class="lote-qty-label">pecas</div></div>'
         +'</div>';

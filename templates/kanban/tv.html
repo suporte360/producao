@@ -509,7 +509,7 @@ function buildCard(card) {
   const pecaCode = card.cod_peca || '';
   const pecaName = card.nome_peca || '';
   const prod = pecaCode
-    ? '<span style="color:#60a5fa;font-weight:700">' + pecaCode + '</span>' + (pecaName ? ' <span style="color:#ccc">' + pecaName.substring(0,35) + '</span>' : '')
+    ? '<span style="color:#60a5fa;font-weight:700">' + pecaCode + '</span>' + (card.sob_medida ? ' <span style="font-size:.5rem;font-weight:700;padding:1px 5px;border-radius:9999px;background:#e9d5ff;color:#a855f7">SOB MEDIDA</span>' : '') + (pecaName ? ' <span style="color:#ccc">' + pecaName.substring(0,35) + '</span>' : '')
     : (card.descricao_operacao || 'Produto').substring(0,45);
   const op2  = card.descricao_operacao
     ? '<div class="kc-op2"><i class="fa-solid fa-screwdriver-wrench" style="font-size:.55rem;margin-right:3px"></i>' + card.descricao_operacao.substring(0,38) + '</div>' : '';

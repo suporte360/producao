@@ -238,6 +238,7 @@
           <!-- Produto -->
           <td class="px-4 py-3 max-w-[200px]">
             <div class="font-medium text-gray-700 truncate" title="{{ lote.descricao_produto }}">{{ lote.descricao_produto or '—' }}</div>
+            {% if lote.sob_medida %}<span class="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 mt-1">SOB MEDIDA</span>{% endif %}
           </td>
 
           <!-- Qtd -->
