@@ -113,7 +113,7 @@
   <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
     {% for lote in a_classificar[:9] %}
     {% set pbg = {'urgente':'border-red-500','alta':'border-orange-400','media':'border-yellow-400','baixa':'border-green-400'} %}
-    <article class="prodsys-card border-l-4 {{ pbg.get(lote.prioridade|lower,'border-blue-300') }} p-4 {{ 'sob-medida-classif' if lote.sob_medida }}">
+    <article class="prodsys-card border-l-4 {{ pbg.get(lote.prioridade|lower,'border-blue-300') }} p-4">
       <div class="flex items-start justify-between gap-2 mb-2">
         <div class="min-w-0">
           <div class="text-xs font-bold text-blue-700">OP #{{ lote.ordem }}</div>
@@ -227,7 +227,7 @@
         {% if not q or q in (lote.ordem|string) or q in (lote.descricao_produto or '')|lower or q in (lote.lote_codigo or '')|lower %}
         {% set pct = ((lote.operacoes_concluidas or 0) / (lote.total_operacoes or 1) * 100)|int %}
 
-        <tr class="hover:bg-slate-50/60 transition-colors {{ 'bg-red-50/30' if lote.prioridade == 'urgente' }} {{ 'sob-medida-row' if lote.sob_medida }}">
+        <tr class="hover:bg-slate-50/60 transition-colors {{ 'bg-red-50/30' if lote.prioridade == 'urgente' }}">
 
           <!-- OP / Lote -->
           <td class="px-4 py-3">
@@ -238,7 +238,7 @@
           <!-- Produto -->
           <td class="px-4 py-3 max-w-[200px]">
             <div class="font-medium text-gray-700 truncate" title="{{ lote.descricao_produto }}">{{ lote.descricao_produto or '—' }}</div>
-            {% if lote.sob_medida %}<span class="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 mt-1">SOB MEDIDA</span>{% endif %}
+            {% if lote.sob_medida %}<span class="sob-medida-badge inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full mt-1">SOB MEDIDA</span>{% endif %}
           </td>
 
           <!-- Qtd -->
@@ -407,17 +407,8 @@
 
 {% block extra_head %}
 <style>
-.sob-medida-row{position:relative !important}
-.sob-medida-row td:first-child{box-shadow:inset 4px 0 0 #ef4444}
-.sob-medida-row td{position:relative}
-.sob-medida-row::after{content:'';position:absolute;inset:0;background:rgba(239,68,68,.2);z-index:0;animation:sobMedidaRowBg 2.5s ease-in-out infinite;pointer-events:none}
-.sob-medida-row td{position:relative;z-index:1}
-@keyframes sobMedidaRowBg{0%,100%{opacity:.2}50%{opacity:.65}}
-.sob-medida-classif{position:relative !important;border-color:#ef4444 !important;animation:sobMedidaClassifShadow 2.5s ease-in-out infinite !important}
-.sob-medida-classif::before{content:'';position:absolute;inset:0;border-radius:inherit;background:rgba(239,68,68,.2);z-index:0;animation:sobMedidaClassifBg 2.5s ease-in-out infinite;pointer-events:none}
-.sob-medida-classif>*{position:relative;z-index:1}
-@keyframes sobMedidaClassifBg{0%,100%{opacity:.25}50%{opacity:.75}}
-@keyframes sobMedidaClassifShadow{0%,100%{box-shadow:0 0 8px rgba(239,68,68,.3)}50%{box-shadow:0 0 20px rgba(239,68,68,.65)}}
+.sob-medida-badge{background:#7c3aed;color:#fff;animation:sobMedidaPulse 2.5s ease-in-out infinite}
+@keyframes sobMedidaPulse{0%,100%{opacity:1;box-shadow:0 0 4px rgba(124,58,237,.4)}50%{opacity:.4;box-shadow:0 0 12px rgba(124,58,237,.8)}}
 </style>
 {% endblock %}
 

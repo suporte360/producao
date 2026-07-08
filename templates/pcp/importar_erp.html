@@ -80,7 +80,7 @@
   {% set ja_importado = lote.lote_codigo in lotes_ja_importados %}
   {% set atrasado = lote.data_previsao and lote.data_previsao < now.date() %}
 
-  <article class="card-lote prodsys-card border-l-4 {{ 'border-amber-400' if ja_importado else ('border-red-500' if atrasado else 'border-blue-400') }} overflow-hidden {{ 'bg-amber-50/30' if ja_importado }} {{ 'sob-medida-card' if lote.sob_medida }}" data-importado="{{ 'sim' if ja_importado else 'nao' }}">
+  <article class="card-lote prodsys-card border-l-4 {{ 'border-amber-400' if ja_importado else ('border-red-500' if atrasado else 'border-blue-400') }} overflow-hidden {{ 'bg-amber-50/30' if ja_importado }}" data-importado="{{ 'sim' if ja_importado else 'nao' }}">
 
     <div class="px-4 py-3">
       <div class="flex items-start justify-between gap-2 mb-1">
@@ -102,7 +102,7 @@
             <div class="text-xs text-yellow-700 bg-yellow-50 leading-tight line-clamp-1 mt-0.5 rounded px-1.5 py-0.5 text-center">{{ lote.lote_descricao }}</div>
             {% endif %}
             <div class="text-sm font-semibold text-gray-700 leading-tight line-clamp-2" title="{{ lote.nome_produto or '' }}">
-              {% if lote.produto_final_codigo or lote.codigo_produto %}<span class="text-blue-600 font-mono font-bold text-[13px]">{{ lote.produto_final_codigo or lote.codigo_produto }}</span>{% if lote.sob_medida %} <span class="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 ml-1 align-middle">SOB MEDIDA</span>{% endif %}{% if lote.nome_produto %} <span class="text-gray-400 mx-1">|</span> {{ lote.nome_produto }}{% endif %}{% else %}{{ lote.nome_produto or '—' }}{% endif %}
+              {% if lote.produto_final_codigo or lote.codigo_produto %}<span class="text-blue-600 font-mono font-bold text-[13px]">{{ lote.produto_final_codigo or lote.codigo_produto }}</span>{% if lote.sob_medida %} <span class="sob-medida-badge inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1 align-middle">SOB MEDIDA</span>{% endif %}{% if lote.nome_produto %} <span class="text-gray-400 mx-1">|</span> {{ lote.nome_produto }}{% endif %}{% else %}{{ lote.nome_produto or '—' }}{% endif %}
             </div>
           </div>
         </div>
@@ -179,11 +179,8 @@
 
 {% block extra_head %}
 <style>
-.sob-medida-card{position:relative !important;border-color:#ef4444 !important;animation:sobMedidaCardShadow 2.5s ease-in-out infinite !important}
-.sob-medida-card::before{content:'';position:absolute;inset:0;border-radius:inherit;background:rgba(239,68,68,.25);z-index:0;animation:sobMedidaCardBg 2.5s ease-in-out infinite;pointer-events:none}
-.sob-medida-card>*{position:relative;z-index:1}
-@keyframes sobMedidaCardBg{0%,100%{opacity:.3}50%{opacity:.8}}
-@keyframes sobMedidaCardShadow{0%,100%{box-shadow:0 0 8px rgba(239,68,68,.3)}50%{box-shadow:0 0 22px rgba(239,68,68,.7)}}
+.sob-medida-badge{background:#7c3aed;color:#fff;animation:sobMedidaPulse 2.5s ease-in-out infinite}
+@keyframes sobMedidaPulse{0%,100%{opacity:1;box-shadow:0 0 4px rgba(124,58,237,.4)}50%{opacity:.4;box-shadow:0 0 12px rgba(124,58,237,.8)}}
 </style>
 {% endblock %}
 
