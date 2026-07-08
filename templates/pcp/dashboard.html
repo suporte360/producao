@@ -467,7 +467,7 @@ function confirmarCancelar() {
   })
   .then(r => r.json())
   .then(d => {
-    if (d.status === 'success') { showToast(`OP #${ordemAtual} cancelada.`); setTimeout(()=>location.reload(), 900); }
+    if (d.status === 'success') { showToast(`OP #${ordemAtual} cancelada. Voltou para Importado.`); setTimeout(()=>location.reload(), 900); }
     else showToast('Erro ao cancelar', 'error');
   })
   .catch(()=>showToast('Erro de conexão','error'));

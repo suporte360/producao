@@ -908,19 +908,36 @@ def api_alterar_status_lote(ordem):
     validos = ('importado', 'liberado', 'em_producao', 'finalizado', 'cancelado')
     if status not in validos:
         return jsonify({'status': 'error', 'message': 'Status inválido'}), 400
-    ok = db.atualizar_status_lote(ordem, status, session['usuario_id'])
-    if ok:
-        db.add_log(session['usuario_id'], 'alterar_status',
-                   f'OP #{ordem} → {status}', 'lotes', ordem)
-        # Baixa automatica no estoque da fabrica quando OF e liberada
-        if status == 'liberado':
-            _baixar_estoque_por_of(ordem)
-        # Atualiza departamento_atual ao mudar status
-        try:
-            db.atualizar_departamento_atual(ordem)
-        except Exception:
-            pass
-    return jsonify({'status': 'success' if ok else 'error'})
+
+    if status == 'cancelado':
+        # Cancelar = volta para importado + limpa producoes em andamento
+        db.execute(
+            "UPDATE operacoes_producao SET status = 'pendente', "
+            "usuario_inicio_id = NULL, data_inicio = NULL, usuario_fim_id = NULL, data_fim = NULL "
+            "WHERE lote_ordem = %s AND status IN ('em_andamento','pausado')", (ordem,)
+        )
+        db.execute(
+            "UPDATE serralheria_producao SET status = 'cancelado', data_fim = NOW() "
+            "WHERE lote_ordem = %s AND status = 'em_producao'", (ordem,)
+        )
+        db.execute(
+            "DELETE FROM kanban_cards WHERE lote_ordem = %s", (ordem,)
+        )
+        db.atualizar_status_lote(ordem, 'importado', session['usuario_id'])
+    else:
+        ok = db.atualizar_status_lote(ordem, status, session['usuario_id'])
+
+    db.add_log(session['usuario_id'], 'alterar_status',
+               f'OP #{ordem} → {status}', 'lotes', ordem)
+    # Baixa automatica no estoque da fabrica quando OF e liberada
+    if status == 'liberado':
+        _baixar_estoque_por_of(ordem)
+    # Atualiza departamento_atual ao mudar status
+    try:
+        db.atualizar_departamento_atual(ordem)
+    except Exception:
+        pass
+    return jsonify({'status': 'success'})
 
 # =============================================
 # APIs — ALMOXARIFADO (separação de OPs)
