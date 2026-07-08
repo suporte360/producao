@@ -540,6 +540,7 @@ def pcp_executar_importacao():
                 'data_previsao_erp': item.get('previsao') or None,
                 'data_abertura_erp': item.get('abertura') or None,
                 'planejador':        session.get('usuario_nome'),
+                'observacoes':       item.get('observacoes') or '',
             })
 
             lote_ordem_local = int(ordem_num) if str(ordem_num).isdigit() else 0

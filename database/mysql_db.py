@@ -223,21 +223,23 @@ class DatabaseMySQL:
         sql = """
             INSERT INTO lotes_producao 
                 (ordem, lote_codigo, codigo_produto, descricao_produto, qtde_ordem,
-                 unidade_medida, status_erp, data_previsao_erp, data_abertura_erp, planejador, status)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'importado')
+                 unidade_medida, status_erp, data_previsao_erp, data_abertura_erp, planejador, status, observacoes)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'importado', %s)
             ON DUPLICATE KEY UPDATE
                 descricao_produto = VALUES(descricao_produto),
                 qtde_ordem = VALUES(qtde_ordem),
                 data_previsao_erp = VALUES(data_previsao_erp),
                 status_erp = VALUES(status_erp),
-                data_ultima_sync = NOW()
+                data_ultima_sync = NOW(),
+                observacoes = COALESCE(NULLIF(VALUES(observacoes),''), observacoes)
         """
         return self.execute(sql, [
             dados['ordem'], dados.get('lote_codigo'), dados.get('codigo_produto'),
             dados.get('descricao_produto'), dados.get('qtde_ordem', 0),
             dados.get('unidade_medida', 'UN'), dados.get('status_erp', 'A'),
             dados.get('data_previsao_erp'), dados.get('data_abertura_erp'),
-            dados.get('planejador')
+            dados.get('planejador'),
+            dados.get('observacoes')
         ])
 
     def atualizar_status_lote(self, ordem, novo_status, usuario_id=None):

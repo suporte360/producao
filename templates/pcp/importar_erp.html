@@ -93,6 +93,7 @@
             data-qtd="{{ lote.quantidade_pai or lote.quantidade_total or 0 }}"
             data-previsao="{{ lote.data_previsao or '' }}"
             data-abertura="{{ lote.data_abertura or '' }}"
+            data-obs="{{ lote.lote_observacao or '' }}"
             onchange="atualizarContador()">
           <div class="min-w-0">
             <div class="font-black text-gray-800 text-base">{{ lote.lote_codigo }}
@@ -104,6 +105,12 @@
             <div class="text-sm font-semibold text-gray-700 leading-tight line-clamp-2" title="{{ lote.nome_produto or '' }}">
               {% if lote.produto_final_codigo or lote.codigo_produto %}<span class="text-blue-600 font-mono font-bold text-[13px]">{{ lote.produto_final_codigo or lote.codigo_produto }}</span>{% if lote.sob_medida %} <span class="sob-medida-badge inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1 align-middle">SOB MEDIDA</span>{% endif %}{% if lote.nome_produto %} <span class="text-gray-400 mx-1">|</span> {{ lote.nome_produto }}{% endif %}{% else %}{{ lote.nome_produto or '—' }}{% endif %}
             </div>
+            {% if lote.lote_observacao %}
+            <div class="text-xs text-amber-800 bg-amber-50 border border-amber-200 leading-tight mt-1 rounded px-2 py-1 flex items-start gap-1.5">
+              <i class="fa-solid fa-comment-dots text-amber-500 mt-0.5 flex-shrink-0"></i>
+              <span class="line-clamp-2">{{ lote.lote_observacao }}</span>
+            </div>
+            {% endif %}
           </div>
         </div>
         {% if ja_importado %}
@@ -138,7 +145,7 @@
       </div>
       {% endif %}
 
-      <button onclick="importarUm('{{ lote.lote_codigo }}', '{{ lote.maior_ordem or lote.lote_codigo }}', '{{ (lote.nome_produto or lote.produto_final_codigo or lote.lote_descricao or '')|replace("'","") }}', {{ lote.quantidade_total or 0 }}, '{{ lote.data_previsao or '' }}', '{{ lote.data_abertura or '' }}')"
+      <button onclick="importarUm(this.closest('article').querySelector('.chk-lote'))"
         class="btn-touch {{ 'btn-cancel' if ja_importado else 'btn-finish' }} w-full text-sm">
         <i class="fa-solid {{ 'fa-rotate' if ja_importado else 'fa-download' }}"></i>
         {{ 'ATUALIZAR' if ja_importado else 'IMPORTAR' }}
@@ -226,10 +233,12 @@ function filtrarLotes(filtro) {
 // Ao carregar, aplicar filtro padrão "A Importar"
 document.addEventListener('DOMContentLoaded', () => filtrarLotes('a_importar'));
 
-function importarUm(loteCod, ordem, produto, qtd, previsao, abertura) {
+function importarUm(cb) {
+  if (!cb) return;
   executarImportacao([{
-    lote_codigo: loteCod, ordem: ordem, produto: produto,
-    qtd: qtd, previsao: previsao, abertura: abertura
+    lote_codigo: cb.value, ordem: cb.dataset.ordem, produto: cb.dataset.produto,
+    qtd: cb.dataset.qtd, previsao: cb.dataset.previsao, abertura: cb.dataset.abertura, nome: cb.dataset.nome || '',
+    observacoes: cb.dataset.obs || ''
   }]);
 }
 
@@ -240,7 +249,8 @@ function importarSelecionados() {
   const checks = document.querySelectorAll('.chk-lote:checked');
   const itens = Array.from(checks).map(c => ({
     lote_codigo: c.value, ordem: c.dataset.ordem, produto: c.dataset.produto,
-    qtd: c.dataset.qtd, previsao: c.dataset.previsao, abertura: c.dataset.abertura, nome: c.dataset.nome || ''
+    qtd: c.dataset.qtd, previsao: c.dataset.previsao, abertura: c.dataset.abertura, nome: c.dataset.nome || '',
+    observacoes: c.dataset.obs || ''
   }));
   if (itens.length === 0) return;
   executarImportacao(itens);

@@ -85,6 +85,7 @@ class DatabasePostgreSQL:
                 lp.lotdtini AS data_abertura,
                 lp.lotdtpre AS data_previsao,
                 lp.lotstatus AS status_erp,
+                COALESCE(NULLIF(TRIM(lp.lottrans),''), NULLIF(TRIM(lp.lotobs),'')) AS lote_observacao,
 
                 -- OP PAI (produto final): pega da ordem onde ordnivprod = '1'
                 (SELECT o.ordproduto

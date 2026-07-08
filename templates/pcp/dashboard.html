@@ -218,6 +218,7 @@
           <th class="px-4 py-3 text-center font-semibold">Setor Atual</th>
           <th class="px-4 py-3 text-center font-semibold">Previsão</th>
           <th class="px-4 py-3 text-center font-semibold">Progresso</th>
+          <th class="px-3 py-3 text-center font-semibold">Obs</th>
           <th class="px-4 py-3 text-center font-semibold">Ações</th>
         </tr>
       </thead>
@@ -295,6 +296,18 @@
             </div>
           </td>
 
+          <!-- Obs -->
+          <td class="px-3 py-3 text-center">
+            {% if lote.observacoes %}
+            <button onclick="this.nextElementSibling.classList.toggle('hidden')" title="{{ lote.observacoes }}" class="obs-icon-btn p-1.5 rounded-lg transition">
+              <i class="fa-solid fa-comment-dots text-amber-500 text-sm"></i>
+            </button>
+            <div class="hidden absolute z-50 bg-gray-800 text-white text-xs rounded-lg px-3 py-2 max-w-[260px] text-left shadow-lg mt-1 ml-[-40px]">{{ lote.observacoes }}</div>
+            {% else %}
+            <span class="text-gray-200">—</span>
+            {% endif %}
+          </td>
+
           <!-- Ações -->
           <td class="px-4 py-3">
             <div class="flex items-center justify-center gap-1">
@@ -323,7 +336,7 @@
         {% endif %}
         {% else %}
         <tr>
-          <td colspan="9" class="px-4 py-16 text-center">
+          <td colspan="10" class="px-4 py-16 text-center">
             <div class="flex flex-col items-center gap-3 text-gray-300">
               <i class="fa-solid fa-inbox text-5xl"></i>
               <p class="text-sm font-medium text-gray-400">Nenhuma ordem de produção encontrada.</p>
@@ -409,6 +422,9 @@
 <style>
 .sob-medida-badge{background:#7c3aed;color:#fff;animation:sobMedidaPulse 2.5s ease-in-out infinite}
 @keyframes sobMedidaPulse{0%,100%{opacity:1;box-shadow:0 0 4px rgba(124,58,237,.4)}50%{opacity:.4;box-shadow:0 0 12px rgba(124,58,237,.8)}}
+.obs-icon-btn{animation:obsPulse 2s ease-in-out infinite}
+.obs-icon-btn:hover{animation:none;background:#fef3c7}
+@keyframes obsPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.25);opacity:.6}}
 </style>
 {% endblock %}
 
