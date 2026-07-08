@@ -131,6 +131,14 @@ try:
 except Exception as e:
     print('[WARN] Operadores serralheria: %s' % e)
 
+# Migration: limpar nomes serra* antigos da tabela de producao do totem
+try:
+    db.execute("UPDATE serralheria_producao SET usuario_nome = 'Operador' WHERE usuario_nome LIKE 'serra%'")
+    db.execute("UPDATE serralheria_producao SET usuario_id = NULL WHERE usuario_nome = 'Operador'")
+    print('[OK] Nomes serra* limpos da serralheria_producao')
+except Exception:
+    pass
+
 # Migration: limpar nomes de departamentos com parênteses (ex: "CORTE()" → "CORTE")
 try:
     for tabela in ['operacoes_producao', 'kanban_cards']:
