@@ -628,13 +628,26 @@ def dashboard_pcp():
     stats = db.get_estatisticas_gerais()
     departamentos = db.listar_departamentos()
 
-    # Verifica se o ERP esta acessivel
+    # Verifica se o ERP esta acessivel e busca observacoes
     pg_ok = False
     pg_erro = ''
     try:
         pg = DatabasePostgreSQL()
         pg.query_one("SELECT 1")
         pg_ok = True
+        # Busca observacoes (lottrans) do ERP para os lotes exibidos
+        if lotes:
+            codigos = [l.get('lote_codigo') for l in lotes if l.get('lote_codigo')]
+            if codigos:
+                ph = ','.join(['%s'] * len(codigos))
+                obs_rows = pg.query(
+                    f"SELECT lotcod, NULLIF(TRIM(lottrans),'') AS obs FROM loteprod WHERE lotcod IN ({ph})",
+                    codigos
+                )
+                obs_map = {r['lotcod']: r['obs'] for r in obs_rows if r.get('obs')}
+                for l in lotes:
+                    if not l.get('observacoes') and obs_map.get(l.get('lote_codigo')):
+                        l['observacoes'] = obs_map[l['lote_codigo']]
     except Exception as e:
         pg_erro = str(e)[:120]
 
