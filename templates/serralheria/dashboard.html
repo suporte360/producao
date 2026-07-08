@@ -86,6 +86,10 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 .lote-card{background:#16213e;border:2px solid #2a2a5a;border-radius:14px;padding:16px;margin-bottom:12px;cursor:pointer;transition:border-color .2s;display:flex;align-items:center;gap:12px}
 .lote-card:active{border-color:#f59e0b}
 .lote-card.ativo{border-color:#00e676}
+.lote-card.sob-medida{background:rgba(220,38,38,.45);border-color:#ef4444;animation:sobMedidaPulse 2.5s ease-in-out infinite}
+.lote-card.sob-medida.ativo{border-color:#ef4444}
+.lote-card.sob-medida .lote-qty-wrap{background:rgba(220,38,38,.3);border-color:#ef4444}
+@keyframes sobMedidaPulse{0%,100%{background:rgba(220,38,38,.3)}50%{background:rgba(220,38,38,.6)}}
 .lote-card .lote-left{flex:1;min-width:0}
 .lote-card .lote-header{display:flex;align-items:baseline;gap:8px;margin-bottom:3px}
 .lote-card .lote-codigo{font-size:24px;font-weight:700;color:#f59e0b;flex-shrink:0}
@@ -411,10 +415,10 @@ function loadLotes(){
     var html='';
     for(var i=0;i<data.lotes.length;i++){
       var l=data.lotes[i];
-      var borderClass=l.status_producao==='em_producao'?' ativo':'';
+      var borderClass=(l.status_producao==='em_producao'?' ativo':'')+(l.sob_medida?' sob-medida':'');
       var badge=l.status_producao==='em_producao'?'<span class="badge badge-prod">Produzindo - '+esc(l.operador)+'</span>':'';
       var descInline='';if(l.descricao){descInline=l.descricao.length>40?l.descricao.substring(0,40)+'...':l.descricao;}
-      html+='<div class="lote-card'+borderClass+'" onclick="verLote(\''+esc(l.lotcod)+'\')">'
+      html+='<div class="lote-card'+borderClass+'"'+(l.sob_medida?' style="box-shadow:0 0 18px rgba(239,68,68,.5)"':'')+' onclick="verLote(\''+esc(l.lotcod)+'\')">'
         +'<div class="lote-left">'
         +'<div class="lote-header"><span class="lote-codigo">LOTE '+esc(l.lotcod)+'</span>'
         +(descInline?'<span class="lote-desc-inline">'+esc(descInline)+'</span>':'')
