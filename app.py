@@ -83,6 +83,28 @@ try:
 except Exception:
     db.execute("ALTER TABLE estoque_interno ADD COLUMN tipo VARCHAR(20) NOT NULL DEFAULT 'fabrica'")
 
+# Migration: garantir que tabela serralheria_usuarios existe (usada pelo totem e admin)
+try:
+    db.query_one("SELECT id FROM serralheria_usuarios LIMIT 1")
+except Exception:
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS serralheria_usuarios (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            nome VARCHAR(100) NOT NULL,
+            setor VARCHAR(100) DEFAULT 'Serralheria',
+            ativo TINYINT(1) DEFAULT 1
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    """)
+    # Seed serra1-9 se não existirem
+    for i in range(1, 10):
+        nome = 'serra' + str(i)
+        existing = db.query_one("SELECT id FROM serralheria_usuarios WHERE nome = %s", (nome,))
+        if not existing:
+            db.execute(
+                "INSERT INTO serralheria_usuarios (nome, setor, ativo) VALUES (%s, 'Serralheria', 1)",
+                (nome,)
+            )
+
 # Registra blueprints
 app.register_blueprint(apontamentos_bp)
 
