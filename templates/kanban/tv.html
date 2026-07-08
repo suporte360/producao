@@ -442,6 +442,7 @@ const SETORES = [
 const STATUS_CONFIG = [
   { key:'aguardando',  label:'Aguardando',  icon:'fa-hourglass-start' },
   { key:'em_producao', label:'Em Produção', icon:'fa-gear'            },
+  { key:'pausado',     label:'Pausados',    icon:'fa-pause'           },
   { key:'concluido',   label:'Concluídos',  icon:'fa-circle-check'   },
 ];
 
@@ -505,6 +506,9 @@ function buildCard(card) {
   const timer = card.etapa === 'em_producao' && card.data_inicio
     ? '<span class="kc-timer" style="color:#4ade80" data-inicio="' + card.data_inicio + '">' + tempoDecorrido(card.data_inicio) + '</span>'
     : '';
+  const pausaBadge = card.etapa === 'pausado'
+    ? '<span style="display:inline-flex;align-items:center;gap:3px;font-size:.5rem;font-weight:800;padding:1px 6px;border-radius:9999px;background:rgba(245,158,11,.2);color:#f59e0b"><i class="fa-solid fa-pause" style="font-size:.45rem"></i>PAUSADO</span>'
+    : '';
   const badge = '<span class="badge-p ' + prio + '">' + ((card.prioridade||'MEDIA')).toUpperCase() + '</span>';
   const pecaCode = card.cod_peca || '';
   const pecaName = card.nome_peca || '';
@@ -523,7 +527,7 @@ function buildCard(card) {
     + '<div class="kc-op">OP #' + card.lote_ordem + (card.lote_codigo ? ' &middot; ' + card.lote_codigo : '') + '</div>'
     + '<div class="kc-prod">' + prod + '</div>'
     + op2
-    + '<div class="kc-meta">' + badge + qtd + timer + '</div>'
+    + '<div class="kc-meta">' + badge + pausaBadge + qtd + timer + '</div>'
     + progBar
     + '</div>';
 }

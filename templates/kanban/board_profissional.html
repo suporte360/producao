@@ -80,6 +80,11 @@
 
   {% for etapa, label, icon, cor, border_cor, bg_cor, text_cor in colunas %}
   {% set cards_col = cards | selectattr('etapa', 'equalto', etapa) | list %}
+  {# Pausados aparecem dentro da coluna "Em Produção" #}
+  {% if etapa == 'em_producao' %}
+    {% set cards_pausados = cards | selectattr('etapa', 'equalto', 'pausado') | list %}
+    {% set cards_col = cards_col + cards_pausados %}
+  {% endif %}
 
   <section class="prodsys-card overflow-hidden flex flex-col" data-etapa="{{ etapa }}" style="min-height: 60vh">
     <header class="px-3 py-2.5 border-b border-gray-100 {{ bg_cor }} flex items-center justify-between">
@@ -128,10 +133,12 @@
             <span class="chip-dept dept-{{ card.departamento }} text-[9px]">{{ card.departamento }}</span>
             {% endif %}
           </div>
-          {% if card.etapa == 'em_producao' and card.data_inicio %}
+          {% if card.etapa == 'pausado' %}
+          <span class="inline-flex items-center gap-1 text-[9px] font-black text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full">
+            <i class="fa-solid fa-pause" style="font-size:8px"></i>PAUSADO
+          </span>
+          {% elif card.etapa == 'em_producao' and card.data_inicio %}
           <span class="font-mono font-bold text-green-600" data-timer="{{ card.data_inicio }}">00:00:00</span>
-          {% elif card.etapa == 'pausado' %}
-          <i class="fa-solid fa-pause text-amber-500" title="Pausado"></i>
           {% endif %}
         </div>
 

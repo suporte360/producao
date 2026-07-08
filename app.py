@@ -8,6 +8,7 @@ from functools import wraps
 from datetime import datetime, timedelta
 from collections import defaultdict
 import time
+import re
 
 from config.config import Config
 from database.mysql_db import DatabaseMySQL
@@ -104,6 +105,17 @@ except Exception:
                 "INSERT INTO serralheria_usuarios (nome, setor, ativo) VALUES (%s, 'Serralheria', 1)",
                 (nome,)
             )
+
+# Migration: limpar nomes de departamentos com parênteses (ex: "CORTE()" → "CORTE")
+try:
+    for tabela in ['operacoes_producao', 'kanban_cards']:
+        rows = db.query("SELECT id, departamento FROM " + tabela + " WHERE departamento LIKE '%(%)%'")
+        for row in rows:
+            dept_limpo = re.sub(r'\s*\([^)]*\)\s*$', '', row['departamento']).strip()
+            if dept_limpo != row['departamento']:
+                db.execute("UPDATE " + tabela + " SET departamento = %s WHERE id = %s", (dept_limpo, row['id']))
+except Exception:
+    pass
 
 # Registra blueprints
 app.register_blueprint(apontamentos_bp)
@@ -590,6 +602,8 @@ def pcp_executar_importacao():
                     dept_original = (proc.get('nome_departamento') or '').upper().strip()
                     if not dept_original:
                         continue
+                    # Limpa parênteses e sujeiras do nome do ERP (ex: "CORTE()" → "CORTE")
+                    dept_original = re.sub(r'\s*\([^)]*\)\s*$', '', dept_original).strip()
                     # Mapeia nomes do ERP (fases) para nomes do sistema local
                     dept = MAPEAMENTO_SETORES.get(dept_original, dept_original)
                     db.importar_operacao({
