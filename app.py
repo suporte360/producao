@@ -96,15 +96,43 @@ except Exception:
             ativo TINYINT(1) DEFAULT 1
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     """)
-# Seed serra1-9 se não existirem (roda sempre, fora do except)
-for i in range(1, 10):
-    nome = 'serra' + str(i)
-    existing = db.query_one("SELECT id FROM serralheria_usuarios WHERE nome = %s", (nome,))
-    if not existing:
-        db.execute(
-            "INSERT INTO serralheria_usuarios (nome, setor, ativo) VALUES (%s, 'Serralheria', 1)",
-            (nome,)
-        )
+    # Inserir operadores da serralheria se tabela recém-criada
+    for nome, setor in [
+        ('Gabriel', 'CORTE'), ('Erivaldo', 'SERRALHERIA'), ('Junior', 'CORTE'),
+        ('Reverson', 'CORTE'), ('José', 'CORTE'), ('Juninho', 'CORTE'),
+        ('Francisco', 'SOLDA'), ('Leonardo', 'SOLDA'),
+        ('José Barbosa', 'DOBRA'), ('Jhonatas', 'DOBRA'),
+    ]:
+        existing = db.query_one("SELECT id FROM serralheria_usuarios WHERE nome = %s", (nome,))
+        if not existing:
+            db.execute(
+                "INSERT INTO serralheria_usuarios (nome, setor, ativo) VALUES (%s, %s, 1)",
+                (nome, setor)
+            )
+
+# Migration: limpar serra* antigos e inserir operadores reais
+try:
+    count_serra = db.query_one("SELECT COUNT(*) as c FROM serralheria_usuarios WHERE nome LIKE 'serra%'")['c']
+    if count_serra > 0:
+        db.execute("DELETE FROM serralheria_usuarios WHERE nome LIKE 'serra%'")
+    for nome, setor in [
+        ('Gabriel', 'CORTE'), ('Erivaldo', 'SERRALHERIA'), ('Junior', 'CORTE'),
+        ('Reverson', 'CORTE'), ('José', 'CORTE'), ('Juninho', 'CORTE'),
+        ('Francisco', 'SOLDA'), ('Leonardo', 'SOLDA'),
+        ('José Barbosa', 'DOBRA'), ('Jhonatas', 'DOBRA'),
+    ]:
+        existing = db.query_one("SELECT id, setor FROM serralheria_usuarios WHERE nome = %s", (nome,))
+        if existing:
+            # Atualiza setor se estiver errado
+            if existing['setor'] != setor:
+                db.execute("UPDATE serralheria_usuarios SET setor = %s WHERE id = %s", (setor, existing['id']))
+        else:
+            db.execute(
+                "INSERT INTO serralheria_usuarios (nome, setor, ativo) VALUES (%s, %s, 1)",
+                (nome, setor)
+            )
+except Exception:
+    pass
 
 # Migration: limpar nomes de departamentos com parênteses (ex: "CORTE()" → "CORTE")
 try:

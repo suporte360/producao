@@ -259,15 +259,15 @@ def init_db():
             INDEX idx_sp_status (status)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     """)
-    # Seed serra1-9
-    for i in range(1, 10):
-        nome = 'serra' + str(i)
-        existing = db_query_one("SELECT id FROM serralheria_usuarios WHERE nome = %s", (nome,))
-        if not existing:
-            db_execute(
-                "INSERT INTO serralheria_usuarios (nome, setor, ativo) VALUES (%s, 'Serralheria', 1)",
-                (nome,)
-            )
+    # Seed serra1-9 — DESABILITADO: operadores agora gerenciados pelo admin (5002)
+    # for i in range(1, 10):
+    #     nome = 'serra' + str(i)
+    #     existing = db_query_one("SELECT id FROM serralheria_usuarios WHERE nome = %s", (nome,))
+    #     if not existing:
+    #         db_execute(
+    #             "INSERT INTO serralheria_usuarios (nome, setor, ativo) VALUES (%s, 'Serralheria', 1)",
+    #             (nome,)
+    #         )
     # Migration: add missing columns if table already existed
     for col, col_def in [
         ('setor', "VARCHAR(50) DEFAULT ''"),
