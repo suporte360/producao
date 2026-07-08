@@ -473,11 +473,12 @@ function renderPecas(data){
     var tipoLabel=tipo==='CJ'?'Conjunto':'Peca';
     var qtd=Math.round(parseFloat(p.quantidade));
     var isActive=currentPecasAtivas[p.codigo];
-    var cardClass='peca-card';var clickAction='';var checkIcon='';
+    var cardClass='peca-card';var checkIcon='';
+    var dataAttrs=' data-codigo="'+esc(p.codigo)+'"';
 
-    if(isActive){cardClass+=' em_producao';hasAtivas=true;if(finalizarMode){cardClass+=' finalizar-select';var isSelFinal=selectedPecasFinalizar.indexOf(p.codigo)>=0;if(isSelFinal){cardClass+=' selected';checkIcon='<div class="pecas-check-icon">&#10003;</div>';}else{checkIcon='<div class="pecas-check-icon"></div>';}clickAction=' onclick="toggleFinalizarPeca(\''+esc(p.codigo)+'\')"';}else{checkIcon='<div class="pecas-check-icon">&#10003;</div>';}}
-    else if(selectedSetor){clickAction=' onclick="togglePecaSelection(\''+esc(p.codigo)+'\')"';var isSelected=selectedPecas.indexOf(p.codigo)>=0;if(isSelected){cardClass+=' selected';checkIcon='<div class="pecas-check-icon">&#10003;</div>';}else{checkIcon='<div class="pecas-check-icon"></div>';}}
-    else{var pecaSetores=p.setores||[];clickAction=' onclick="abrirSetor(\''+esc(p.codigo)+'\','+JSON.stringify(pecaSetores).replace(/'/g, "&#39;")+')"';checkIcon='<div class="pecas-check-icon"></div>';}
+    if(isActive){cardClass+=' em_producao';hasAtivas=true;if(finalizarMode){cardClass+=' finalizar-select';var isSelFinal=selectedPecasFinalizar.indexOf(p.codigo)>=0;if(isSelFinal){cardClass+=' selected';checkIcon='<div class="pecas-check-icon">&#10003;</div>';}else{checkIcon='<div class="pecas-check-icon"></div>';}dataAttrs+=' data-action="finalizar"';}else{checkIcon='<div class="pecas-check-icon">&#10003;</div>';dataAttrs+=' data-action="nenhum"';}}
+    else if(selectedSetor){var isSelected=selectedPecas.indexOf(p.codigo)>=0;if(isSelected){cardClass+=' selected';checkIcon='<div class="pecas-check-icon">&#10003;</div>';}else{checkIcon='<div class="pecas-check-icon"></div>';}dataAttrs+=' data-action="selecionar"';}
+    else{checkIcon='<div class="pecas-check-icon"></div>';dataAttrs+=' data-action="setor" data-setores="'+encodeURIComponent(JSON.stringify(p.setores||[]))+'"';}
 
     var pNome=p.produto_nome?esc(p.produto_nome):'';
 
@@ -511,7 +512,7 @@ function renderPecas(data){
       setorTags+='</div>';
     }
 
-    html+='<div class="'+cardClass+'"'+clickAction+'>'
+    html+='<div class="'+cardClass+'"'+dataAttrs+'>'
       +'<div style="display:flex;align-items:flex-start">'
       +checkIcon
       +'<div class="peca-left">'
@@ -527,6 +528,7 @@ function renderPecas(data){
   }
   if(pecas.length===0){html+='<div class="loading" style="color:#f59e0b">Nenhuma peca para fabricar neste lote</div>';}
   document.getElementById('pecasContent').innerHTML=html;
+  _bindPecaClicks();
 
   /* Actions */
   var actions='<button class="btn-back" onclick="showScreen(2)">&#8592; Voltar aos Lotes</button>';
@@ -611,6 +613,25 @@ function confirmarFinalizarPecas(){
   };
 }
 function fecharFinalizar(){document.getElementById('dialogFinalizar').classList.remove('active');}
+
+/* ══ EVENT DELEGATION: cliques nas pecas ══ */
+function _bindPecaClicks(){
+  var container=document.getElementById('pecasContent');
+  if(!container)return;
+  container.onclick=function(e){
+    var card=e.target.closest('.peca-card');
+    if(!card)return;
+    var codigo=card.getAttribute('data-codigo');
+    var action=card.getAttribute('data-action');
+    if(!codigo||!action)return;
+    if(action==='finalizar'){toggleFinalizarPeca(codigo);}
+    else if(action==='selecionar'){togglePecaSelection(codigo);}
+    else if(action==='setor'){
+      try{var setores=JSON.parse(decodeURIComponent(card.getAttribute('data-setores')||'[]'));}catch(er){setores=[];}
+      abrirSetor(codigo,setores);
+    }
+  };
+}
 
 /* ══ AUTO-REFRESH TODAS AS TELAS ══ */
 var refreshTimer = setInterval(function(){
