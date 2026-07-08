@@ -698,7 +698,7 @@ def api_usuarios():
 
 @app.route('/api/iniciar', methods=['POST'])
 def api_iniciar():
-    """Iniciar producao: salva no MariaDB (serralheria_producao)."""
+    """Iniciar producao: salva no MariaDB e sincroniza operacoes_producao + kanban."""
     try:
         data = request.get_json()
         lotcod = data.get('lote')
@@ -710,6 +710,14 @@ def api_iniciar():
         if not lotcod or not usuario_id:
             return jsonify({'error': 'Dados obrigatorios: lote, usuario_id'}), 400
 
+        # Mapeia setor totem -> departamento operacoes_producao
+        setor_para_dept = {
+            'CORTE': 'CORTE', 'DOBRA': 'DOBRA', 'SOLDA': 'SOLDA',
+            'ACABAMENTO': 'ACABAMENTO', 'MONTAGEM': 'MONTAGEM',
+            'FUNILARIA': 'FUNILARIA', 'PINTURA': 'PINTURA',
+        }
+        dept = setor_para_dept.get(setor, setor)
+
         for peca in pecas:
             db_execute(
                 "INSERT INTO serralheria_producao "
@@ -718,6 +726,8 @@ def api_iniciar():
                 (peca.get('ordem'), lotcod, peca['codigo'], peca.get('ordem'),
                  usuario_id, usuario_nome, setor)
             )
+            # Sincroniza operacoes_producao -> em_andamento
+            _sync_op_status(peca.get('ordem'), dept, 'em_andamento')
 
         app.logger.info(
             'Producao iniciada: lote=%s usuario=%s setor=%s pecas=%d',
@@ -729,9 +739,34 @@ def api_iniciar():
         return jsonify({'error': str(e)}), 500
 
 
+def _sync_op_status(of_numero, departamento, novo_status):
+    """Sincroniza operacoes_producao e kanban_cards quando totem inicia/finaliza."""
+    if not of_numero or not departamento:
+        return
+    try:
+        # Atualiza operacoes_producao
+        db_execute(
+            "UPDATE operacoes_producao SET status = %s, data_inicio = COALESCE(data_inicio, NOW()), "
+            "data_fim = CASE WHEN %s = 'concluido' THEN NOW() ELSE data_fim END "
+            "WHERE of_numero = %s AND departamento = %s AND status != 'concluido'",
+            (novo_status, novo_status, of_numero, departamento)
+        )
+        # Atualiza kanban_cards
+        etapa_map = {'em_andamento': 'em_producao', 'concluido': 'concluido', 'pendente': 'aguardando'}
+        nova_etapa = etapa_map.get(novo_status)
+        if nova_etapa:
+            db_execute(
+                "UPDATE kanban_cards SET etapa = %s, atualizado_em = NOW() "
+                "WHERE of_numero = %s AND departamento = %s AND etapa != 'concluido'",
+                (nova_etapa, of_numero, departamento)
+            )
+    except Exception as e:
+        app.logger.warning('Sync op status falhou: %s', e)
+
+
 @app.route('/api/finalizar', methods=['POST'])
 def api_finalizar():
-    """Finalizar producao de pecas especificas no totem."""
+    """Finalizar producao de pecas especificas e sincroniza com operacoes_producao."""
     try:
         data = request.get_json()
         lotcod = data.get('lote')
@@ -739,6 +774,13 @@ def api_finalizar():
 
         if not lotcod:
             return jsonify({'error': 'Lote obrigatorio'}), 400
+
+        # Busca setor e of_numero das pecas ativas para sincronizar
+        setor_para_dept = {
+            'CORTE': 'CORTE', 'DOBRA': 'DOBRA', 'SOLDA': 'SOLDA',
+            'ACABAMENTO': 'ACABAMENTO', 'MONTAGEM': 'MONTAGEM',
+            'FUNILARIA': 'FUNILARIA', 'PINTURA': 'PINTURA',
+        }
 
         if pecas:
             # Finalizar apenas as pecas selecionadas
@@ -749,15 +791,33 @@ def api_finalizar():
                 f"WHERE lote = %s AND produto IN ({placeholders}) AND status = 'em_producao'",
                 [lotcod] + pecas
             )
+            # Sincroniza cada peca
+            for pcod in pecas:
+                row = db_query_one(
+                    "SELECT of_numero, setor FROM serralheria_producao "
+                    "WHERE lote = %s AND produto = %s AND status = 'finalizado' "
+                    "ORDER BY data_fim DESC LIMIT 1",
+                    (lotcod, pcod)
+                )
+                if row:
+                    dept = setor_para_dept.get(row.get('setor',''), row.get('setor',''))
+                    _sync_op_status(row['of_numero'], dept, 'concluido')
             app.logger.info('Lote %s: %d peca(s) finalizada(s) no totem', lotcod, len(pecas))
         else:
-            # Finalizar todas as pecas do lote (comportamento original)
+            # Finalizar todas as pecas do lote
+            rows = db_query(
+                "SELECT of_numero, setor FROM serralheria_producao "
+                "WHERE lote = %s AND status = 'em_producao'", (lotcod,)
+            )
             db_execute(
                 "UPDATE serralheria_producao "
                 "SET status = 'finalizado', data_fim = NOW() "
                 "WHERE lote = %s AND status = 'em_producao'",
                 (lotcod,)
             )
+            for row in rows:
+                dept = setor_para_dept.get(row.get('setor',''), row.get('setor',''))
+                _sync_op_status(row.get('of_numero'), dept, 'concluido')
             app.logger.info('Lote %s finalizado no totem', lotcod)
 
         return jsonify({'success': True, 'mensagem': 'Producao finalizada!'})
