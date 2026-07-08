@@ -9,6 +9,19 @@
 
 {% block content %}
 
+{# ═══════════════ TABS ═══════════════ #}
+<div class="flex items-center gap-6 mb-5 border-b border-slate-200 pb-0">
+  <span class="totem-tab active" data-tab="sistema" onclick="trocarTab('sistema')">
+    <i class="fa-solid fa-users-gear mr-1.5 text-slate-400"></i>Usuários do Sistema
+  </span>
+  <span class="totem-tab" data-tab="totem" onclick="trocarTab('totem')">
+    <i class="fa-solid fa-industry mr-1.5 text-slate-400"></i>Operadores Totem
+  </span>
+</div>
+
+{# ═══════════════ USUÁRIOS DO SISTEMA ═══════════════ #}
+<div id="secSistema">
+
 {# ═══════════════ HEADER ═══════════════ #}
 <div class="flex items-end justify-between mb-5 pb-4 border-b border-slate-200">
   <div>
@@ -144,5 +157,139 @@
     </a>
   </div>
 </div>
+</div>{# end secSistema #}
 
+{# ═══════════════ OPERADORES TOTEM ═══════════════ #}
+<div id="secTotem" style="display:none">
+  <div class="flex items-end justify-between mb-5 pb-4 border-b border-slate-200">
+    <div>
+      <p class="eyebrow mb-1">Totem de Fábrica</p>
+      <h1 class="text-xl font-extrabold text-slate-900 tracking-tight">Operadores do Totem</h1>
+      <p class="text-sm text-slate-500 mt-0.5">{{ totem_users|length }} operador(es)</p>
+    </div>
+    <button onclick="criarTotemUser()" class="btn-touch btn-finish text-sm">
+      <i class="fa-solid fa-user-plus"></i>Novo Operador
+    </button>
+  </div>
+  <div class="prodsys-card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase tracking-wider">
+          <tr>
+            <th class="px-4 py-3 text-left font-bold">ID</th>
+            <th class="px-4 py-3 text-left font-bold">Nome</th>
+            <th class="px-4 py-3 text-left font-bold">Setor</th>
+            <th class="px-4 py-3 text-center font-bold">Status</th>
+            <th class="px-4 py-3 text-right font-bold">Ações</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-50">
+          {% for u in totem_users %}
+          <tr id="totem-row-{{ u.id }}" class="hover:bg-slate-50/50 transition-colors">
+            <td class="px-4 py-3 text-xs text-slate-400 font-mono">{{ u.id }}</td>
+            <td class="px-4 py-3 font-bold text-slate-800 totem-nome">{{ u.nome }}</td>
+            <td class="px-4 py-3 text-slate-600 text-xs totem-setor">{{ u.setor or '—' }}</td>
+            <td class="px-4 py-3 text-center">
+              {% if u.ativo %}
+              <span class="inline-flex items-center gap-1 text-[10px] font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded-full cursor-pointer" onclick="toggleTotemUser({{ u.id }})">
+                <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>ATIVO
+              </span>
+              {% else %}
+              <span class="inline-flex items-center gap-1 text-[10px] font-bold text-red-700 bg-red-50 px-2 py-0.5 rounded-full cursor-pointer" onclick="toggleTotemUser({{ u.id }})">
+                <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>INATIVO
+              </span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3 text-right">
+              <div class="flex items-center justify-end gap-1 totem-acoes">
+                <button onclick="editarTotemUser({{ u.id }})" class="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition" title="Editar nome/setor">
+                  <i class="fa-solid fa-pen-to-square text-xs"></i>
+                </button>
+                <button onclick="deletarTotemUser({{ u.id }})" class="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition" title="Excluir">
+                  <i class="fa-solid fa-trash text-xs"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="toastTotem" class="prodsys-toast hidden"></div>
+
+{% endblock %}
+
+{% block extra_head %}
+<style>
+.totem-tab{display:inline-block;padding:8px 18px;font-size:13px;font-weight:700;border-bottom:3px solid transparent;color:#64748b;cursor:pointer;transition:all .15s}
+.totem-tab:hover{color:#334155}
+.totem-tab.active{color:#1d4ed8;border-bottom-color:#1d4ed8}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function trocarTab(tab) {
+  document.getElementById('secSistema').style.display = tab === 'sistema' ? '' : 'none';
+  document.getElementById('secTotem').style.display = tab === 'totem' ? '' : 'none';
+  var tabs = document.querySelectorAll('.totem-tab');
+  for (var i = 0; i < tabs.length; i++) {
+    tabs[i].classList.toggle('active', tabs[i].dataset.tab === tab);
+  }
+}
+
+function showToast(msg, tipo) {
+  var t = document.getElementById('toastTotem');
+  if (!t) return;
+  t.className = 'prodsys-toast ' + (tipo || 'success');
+  t.innerHTML = '<i class="fa-solid fa-' + (tipo === 'error' ? 'exclamation-circle' : 'check-circle') + '"></i> ' + msg;
+  t.classList.remove('hidden');
+  setTimeout(function() { t.classList.add('hidden'); }, 3000);
+}
+
+function editarTotemUser(id) {
+  var row = document.getElementById('totem-row-' + id);
+  if (!row) return;
+  var nomeEl = row.querySelector('.totem-nome');
+  var setorEl = row.querySelector('.totem-setor');
+  var nome = nomeEl.textContent.trim();
+  var setor = setorEl.textContent.trim();
+  if (setor === '—') setor = '';
+  nomeEl.innerHTML = '<input type="text" value="' + nome.replace(/"/g, '&quot;') + '" class="border border-blue-300 rounded px-2 py-1 text-sm w-40 focus:ring-2 focus:ring-blue-400 outline-none" id="edit-nome-' + id + '">';
+  setorEl.innerHTML = '<input type="text" value="' + setor.replace(/"/g, '&quot;') + '" class="border border-blue-300 rounded px-2 py-1 text-sm w-32 focus:ring-2 focus:ring-blue-400 outline-none" id="edit-setor-' + id + '">';
+  var acoesEl = row.querySelector('.totem-acoes');
+  acoesEl.innerHTML = '<button onclick="salvarTotemUser(' + id + ')" class="p-1.5 rounded-lg text-green-600 hover:bg-green-50 transition" title="Salvar"><i class="fa-solid fa-check text-xs"></i></button><button onclick="location.reload()" class="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 transition" title="Cancelar"><i class="fa-solid fa-xmark text-xs"></i></button>';
+  document.getElementById('edit-nome-' + id).focus();
+}
+
+function salvarTotemUser(id) {
+  var nome = document.getElementById('edit-nome-' + id).value.trim();
+  var setor = document.getElementById('edit-setor-' + id).value.trim();
+  if (!nome) { showToast('Nome obrigatório', 'error'); return; }
+  fetch('/api/totem/usuarios/' + id, {method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome:nome,setor:setor})})
+  .then(function(r){return r.json();}).then(function(d){if(d.status==='success'){showToast('Operador atualizado!');location.reload();}else showToast('Erro: '+(d.error||''),'error');})
+  .catch(function(){showToast('Erro de conexão','error');});
+}
+
+function toggleTotemUser(id) {
+  fetch('/api/totem/usuarios/'+id+'/toggle',{method:'POST'}).then(function(r){return r.json();}).then(function(d){if(d.status==='success')location.reload();}).catch(function(){showToast('Erro','error');});
+}
+
+function deletarTotemUser(id) {
+  if(!confirm('Excluir este operador do totem?'))return;
+  fetch('/api/totem/usuarios/'+id,{method:'DELETE'}).then(function(r){return r.json();}).then(function(d){if(d.status==='success')location.reload();}).catch(function(){showToast('Erro','error');});
+}
+
+function criarTotemUser() {
+  var nome = prompt('Nome do operador:');
+  if(!nome||!nome.trim())return;
+  var setor = prompt('Setor (padrão: Serralheria):')||'Serralheria';
+  fetch('/api/totem/usuarios',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome:nome.trim(),setor:setor.trim()})})
+  .then(function(r){return r.json();}).then(function(d){if(d.status==='success')location.reload();else showToast('Erro: '+(d.error||''),'error');})
+  .catch(function(){showToast('Erro','error');});
+}
+</script>
 {% endblock %}

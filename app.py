@@ -722,10 +722,13 @@ def admin_usuarios():
     """Lista todos os usuários em página dedicada."""
     usuarios = db.listar_usuarios()
     departamentos = db.listar_departamentos()
+    # Busca operadores do totem
+    totem_users = db.query("SELECT id, nome, setor, ativo FROM serralheria_usuarios ORDER BY nome")
     return render_template('admin/usuarios.html',
                            usuarios=usuarios,
                            departamentos=departamentos,
                            roles=Config.ROLES,
+                           totem_users=totem_users,
                            usuario_nome=session['usuario_nome'])
 
 @app.route('/admin/usuarios/novo', methods=['GET', 'POST'])
@@ -791,6 +794,65 @@ def admin_deletar_usuario(user_id):
     db.add_log(session['usuario_id'], 'deletar_usuario', f"Usuário {user_id} deletado")
     flash('Usuário removido.', 'success')
     return redirect(url_for('admin_dashboard'))
+
+# =============================================
+# Operadores do Totem (serralheria_usuarios)
+# =============================================
+
+@app.route('/api/totem/usuarios', methods=['GET'])
+@login_required
+@role_required('admin')
+def api_totem_usuarios():
+    usuarios = db.query("SELECT id, nome, setor, ativo FROM serralheria_usuarios ORDER BY nome")
+    return jsonify(usuarios)
+
+@app.route('/api/totem/usuarios/<int:uid>', methods=['PUT'])
+@login_required
+@role_required('admin')
+def api_totem_usuario_editar(uid):
+    data = request.get_json()
+    nome = data.get('nome', '').strip()
+    setor = data.get('setor', '').strip()
+    if not nome:
+        return jsonify({'error': 'Nome obrigatório'}), 400
+    db.execute(
+        "UPDATE serralheria_usuarios SET nome=%s, setor=%s WHERE id=%s",
+        (nome, setor, uid)
+    )
+    return jsonify({'status': 'success'})
+
+@app.route('/api/totem/usuarios/<int:uid>/toggle', methods=['POST'])
+@login_required
+@role_required('admin')
+def api_totem_usuario_toggle(uid):
+    db.execute(
+        "UPDATE serralheria_usuarios SET ativo = IF(ativo=1, 0, 1) WHERE id=%s",
+        (uid,)
+    )
+    row = db.query_one("SELECT ativo FROM serralheria_usuarios WHERE id=%s", (uid,))
+    return jsonify({'status': 'success', 'ativo': row['ativo'] if row else 0})
+
+@app.route('/api/totem/usuarios', methods=['POST'])
+@login_required
+@role_required('admin')
+def api_totem_usuario_criar():
+    data = request.get_json()
+    nome = data.get('nome', '').strip()
+    setor = data.get('setor', 'Serralheria').strip()
+    if not nome:
+        return jsonify({'error': 'Nome obrigatório'}), 400
+    db.execute(
+        "INSERT INTO serralheria_usuarios (nome, setor, ativo) VALUES (%s, %s, 1)",
+        (nome, setor)
+    )
+    return jsonify({'status': 'success'})
+
+@app.route('/api/totem/usuarios/<int:uid>', methods=['DELETE'])
+@login_required
+@role_required('admin')
+def api_totem_usuario_deletar(uid):
+    db.execute("DELETE FROM serralheria_usuarios WHERE id=%s", (uid,))
+    return jsonify({'status': 'success'})
 
 # =============================================
 # Diretor — Relatórios, Logs, Métricas (somente leitura)
