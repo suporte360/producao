@@ -113,7 +113,7 @@
   <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
     {% for lote in a_classificar[:9] %}
     {% set pbg = {'urgente':'border-red-500','alta':'border-orange-400','media':'border-yellow-400','baixa':'border-green-400'} %}
-    <article class="prodsys-card border-l-4 {{ pbg.get(lote.prioridade|lower,'border-blue-300') }} p-4">
+    <article class="prodsys-card border-l-4 {{ pbg.get(lote.prioridade|lower,'border-blue-300') }} p-4 {{ 'sob-medida-classif' if lote.sob_medida }}">
       <div class="flex items-start justify-between gap-2 mb-2">
         <div class="min-w-0">
           <div class="text-xs font-bold text-blue-700">OP #{{ lote.ordem }}</div>
@@ -227,7 +227,7 @@
         {% if not q or q in (lote.ordem|string) or q in (lote.descricao_produto or '')|lower or q in (lote.lote_codigo or '')|lower %}
         {% set pct = ((lote.operacoes_concluidas or 0) / (lote.total_operacoes or 1) * 100)|int %}
 
-        <tr class="hover:bg-slate-50/60 transition-colors {{ 'bg-red-50/30' if lote.prioridade == 'urgente' }}">
+        <tr class="hover:bg-slate-50/60 transition-colors {{ 'bg-red-50/30' if lote.prioridade == 'urgente' }} {{ 'sob-medida-row' if lote.sob_medida }}">
 
           <!-- OP / Lote -->
           <td class="px-4 py-3">
@@ -403,6 +403,15 @@
 <!-- Toast -->
 <div id="toast" class="prodsys-toast hidden"></div>
 
+{% endblock %}
+
+{% block extra_head %}
+<style>
+.sob-medida-row{animation:sobMedidaRow 2.5s ease-in-out infinite}
+@keyframes sobMedidaRow{0%,100%{background:rgba(254,202,202,.15)}50%{background:rgba(254,202,202,.4)}}
+.sob-medida-classif{animation:sobMedidaClassif 2.5s ease-in-out infinite;border-color:#ef4444 !important;box-shadow:0 0 14px rgba(239,68,68,.35)}
+@keyframes sobMedidaClassif{0%,100%{background:rgba(254,202,202,.15)}50%{background:rgba(254,202,202,.45)}}
+</style>
 {% endblock %}
 
 {% block scripts %}

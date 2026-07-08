@@ -80,7 +80,7 @@
   {% set ja_importado = lote.lote_codigo in lotes_ja_importados %}
   {% set atrasado = lote.data_previsao and lote.data_previsao < now.date() %}
 
-  <article class="card-lote prodsys-card border-l-4 {{ 'border-amber-400' if ja_importado else ('border-red-500' if atrasado else 'border-blue-400') }} overflow-hidden {{ 'bg-amber-50/30' if ja_importado }}" data-importado="{{ 'sim' if ja_importado else 'nao' }}">
+  <article class="card-lote prodsys-card border-l-4 {{ 'border-amber-400' if ja_importado else ('border-red-500' if atrasado else 'border-blue-400') }} overflow-hidden {{ 'bg-amber-50/30' if ja_importado }} {{ 'sob-medida-card' if lote.sob_medida }}" data-importado="{{ 'sim' if ja_importado else 'nao' }}">
 
     <div class="px-4 py-3">
       <div class="flex items-start justify-between gap-2 mb-1">
@@ -175,6 +175,14 @@
 <!-- Toast -->
 <div id="toast" class="prodsys-toast hidden"></div>
 
+{% endblock %}
+
+{% block extra_head %}
+<style>
+.sob-medida-card{animation:sobMedidaCard 2.5s ease-in-out infinite !important;border-color:#ef4444 !important;box-shadow:0 0 16px rgba(239,68,68,.4)}
+@keyframes sobMedidaCard{0%,100%{background:rgba(254,202,202,.2)}50%{background:rgba(254,202,202,.55)}}
+.sob-medida-card .lote-desc-row{background:rgba(239,68,68,.15) !important}
+</style>
 {% endblock %}
 
 {% block scripts %}
