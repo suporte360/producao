@@ -751,6 +751,7 @@ def admin_dashboard():
                            usuario_nome=session['usuario_nome'],
                            now=datetime.now())
 
+@app.route('/admin/usuarios/')
 @app.route('/admin/usuarios')
 @login_required
 @role_required('admin')

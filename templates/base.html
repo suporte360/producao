@@ -132,6 +132,10 @@
                     <i class="fa-solid fa-users-gear"></i>
                     <span>Painel Admin</span>
                 </a>
+                <a href="{{ url_for('admin_usuarios') }}" class="nav-item {% if endpoint == 'admin_usuarios' %}active{% endif %}">
+                    <i class="fa-solid fa-user-pen"></i>
+                    <span>Usuários & Operadores</span>
+                </a>
                 {% endif %}
             </nav>
 
