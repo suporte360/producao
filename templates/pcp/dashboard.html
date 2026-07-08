@@ -407,10 +407,17 @@
 
 {% block extra_head %}
 <style>
-.sob-medida-row{animation:sobMedidaRow 2.5s ease-in-out infinite}
-@keyframes sobMedidaRow{0%,100%{background:rgba(254,202,202,.15)}50%{background:rgba(254,202,202,.4)}}
-.sob-medida-classif{animation:sobMedidaClassif 2.5s ease-in-out infinite;border-color:#ef4444 !important;box-shadow:0 0 14px rgba(239,68,68,.35)}
-@keyframes sobMedidaClassif{0%,100%{background:rgba(254,202,202,.15)}50%{background:rgba(254,202,202,.45)}}
+.sob-medida-row{position:relative !important}
+.sob-medida-row td:first-child{box-shadow:inset 4px 0 0 #ef4444}
+.sob-medida-row td{position:relative}
+.sob-medida-row::after{content:'';position:absolute;inset:0;background:rgba(239,68,68,.2);z-index:0;animation:sobMedidaRowBg 2.5s ease-in-out infinite;pointer-events:none}
+.sob-medida-row td{position:relative;z-index:1}
+@keyframes sobMedidaRowBg{0%,100%{opacity:.2}50%{opacity:.65}}
+.sob-medida-classif{position:relative !important;border-color:#ef4444 !important;animation:sobMedidaClassifShadow 2.5s ease-in-out infinite !important}
+.sob-medida-classif::before{content:'';position:absolute;inset:0;border-radius:inherit;background:rgba(239,68,68,.2);z-index:0;animation:sobMedidaClassifBg 2.5s ease-in-out infinite;pointer-events:none}
+.sob-medida-classif>*{position:relative;z-index:1}
+@keyframes sobMedidaClassifBg{0%,100%{opacity:.25}50%{opacity:.75}}
+@keyframes sobMedidaClassifShadow{0%,100%{box-shadow:0 0 8px rgba(239,68,68,.3)}50%{box-shadow:0 0 20px rgba(239,68,68,.65)}}
 </style>
 {% endblock %}
 

@@ -179,9 +179,11 @@
 
 {% block extra_head %}
 <style>
-.sob-medida-card{animation:sobMedidaCard 2.5s ease-in-out infinite !important;border-color:#ef4444 !important;box-shadow:0 0 16px rgba(239,68,68,.4)}
-@keyframes sobMedidaCard{0%,100%{background:rgba(254,202,202,.2)}50%{background:rgba(254,202,202,.55)}}
-.sob-medida-card .lote-desc-row{background:rgba(239,68,68,.15) !important}
+.sob-medida-card{position:relative !important;border-color:#ef4444 !important;animation:sobMedidaCardShadow 2.5s ease-in-out infinite !important}
+.sob-medida-card::before{content:'';position:absolute;inset:0;border-radius:inherit;background:rgba(239,68,68,.25);z-index:0;animation:sobMedidaCardBg 2.5s ease-in-out infinite;pointer-events:none}
+.sob-medida-card>*{position:relative;z-index:1}
+@keyframes sobMedidaCardBg{0%,100%{opacity:.3}50%{opacity:.8}}
+@keyframes sobMedidaCardShadow{0%,100%{box-shadow:0 0 8px rgba(239,68,68,.3)}50%{box-shadow:0 0 22px rgba(239,68,68,.7)}}
 </style>
 {% endblock %}
 
