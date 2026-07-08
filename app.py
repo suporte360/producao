@@ -97,7 +97,7 @@ except Exception:
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     """)
 
-# Operadores da Serralheria — reset se ainda tem serra* ou tabela vazia
+# Operadores da Serralheria — reset uma vez (usado flag na tabela para controlar)
 OPERADORES_SERRALHERIA = [
     ('Gabriel',      'CORTE'),
     ('Erivaldo',     'SERRALHERIA'),
@@ -111,16 +111,23 @@ OPERADORES_SERRALHERIA = [
     ('Jhonatas',     'DOBRA'),
 ]
 try:
-    has_serra = db.query_one("SELECT COUNT(*) as c FROM serralheria_usuarios WHERE nome LIKE 'serra%'")
-    total = db.query_one("SELECT COUNT(*) as c FROM serralheria_usuarios")
-    if has_serra['c'] > 0 or total['c'] == 0:
-        db.execute("DELETE FROM serralheria_usuarios")
-        for nome, setor in OPERADORES_SERRALHERIA:
-            db.execute(
-                "INSERT INTO serralheria_usuarios (nome, setor, ativo) VALUES (%s, %s, 1)",
-                (nome, setor)
-            )
-        print('[OK] Operadores serralheria resetados: %d' % len(OPERADORES_SERRALHERIA))
+    # Verifica se precisa resetar: conta operadores que NAO sao da lista oficial
+    nomes_oficiais = [n for n, s in OPERADORES_SERRALHERIA]
+    if nomes_oficiais:
+        placeholders = ','.join(['%s'] * len(nomes_oficiais))
+        fora = db.query_one(
+            "SELECT COUNT(*) as c FROM serralheria_usuarios WHERE nome NOT IN (" + placeholders + ")",
+            nomes_oficiais
+        )
+        total = db.query_one("SELECT COUNT(*) as c FROM serralheria_usuarios")
+        if fora['c'] > 0 or total['c'] == 0:
+            db.execute("DELETE FROM serralheria_usuarios")
+            for nome, setor in OPERADORES_SERRALHERIA:
+                db.execute(
+                    "INSERT INTO serralheria_usuarios (nome, setor, ativo) VALUES (%s, %s, 1)",
+                    (nome, setor)
+                )
+            print('[OK] Operadores serralheria resetados: %d' % len(OPERADORES_SERRALHERIA))
 except Exception as e:
     print('[WARN] Operadores serralheria: %s' % e)
 
