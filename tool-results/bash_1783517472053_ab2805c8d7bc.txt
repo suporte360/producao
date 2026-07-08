@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Serralheria Totem</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;background:#0a0e1a;color:#e0e0e0}
+.screen{display:none;position:absolute;top:0;left:0;width:100%;height:100%;flex-direction:column}
+.screen.active{display:flex}
+
+/* ══ SCREEN 1: DASHBOARD ══ */
+#screen1{background:linear-gradient(170deg,#0a0e1a 0%,#111827 40%,#0f172a 100%);cursor:pointer}
+.dash-header{background:rgba(15,23,42,.92);backdrop-filter:blur(8px);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #f59e0b;position:relative;z-index:5}
+.dash-header h1{font-size:20px;color:#f59e0b;font-weight:800;letter-spacing:2px;text-transform:uppercase}
+.dash-header h1 span{color:#fff;font-weight:300;letter-spacing:0;margin-left:6px;font-size:14px}
+.dash-clock{font-size:30px;color:#00e676;font-weight:700;font-variant-numeric:tabular-nums;text-shadow:0 0 12px rgba(0,230,118,.5)}
+.kpi-row{display:flex;gap:10px;padding:10px 14px;flex-shrink:0}
+.kpi-card{flex:1;min-width:0;background:linear-gradient(145deg,rgba(22,33,62,.9),rgba(15,23,42,.95));border:1px solid rgba(245,158,11,.2);border-radius:12px;padding:10px 6px;text-align:center;position:relative;overflow:hidden;animation:slideUp .6s ease-out both}
+.kpi-card:nth-child(1){animation-delay:.1s}
+.kpi-card:nth-child(2){animation-delay:.2s}
+.kpi-card:nth-child(3){animation-delay:.3s}
+.kpi-card:nth-child(4){animation-delay:.4s}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#f59e0b,transparent)}
+.kpi-card.green-border::before{background:linear-gradient(90deg,transparent,#00e676,transparent)}
+.kpi-card.blue-border::before{background:linear-gradient(90deg,transparent,#42a5f5,transparent)}
+.kpi-card.red-border::before{background:linear-gradient(90deg,transparent,#ef5350,transparent)}
+.kpi-value{font-size:32px;font-weight:800;color:#f59e0b;line-height:1.1}
+.kpi-value.green{color:#00e676}
+.kpi-value.blue{color:#42a5f5}
+.kpi-value.red{color:#ef5350}
+.kpi-label{font-size:10px;color:#7a7a9a;text-transform:uppercase;letter-spacing:.8px;margin-top:3px}
+
+/* ── WORKER CARDS (2-line, bigger font) ── */
+.workers-section{flex:1;overflow:hidden;display:flex;flex-direction:column;padding:6px 14px 0;min-height:0}
+.workers-title{font-size:12px;color:#5a5a7a;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.workers-title .live-dot{width:8px;height:8px;border-radius:50%;background:#00e676;animation:livePulse 1.5s ease-in-out infinite;flex-shrink:0}
+.workers-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:8px}
+.worker-card{background:linear-gradient(145deg,rgba(22,33,62,.85),rgba(15,23,42,.9));border:1px solid rgba(0,230,118,.25);border-radius:12px;padding:14px 16px;margin-bottom:10px;animation:fadeInUp .5s ease-out both;position:relative;overflow:hidden}
+.worker-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#00e676,#00c853);border-radius:0 2px 2px 0}
+.worker-card:nth-child(1){animation-delay:.1s}
+.worker-card:nth-child(2){animation-delay:.2s}
+.worker-card:nth-child(3){animation-delay:.3s}
+.worker-card:nth-child(4){animation-delay:.4s}
+.worker-card:nth-child(5){animation-delay:.5s}
+.wc-row{display:flex;align-items:center;gap:6px;line-height:1.5}
+.wc-row+.wc-row{margin-top:4px}
+.wc-name{font-size:20px;font-weight:800;color:#00e676;flex-shrink:0}
+.wc-setor{font-size:14px;color:#f59e0b;font-weight:600;flex-shrink:0}
+.wc-sep{color:#2a2a5a;font-size:16px;flex-shrink:0;margin:0 2px}
+.wc-lote-label{font-size:14px;color:#7a7a9a;flex-shrink:0}
+.wc-lote{font-size:18px;color:#f59e0b;font-weight:700;flex-shrink:0}
+.wc-lote-desc{font-size:15px;color:#999;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.wc-time{font-size:13px;color:#7a7a9a;flex-shrink:0;margin-left:auto}
+.wc-pecas-count{font-size:16px;color:#e0e0e0;font-weight:700;flex-shrink:0}
+.wc-peca-code{font-size:16px;color:#42a5f5;font-weight:700;flex-shrink:0}
+.wc-peca-name{font-size:15px;color:#ccc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.no-workers{text-align:center;padding:20px;color:#5a5a7a;font-size:15px}
+.no-workers .nw-icon{font-size:36px;margin-bottom:6px;opacity:.4}
+.touch-hint{text-align:center;padding:8px;font-size:12px;color:#5a5a7a;letter-spacing:1px;text-transform:uppercase;flex-shrink:0;animation:hintPulse 3s ease-in-out infinite}
+
+/* ── ANIMATIONS ── */
+@keyframes slideUp{from{transform:translateY(25px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes fadeInUp{from{transform:translateY(15px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes livePulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+@keyframes hintPulse{0%,100%{opacity:.3}50%{opacity:.8}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes countPulse{0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
+
+/* ══ SCREENS 2-4 (lotes / pecas / usuarios) ══ */
+.header{background:#16213e;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;min-height:60px;border-bottom:3px solid #f59e0b}
+.header h1{font-size:20px;color:#f59e0b;font-weight:700;letter-spacing:1px}
+.header .clock{font-size:26px;color:#00e676;font-weight:700;font-variant-numeric:tabular-nums}
+.btn-touch{background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;font-size:20px;font-weight:700;padding:18px 32px;border:none;border-radius:12px;cursor:pointer;width:90%;max-width:500px;margin:10px auto;text-transform:uppercase;letter-spacing:1px;box-shadow:0 4px 20px rgba(245,158,11,.4)}
+.btn-touch:active{transform:scale(.97);box-shadow:0 2px 10px rgba(245,158,11,.3)}
+.btn-green{background:linear-gradient(135deg,#00e676,#00c853);color:#000}
+.btn-green:active{box-shadow:0 2px 10px rgba(0,230,118,.3)}
+.btn-red{background:linear-gradient(135deg,#ef5350,#c62828);color:#fff}
+.btn-red:active{box-shadow:0 2px 10px rgba(239,83,80,.3)}
+.btn-back{background:#2a2a5a;color:#aaa;font-size:16px;padding:12px 24px;border:none;border-radius:10px;cursor:pointer;width:90%;max-width:500px;margin:6px auto}
+.btn-back:active{background:#3a3a6a}
+.scroll-area{flex:1;overflow-y:auto;padding:12px 16px;-webkit-overflow-scrolling:touch}
+
+/* ── LOTE CARDS (slightly bigger fonts) ── */
+.lote-card{background:#16213e;border:2px solid #2a2a5a;border-radius:14px;padding:16px;margin-bottom:12px;cursor:pointer;transition:border-color .2s;display:flex;align-items:center;gap:12px}
+.lote-card:active{border-color:#f59e0b}
+.lote-card.ativo{border-color:#00e676}
+.lote-card .lote-left{flex:1;min-width:0}
+.lote-card .lote-header{display:flex;align-items:baseline;gap:8px;margin-bottom:3px}
+.lote-card .lote-codigo{font-size:24px;font-weight:700;color:#f59e0b;flex-shrink:0}
+.lote-card .lote-desc-inline{font-size:17px;color:#aaa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.lote-card .lote-prod-row{font-size:17px;color:#ccc;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lote-card .lote-info{display:flex;gap:14px;font-size:16px;color:#888;flex-wrap:wrap;margin-top:3px}
+.lote-card .lote-qty{font-size:30px;font-weight:800;color:#fff;line-height:1.2;text-align:center;flex-shrink:0}
+.lote-card .lote-qty-label{font-size:12px;color:rgba(255,255,255,.8);text-transform:uppercase;letter-spacing:1px;text-align:center}
+.lote-card .lote-qty-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;background:rgba(33,150,243,.2);border:2px solid #42a5f5;border-radius:14px;padding:14px 18px;min-width:100px}
+.lote-card .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:13px;font-weight:700;text-transform:uppercase}
+.badge-prod{background:#00e676;color:#000}
+.badge-final{background:#42a5f5;color:#000}
+
+/* ── PECA CARDS (with operations + description) ── */
+.peca-card{background:#16213e;border:1px solid #2a2a5a;border-radius:10px;padding:14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-start;cursor:pointer;transition:all .2s}
+.peca-card:active{border-color:#f59e0b}
+.peca-card.em_producao{border-color:#00e676;opacity:.6;cursor:default}
+.peca-card.selected{border-color:#f59e0b;background:rgba(245,158,11,.1)}
+.peca-card .peca-left{flex:1;min-width:0}
+.peca-card .peca-codigo{font-size:18px;font-weight:700;color:#e0e0e0}
+.peca-card .peca-nome{font-size:15px;color:#ccc;margin-top:2px}
+.peca-card .peca-sub{font-size:12px;color:#7a7a9a;margin-top:3px;font-weight:700}
+.peca-card .peca-setores{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+.peca-card .peca-setor-tag{font-size:10px;padding:2px 7px;border-radius:6px;background:rgba(245,158,11,.12);color:#f59e0b;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.peca-card .peca-setor-tag.done{background:rgba(0,230,118,.12);color:#00e676}
+.peca-card .peca-qtd{font-size:28px;font-weight:800;color:#fff;line-height:1.2;text-align:center;flex-shrink:0}
+.peca-card .peca-qtd-label{font-size:10px;color:rgba(255,255,255,.8);text-transform:uppercase;letter-spacing:1px;text-align:center}
+.peca-card .peca-qtd-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;background:rgba(33,150,243,.2);border:2px solid #42a5f5;border-radius:12px;padding:10px 16px;min-width:80px}
+.peca-card .peca-badge{font-size:10px;padding:2px 8px;border-radius:8px;font-weight:700;text-transform:uppercase;background:rgba(0,230,118,.15);color:#00e676;margin-top:4px;display:inline-block}
+
+/* ── OPERATIONS LIST in pecas ── */
+.peca-ops{margin-top:6px;padding-top:6px;border-top:1px solid rgba(42,42,90,.5)}
+.peca-ops-title{font-size:11px;color:#5a5a7a;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.peca-op-row{display:flex;align-items:center;gap:6px;font-size:12px;padding:2px 0;color:#999}
+.peca-op-row .op-seq{color:#f59e0b;font-weight:700;min-width:18px}
+.peca-op-row .op-setor{color:#42a5f5;font-weight:600;min-width:80px;text-transform:uppercase}
+.peca-op-row .op-desc{flex:1;color:#bbb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.peca-op-row .op-status{font-size:10px;padding:1px 6px;border-radius:4px;font-weight:600;text-transform:uppercase;flex-shrink:0}
+.op-status.pendente{background:rgba(245,158,11,.12);color:#f59e0b}
+.op-status.em_producao{background:rgba(0,230,118,.12);color:#00e676}
+.op-status.concluido{background:rgba(66,165,245,.12);color:#42a5f5}
+
+.usuario-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:12px}
+.usuario-btn{background:#16213e;border:2px solid #2a2a5a;border-radius:14px;padding:20px 10px;text-align:center;cursor:pointer;font-size:18px;font-weight:700;color:#e0e0e0;transition:all .2s}
+.usuario-btn:active{border-color:#f59e0b;background:#1e2a4e}
+.usuario-btn .user-icon{font-size:28px;margin-bottom:6px;color:#f59e0b}
+.usuario-btn .user-setor{font-size:11px;color:#888;margin-top:4px}
+.section-title{font-size:14px;color:#888;padding:8px 16px;text-transform:uppercase;letter-spacing:1px}
+.prod-final{background:linear-gradient(135deg,#0d1b3e,#16213e);border:1px solid #42a5f5;border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
+.prod-final .pf-label{font-size:12px;color:#42a5f5;text-transform:uppercase}
+.prod-final .pf-codigo{font-size:18px;font-weight:700;color:#42a5f5}
+.prod-final .pf-desc{font-size:14px;color:#ccc;margin-top:4px;line-height:1.3}
+.loading{text-align:center;padding:40px;color:#888;font-size:16px}
+.loading .spinner{display:inline-block;width:32px;height:32px;border:3px solid #2a2a5a;border-top-color:#f59e0b;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:12px}
+.dialog-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);z-index:100;justify-content:center;align-items:center}
+.dialog-overlay.active{display:flex}
+.dialog-box{background:#16213e;border:2px solid #f59e0b;border-radius:16px;padding:28px;max-width:420px;width:90%;text-align:center}
+.dialog-box h3{font-size:20px;color:#f59e0b;margin-bottom:12px}
+.dialog-box p{font-size:15px;color:#ccc;margin-bottom:20px}
+.dialog-btns{display:flex;gap:12px;justify-content:center}
+.dialog-btns button{flex:1;padding:14px;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer}
+.dialog-btns .sim{background:#00e676;color:#000}
+.dialog-btns .nao{background:#2a2a5a;color:#aaa}
+.setor-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:16px}
+.setor-btn{background:#16213e;border:2px solid #2a2a5a;border-radius:14px;padding:20px 10px;text-align:center;cursor:pointer;font-size:15px;font-weight:700;color:#e0e0e0;transition:all .2s;text-transform:uppercase;letter-spacing:1px}
+.setor-btn:active{border-color:#f59e0b;background:#1e2a4e}
+.setor-btn .setor-icon{font-size:26px;margin-bottom:6px}
+.setor-btn.active-setor{border-color:#00e676;background:rgba(0,230,118,.1);color:#00e676}
+.pecas-check-icon{width:22px;height:22px;border-radius:50%;border:2px solid #2a2a5a;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:10px;transition:all .2s;font-size:13px;color:transparent}
+.peca-card.selected .pecas-check-icon{border-color:#f59e0b;background:#f59e0b;color:#000}
+.peca-card.em_producao .pecas-check-icon{border-color:#00e676;background:#00e676;color:#000}
+
+@media(max-width:600px){
+  .kpi-value{font-size:26px}
+  .kpi-card{padding:8px 4px}
+  .kpi-label{font-size:9px}
+  .wc-name{font-size:17px}
+  .wc-lote{font-size:15px}
+  .wc-peca-code{font-size:14px}
+  .wc-peca-name{font-size:13px}
+  .lote-codigo{font-size:20px!important}
+  .lote-qty{font-size:26px!important}
+}
+</style>
+</head>
+<body>
+
+<!-- ========== SCREEN 1: DASHBOARD ========== -->
+<div id="screen1" class="screen active" onclick="dashClick(event)">
+  <div class="dash-header">
+    <h1>SERRALHERIA <span>Production Monitor</span></h1>
+    <div class="dash-clock" id="clock">00:00:00</div>
+  </div>
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-value" id="kpiLotes">--</div>
+      <div class="kpi-label">Lotes Abertos</div>
+    </div>
+    <div class="kpi-card blue-border">
+      <div class="kpi-value blue" id="kpiPecas">--</div>
+      <div class="kpi-label">Pecas</div>
+    </div>
+    <div class="kpi-card green-border">
+      <div class="kpi-value green" id="kpiQtd">--</div>
+      <div class="kpi-label">Total a Produzir</div>
+    </div>
+    <div class="kpi-card red-border">
+      <div class="kpi-value red" id="kpiAndamento">--</div>
+      <div class="kpi-label">Produzindo</div>
+    </div>
+  </div>
+  <div class="workers-section">
+    <div class="workers-title">
+      <div class="live-dot"></div>
+      OPERADORES EM PRODUCAO
+      <span id="activeCount" style="color:#00e676;margin-left:auto;font-size:13px;font-weight:700">0</span>
+    </div>
+    <div class="workers-scroll" id="workersGrid">
+      <div class="loading"><div class="spinner"></div><br>Carregando dados...</div>
+    </div>
+  </div>
+  <div class="touch-hint">Toque para acessar lotes de producao</div>
+</div>
+
+<!-- ========== SCREEN 2: LOTES ========== -->
+<div id="screen2" class="screen">
+  <div class="header">
+    <h1>LOTES DE PRODUCAO</h1>
+    <div class="clock" id="clock2">00:00:00</div>
+  </div>
+  <div class="scroll-area" id="lotesList">
+    <div class="loading"><div class="spinner"></div><br>Carregando lotes...</div>
+  </div>
+  <div style="padding:10px 16px">
+    <button class="btn-back" onclick="showScreen(1)">&#8592; Voltar ao Dashboard</button>
+  </div>
+</div>
+
+<!-- ========== SCREEN 3: PECAS ========== -->
+<div id="screen3" class="screen">
+  <div class="header">
+    <h1 id="pecasTitle">PECAS - LOTE</h1>
+    <div class="clock" id="clock3">00:00:00</div>
+  </div>
+  <div class="scroll-area" id="pecasContent">
+    <div class="loading"><div class="spinner"></div><br>Carregando...</div>
+  </div>
+  <div style="padding:10px 16px" id="pecasActions"></div>
+</div>
+
+<!-- ========== SCREEN 4: USUARIOS ========== -->
+<div id="screen4" class="screen">
+  <div class="header">
+    <h1>SELECIONAR OPERADOR</h1>
+    <div class="clock" id="clock4">00:00:00</div>
+  </div>
+  <div class="section-title" id="selInfo"></div>
+  <div class="usuario-grid" id="usuarioGrid"></div>
+  <div style="padding:10px 16px">
+    <button class="btn-back" onclick="showScreen(3)">&#8592; Voltar as Pecas</button>
+  </div>
+</div>
+
+<!-- ========== CONFIRM DIALOG ========== -->
+<div class="dialog-overlay" id="dialogConfirm">
+  <div class="dialog-box">
+    <h3 id="dialogTitle">Confirmar</h3>
+    <p id="dialogMsg">Tem certeza?</p>
+    <div class="dialog-btns">
+      <button class="nao" onclick="fecharDialog()">NAO</button>
+      <button class="sim" id="dialogSimBtn">SIM</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== FINALIZAR DIALOG ========== -->
+<div class="dialog-overlay" id="dialogFinalizar">
+  <div class="dialog-box">
+    <h3>Finalizar Producao</h3>
+    <p id="finalizarMsg">Finalizar este lote?</p>
+    <div class="dialog-btns">
+      <button class="nao" onclick="fecharFinalizar()">NAO</button>
+      <button class="sim" id="btnConfirmaFinalizar">SIM, FINALIZAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SETOR DIALOG ========== -->
+<div class="dialog-overlay" id="dialogSetor">
+  <div class="dialog-box">
+    <h3>Escolha o Setor</h3>
+    <p>Selecione o setor para iniciar a producao</p>
+    <div class="setor-grid">
+      <div class="setor-btn" onclick="selecionarSetor('CORTE')"><div class="setor-icon">&#9986;</div>CORTE</div>
+      <div class="setor-btn" onclick="selecionarSetor('DOBRA')"><div class="setor-icon">&#8634;</div>DOBRA</div>
+      <div class="setor-btn" onclick="selecionarSetor('SOLDA')"><div class="setor-icon">&#9899;</div>SOLDA</div>
+      <div class="setor-btn" onclick="selecionarSetor('ACABAMENTO')"><div class="setor-icon">&#10003;</div>ACABAM.</div>
+      <div class="setor-btn" onclick="selecionarSetor('MONTAGEM')" style="grid-column:span 2"><div class="setor-icon">&#9881;</div>MONTAGEM</div>
+    </div>
+    <div style="margin-top:16px">
+      <button class="btn-back" onclick="fecharSetor()" style="width:100%;max-width:100%;padding:10px">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var currentLote = null;
+var currentPecas = [];
+var currentPecasAtivas = {};
+var selectedSetor = null;
+var selectedPecas = [];
+var DASH_REFRESH = 10000;
+var idleTimer = null;
+var IDLE_TIMEOUT = 60000;
+
+function resetIdle() {
+  if (idleTimer) clearTimeout(idleTimer);
+  idleTimer = setTimeout(function() {
+    var s1 = document.getElementById('screen1');
+    if (!s1.classList.contains('active')) showScreen(1);
+  }, IDLE_TIMEOUT);
+}
+document.addEventListener('touchstart', resetIdle, {passive: true});
+document.addEventListener('click', resetIdle);
+resetIdle();
+
+function showScreen(n) {
+  var i, screens = document.querySelectorAll('.screen');
+  for (i = 0; i < screens.length; i++) screens[i].classList.remove('active');
+  document.getElementById('screen' + n).classList.add('active');
+  if (n === 1) loadDashboard();
+  if (n === 2) loadLotes();
+  resetIdle();
+}
+
+function dashClick(e) { showScreen(2); }
+
+function updateClock() {
+  var now = new Date();
+  var t = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
+  document.getElementById('clock').textContent = t;
+  var c2=document.getElementById('clock2'),c3=document.getElementById('clock3'),c4=document.getElementById('clock4');
+  if(c2)c2.textContent=t; if(c3)c3.textContent=t; if(c4)c4.textContent=t;
+}
+setInterval(updateClock,1000); updateClock();
+
+function esc(s){if(!s)return'';var d=document.createElement('div');d.appendChild(document.createTextNode(String(s)));return d.innerHTML;}
+
+function animateValue(el,end){
+  var startVal=parseInt(el.textContent)||0;if(startVal===end)return;
+  var dur=600,st=null;
+  function step(ts){if(!st)st=ts;var p=Math.min((ts-st)/dur,1);var eased=1-Math.pow(1-p,3);el.textContent=Math.round(startVal+(end-startVal)*eased);if(p<1)requestAnimationFrame(step);else el.style.animation='countPulse .3s ease';}
+  el.style.animation='';requestAnimationFrame(step);
+}
+
+/* ══ LOAD DASHBOARD ══ */
+function loadDashboard(){
+  fetch('/api/dashboard').then(function(r){return r.json();}).then(function(data){
+    if(data.error){console.error('Dashboard error:',data.error);return;}
+    animateValue(document.getElementById('kpiLotes'),data.total_lotes||0);
+    animateValue(document.getElementById('kpiPecas'),data.total_pecas||0);
+    animateValue(document.getElementById('kpiQtd'),data.total_qtd||0);
+    animateValue(document.getElementById('kpiAndamento'),data.em_andamento||0);
+    renderWorkers(data.ativos||[],data);
+  }).catch(function(e){console.error('Dashboard fetch error:',e);});
+}
+
+/* ══ WORKER CARDS (2-line, bigger font) ══ */
+function renderWorkers(ativos,data){
+  var grid=document.getElementById('workersGrid');
+  var countEl=document.getElementById('activeCount');
+  countEl.textContent=ativos.length;
+  if(ativos.length===0){
+    grid.innerHTML='<div class="no-workers"><div class="nw-icon">&#9881;</div><div>Nenhum operador produzindo no momento</div><div style="margin-top:6px;font-size:13px;color:#4a4a6a">Aguardando inicio de producao</div></div>';
+    return;
+  }
+  var grouped={};var i;
+  for(i=0;i<ativos.length;i++){
+    var a=ativos[i];
+    if(!grouped[a.usuario_nome]){
+      grouped[a.usuario_nome]={nome:a.usuario_nome,lote:a.lote,lote_desc:a.lote_desc||'',setor:a.setor||'',pecas:[],data_inicio:a.data_inicio,pecas_count:a.pecas_count||1};
+    }
+    grouped[a.usuario_nome].pecas.push({produto:a.produto,produto_nome:a.produto_nome||''});
+  }
+  var html='';var keys=Object.keys(grouped);
+  for(i=0;i<keys.length;i++){
+    var w=grouped[keys[i]];
+    var timeStr='';
+    if(w.data_inicio){var parts=w.data_inicio.split(' ');if(parts.length>=2)timeStr=parts[1].substring(0,5);}
+    var shortDesc='';
+    if(w.lote_desc){shortDesc=w.lote_desc.length>40?w.lote_desc.substring(0,40)+'...':w.lote_desc;}
+    var firstPeca=w.pecas[0]||{};
+    var pecaCode=firstPeca.produto||'';
+    var pecaName=firstPeca.produto_nome||'';
+
+    /* LINHA 1: Nome(Setor) | Lote: XXXXX | descricao | Hora */
+    html+='<div class="worker-card" style="animation-delay:'+(i*0.1)+'s">'
+      +'<div class="wc-row">'
+      +'<span class="wc-name">'+esc(w.nome)+'</span>'
+      +(w.setor?'<span class="wc-setor">('+esc(w.setor)+')</span>':'')
+      +'<span class="wc-sep">|</span>'
+      +'<span class="wc-lote-label">Lote:</span>'
+      +'<span class="wc-lote">'+esc(w.lote)+'</span>'
+      +(shortDesc?'<span class="wc-sep">|</span><span class="wc-lote-desc">'+esc(shortDesc)+'</span>':'')
+      +'<span class="wc-time">Desde '+esc(timeStr)+'</span>'
+      +'</div>';
+
+    /* LINHA 2: Qtd pecas | PC-XXXX | Nome da peca */
+    html+='<div class="wc-row">'
+      +'<span class="wc-pecas-count">'+w.pecas_count+' peca'+(w.pecas_count>1?'s':'')+'</span>'
+      +(pecaCode?'<span class="wc-sep">|</span><span class="wc-peca-code">'+esc(pecaCode)+'</span>':'')
+      +(pecaName?'<span class="wc-sep">|</span><span class="wc-peca-name">'+esc(pecaName)+'</span>':'')
+      +'</div>';
+    html+='</div>';
+  }
+  grid.innerHTML=html;
+}
+
+/* ══ LOAD LOTES (Screen 2) ══ */
+function loadLotes(){
+  fetch('/api/lotes').then(function(r){return r.json();}).then(function(data){
+    if(!data.lotes||data.lotes.length===0){document.getElementById('lotesList').innerHTML='<div class="loading" style="color:#f59e0b">Nenhum lote em aberto</div>';return;}
+    var html='';
+    for(var i=0;i<data.lotes.length;i++){
+      var l=data.lotes[i];
+      var borderClass=l.status_producao==='em_producao'?' ativo':'';
+      var badge=l.status_producao==='em_producao'?'<span class="badge badge-prod">Produzindo - '+esc(l.operador)+'</span>':'';
+      var descInline='';if(l.descricao){descInline=l.descricao.length>40?l.descricao.substring(0,40)+'...':l.descricao;}
+      html+='<div class="lote-card'+borderClass+'" onclick="verLote(\''+esc(l.lotcod)+'\')">'
+        +'<div class="lote-left">'
+        +'<div class="lote-header"><span class="lote-codigo">LOTE '+esc(l.lotcod)+'</span>'
+        +(descInline?'<span class="lote-desc-inline">'+esc(descInline)+'</span>':'')
+        +badge+'</div>'
+        +(l.pecas_codigos?'<div class="lote-prod-row"><span style="color:#42a5f5;font-weight:700;font-size:14px">'+esc(l.pecas_codigos)+'</span>'+(l.sob_medida?' <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:9999px;background:#e9d5ff;color:#a855f7;vertical-align:middle">SOB MEDIDA</span>':'')+'</div>':'')
+        +'</div>'
+        +'<div class="lote-qty-wrap"><div class="lote-qty">'+(l.qtd_pecas||0)+'</div><div class="lote-qty-label">pecas</div></div>'
+        +'</div>';
+    }
+    document.getElementById('lotesList').innerHTML=html;
+  }).catch(function(e){console.error('Lotes error:',e);document.getElementById('lotesList').innerHTML='<div class="loading" style="color:#ef5350">Erro ao carregar lotes</div>';});
+}
+
+/* ══ VER LOTE -> Screen 3 (Pecas) ══ */
+function verLote(lotcod){
+  currentLote=lotcod;currentPecas=[];currentPecasAtivas={};selectedSetor=null;selectedPecas=[];
+  document.getElementById('pecasTitle').textContent='PECAS - LOTE '+lotcod;
+  document.getElementById('pecasContent').innerHTML='<div class="loading"><div class="spinner"></div><br>Carregando pecas...</div>';
+  document.getElementById('pecasActions').innerHTML='';
+  showScreen(3);
+  fetch('/api/lotes/'+lotcod+'/pecas').then(function(r){return r.json();}).then(function(data){
+    if(data.error){document.getElementById('pecasContent').innerHTML='<div class="loading" style="color:#ef5350">Erro: '+esc(data.error)+'</div>';return;}
+    currentPecas=data.pecas||[];currentPecasAtivas=data.pecas_ativas||{};renderPecas(data);
+  }).catch(function(e){console.error('Pecas error:',e);document.getElementById('pecasContent').innerHTML='<div class="loading" style="color:#ef5350">Erro ao carregar</div>';});
+}
+
+/* ══ RENDER PECAS (with description + operations) ══ */
+function renderPecas(data){
+  var html='';var pecas=currentPecas;var hasAtivas=false;
+
+  /* Produto final com descricao */
+  if(data.produto_final){
+    var qtdFinal=Math.round(parseFloat(data.produto_final.quantidade));
+    html+='<div class="prod-final">'
+      +'<div style="flex:1;min-width:0">'
+      +'<div class="pf-label">Produto Final (referencia)</div>'
+      +'<div class="pf-codigo">'+esc(data.produto_final.codigo)+'</div>'
+      +(data.produto_final.descricao?'<div class="pf-desc">'+esc(data.produto_final.descricao)+'</div>':'')
+      +'</div>'
+      +'<div style="text-align:right;flex-shrink:0;margin-left:12px"><div style="font-size:12px;color:#888">Qtd</div>'
+      +'<div style="font-size:22px;font-weight:700;color:#42a5f5">'+qtdFinal+'</div></div>'
+      +'</div>';
+  }
+  if(data.descricao){
+    html+='<div style="padding:4px 4px 12px;font-size:14px;color:#999;line-height:1.4">'+esc(data.descricao)+'</div>';
+  }
+
+  var disponiveis=0;for(var k=0;k<pecas.length;k++){if(!currentPecasAtivas[pecas[k].codigo])disponiveis++;}
+  html+='<div class="section-title">Pecas para Fabricar ('+disponiveis+' de '+pecas.length+')</div>';
+
+  for(var i=0;i<pecas.length;i++){
+    var p=pecas[i];
+    var tipo=p.codigo.substring(0,2);
+    var tipoLabel=tipo==='CJ'?'Conjunto':'Peca';
+    var qtd=Math.round(parseFloat(p.quantidade));
+    var isActive=currentPecasAtivas[p.codigo];
+    var cardClass='peca-card';var clickAction='';var checkIcon='';
+
+    if(isActive){cardClass+=' em_producao';checkIcon='<div class="pecas-check-icon">&#10003;</div>';hasAtivas=true;}
+    else if(selectedSetor){clickAction=' onclick="togglePecaSelection(\''+esc(p.codigo)+'\')"';var isSelected=selectedPecas.indexOf(p.codigo)>=0;if(isSelected){cardClass+=' selected';checkIcon='<div class="pecas-check-icon">&#10003;</div>';}else{checkIcon='<div class="pecas-check-icon"></div>';}}
+    else{clickAction=' onclick="abrirSetor()"';checkIcon='<div class="pecas-check-icon"></div>';}
+
+    var pNome=p.produto_nome?esc(p.produto_nome):'';
+
+    /* Operations list */
+    var opsHtml='';
+    if(p.operacoes&&p.operacoes.length>0){
+      opsHtml='<div class="peca-ops"><div class="peca-ops-title">Operacoes ('+p.operacoes.length+')</div>';
+      for(var o=0;o<p.operacoes.length;o++){
+        var op=p.operacoes[o];
+        var statusClass='pendente';var statusText='PENDENTE';
+        if(op.status==='em_producao'||op.status==='produzindo'){statusClass='em_producao';statusText='EM PROD.';}
+        else if(op.status==='concluido'||op.status==='finalizado'){statusClass='concluido';statusText='CONCL.';}
+        opsHtml+='<div class="peca-op-row">'
+          +'<span class="op-seq">'+(op.sequencia||(o+1))+'.</span>'
+          +'<span class="op-setor">'+esc(op.departamento||'')+'</span>'
+          +'<span class="op-desc">'+esc(op.descricao_operacao||'')+'</span>'
+          +'<span class="op-status '+statusClass+'">'+statusText+'</span>'
+          +'</div>';
+      }
+      opsHtml+='</div>';
+    }
+
+    /* Setor tags */
+    var setorTags='';
+    if(p.setores&&p.setores.length>0){
+      setorTags='<div class="peca-setores">';
+      for(var s=0;s<p.setores.length;s++){
+        var isDone=isActive&&isActive.setor===p.setores[s];
+        setorTags+='<span class="peca-setor-tag'+(isDone?' done':'')+'">'+esc(p.setores[s])+'</span>';
+      }
+      setorTags+='</div>';
+    }
+
+    html+='<div class="'+cardClass+'"'+clickAction+'>'
+      +'<div style="display:flex;align-items:flex-start">'
+      +checkIcon
+      +'<div class="peca-left">'
+      +'<div class="peca-codigo">'+esc(p.codigo)+'</div>'
+      +(pNome?'<div class="peca-nome">'+pNome+'</div>':'')
+      +'<div class="peca-sub">'+tipoLabel+' | OF '+p.ordem+' | Qtd: '+qtd+'</div>'
+      +setorTags
+      +opsHtml
+      +(isActive?'<div class="peca-badge">'+esc(isActive.setor)+' - '+esc(isActive.usuario)+'</div>':'')
+      +'</div></div>'
+      +'<div class="peca-qtd-wrap"><div class="peca-qtd">'+qtd+'</div><div class="peca-qtd-label">pecas</div></div>'
+      +'</div>';
+  }
+  if(pecas.length===0){html+='<div class="loading" style="color:#f59e0b">Nenhuma peca para fabricar neste lote</div>';}
+  document.getElementById('pecasContent').innerHTML=html;
+
+  /* Actions */
+  var actions='<button class="btn-back" onclick="showScreen(2)">&#8592; Voltar aos Lotes</button>';
+  if(hasAtivas){actions='<button class="btn-touch btn-red" onclick="confirmarFinalizar(\''+esc(currentLote)+'\')">FINALIZAR PRODUCAO</button>'+actions;}
+  if(selectedSetor&&selectedPecas.length>0){actions='<button class="btn-touch btn-green" onclick="iniciarProducaoSetor()">INICIAR PRODUCAO ('+selectedPecas.length+')</button>'+actions;}
+  else if(selectedSetor&&selectedPecas.length===0){actions='<div style="text-align:center;padding:6px;color:#f59e0b;font-size:13px">Selecione as pecas para '+esc(selectedSetor)+'</div>'+actions;}
+  document.getElementById('pecasActions').innerHTML=actions;
+}
+
+function abrirSetor(){document.getElementById('dialogSetor').classList.add('active');}
+function fecharSetor(){document.getElementById('dialogSetor').classList.remove('active');}
+function selecionarSetor(setor){selectedSetor=setor;selectedPecas=[];fecharSetor();fetch('/api/lotes/'+currentLote+'/pecas').then(function(r){return r.json();}).then(function(data){if(!data.error)renderPecas(data);});}
+
+function togglePecaSelection(codigo){
+  var idx=selectedPecas.indexOf(codigo);if(idx>=0)selectedPecas.splice(idx,1);else selectedPecas.push(codigo);
+  var cards=document.querySelectorAll('.peca-card');
+  for(var i=0;i<cards.length;i++){var card=cards[i];var codeEl=card.querySelector('.peca-codigo');if(!codeEl)continue;var code=codeEl.textContent;var checkIcon=card.querySelector('.pecas-check-icon');if(selectedPecas.indexOf(code)>=0){card.classList.add('selected');if(checkIcon)checkIcon.innerHTML='&#10003;';}else if(!card.classList.contains('em_producao')){card.classList.remove('selected');if(checkIcon)checkIcon.innerHTML='';}}
+  var actionsEl=document.getElementById('pecasActions');var actions='';
+  if(selectedPecas.length>0)actions='<button class="btn-touch btn-green" onclick="iniciarProducaoSetor()">INICIAR PRODUCAO ('+selectedPecas.length+')</button>';
+  else actions='<div style="text-align:center;padding:6px;color:#f59e0b;font-size:13px">Selecione as pecas para '+esc(selectedSetor)+'</div>';
+  actions+='<button class="btn-back" onclick="showScreen(2)">&#8592; Voltar aos Lotes</button>';actionsEl.innerHTML=actions;
+}
+
+function iniciarProducaoSetor(){
+  if(selectedPecas.length===0)return;
+  document.getElementById('selInfo').textContent=currentLote+' | '+selectedPecas.length+' pecas | '+selectedSetor;
+  showScreen(4);loadUsuarios();
+}
+
+function loadUsuarios(){
+  fetch('/api/usuarios').then(function(r){return r.json();}).then(function(data){
+    if(!data.usuarios||data.usuarios.length===0){document.getElementById('usuarioGrid').innerHTML='<div class="loading">Nenhum usuario cadastrado</div>';return;}
+    var html='';
+    for(var i=0;i<data.usuarios.length;i++){var u=data.usuarios[i];html+='<div class="usuario-btn" onclick="selecionarUsuario('+u.id+',\''+esc(u.nome)+'\')"><div class="user-icon">&#9881;</div><div>'+esc(u.nome)+'</div><div class="user-setor">'+esc(u.setor)+'</div></div>';}
+    document.getElementById('usuarioGrid').innerHTML=html;
+  }).catch(function(e){console.error('Usuarios error:',e);});
+}
+
+function selecionarUsuario(id,nome){
+  var pecas=[];for(var i=0;i<currentPecas.length;i++){if(selectedPecas.indexOf(currentPecas[i].codigo)>=0)pecas.push({ordem:currentPecas[i].ordem,codigo:currentPecas[i].codigo});}
+  fetch('/api/iniciar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lote:currentLote,usuario_id:id,usuario_nome:nome,setor:selectedSetor,pecas:pecas})}).then(function(r){return r.json();}).then(function(data){if(data.success)showScreen(1);else alert('Erro: '+(data.error||'Erro desconhecido'));}).catch(function(e){alert('Erro de conexao');});
+}
+
+function confirmarFinalizar(lotcod){
+  document.getElementById('finalizarMsg').textContent='Finalizar producao do Lote '+lotcod+'? As pecas serao marcadas como concluidas no totem.';
+  document.getElementById('dialogFinalizar').classList.add('active');
+  document.getElementById('btnConfirmaFinalizar').onclick=function(){
+    fecharFinalizar();
+    fetch('/api/finalizar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lote:lotcod})}).then(function(r){return r.json();}).then(function(data){if(data.success)showScreen(1);else alert('Erro: '+(data.error||'Erro desconhecido'));}).catch(function(e){alert('Erro de conexao');});
+  };
+}
+function fecharFinalizar(){document.getElementById('dialogFinalizar').classList.remove('active');}
+
+/* ══ AUTO-REFRESH TODAS AS TELAS ══ */
+var refreshTimer = setInterval(function(){
+  var s1=document.getElementById('screen1'),s2=document.getElementById('screen2'),s3=document.getElementById('screen3');
+  if(s1&&s1.classList.contains('active'))loadDashboard();
+  else if(s2&&s2.classList.contains('active'))loadLotes();
+  else if(s3&&s3.classList.contains('active')&&currentLote){
+    fetch('/api/lotes/'+currentLote+'/pecas').then(function(r){return r.json();}).then(function(data){
+      if(!data.error){currentPecas=data.pecas||[];currentPecasAtivas=data.pecas_ativas||{};renderPecas(data);}
+    }).catch(function(){});
+  }
+},DASH_REFRESH);
+loadDashboard();
+</script>
+</body>
+</html>

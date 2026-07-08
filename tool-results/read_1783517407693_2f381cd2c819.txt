@@ -1,0 +1,595 @@
+     1→<!DOCTYPE html>
+     2→<html lang="pt-BR">
+     3→<head>
+     4→<meta charset="UTF-8">
+     5→<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+     6→<title>Serralheria Totem</title>
+     7→<style>
+     8→*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+     9→html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;background:#0a0e1a;color:#e0e0e0}
+    10→.screen{display:none;position:absolute;top:0;left:0;width:100%;height:100%;flex-direction:column}
+    11→.screen.active{display:flex}
+    12→
+    13→/* ══ SCREEN 1: DASHBOARD ══ */
+    14→#screen1{background:linear-gradient(170deg,#0a0e1a 0%,#111827 40%,#0f172a 100%);cursor:pointer}
+    15→.dash-header{background:rgba(15,23,42,.92);backdrop-filter:blur(8px);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #f59e0b;position:relative;z-index:5}
+    16→.dash-header h1{font-size:20px;color:#f59e0b;font-weight:800;letter-spacing:2px;text-transform:uppercase}
+    17→.dash-header h1 span{color:#fff;font-weight:300;letter-spacing:0;margin-left:6px;font-size:14px}
+    18→.dash-clock{font-size:30px;color:#00e676;font-weight:700;font-variant-numeric:tabular-nums;text-shadow:0 0 12px rgba(0,230,118,.5)}
+    19→.kpi-row{display:flex;gap:10px;padding:10px 14px;flex-shrink:0}
+    20→.kpi-card{flex:1;min-width:0;background:linear-gradient(145deg,rgba(22,33,62,.9),rgba(15,23,42,.95));border:1px solid rgba(245,158,11,.2);border-radius:12px;padding:10px 6px;text-align:center;position:relative;overflow:hidden;animation:slideUp .6s ease-out both}
+    21→.kpi-card:nth-child(1){animation-delay:.1s}
+    22→.kpi-card:nth-child(2){animation-delay:.2s}
+    23→.kpi-card:nth-child(3){animation-delay:.3s}
+    24→.kpi-card:nth-child(4){animation-delay:.4s}
+    25→.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#f59e0b,transparent)}
+    26→.kpi-card.green-border::before{background:linear-gradient(90deg,transparent,#00e676,transparent)}
+    27→.kpi-card.blue-border::before{background:linear-gradient(90deg,transparent,#42a5f5,transparent)}
+    28→.kpi-card.red-border::before{background:linear-gradient(90deg,transparent,#ef5350,transparent)}
+    29→.kpi-value{font-size:32px;font-weight:800;color:#f59e0b;line-height:1.1}
+    30→.kpi-value.green{color:#00e676}
+    31→.kpi-value.blue{color:#42a5f5}
+    32→.kpi-value.red{color:#ef5350}
+    33→.kpi-label{font-size:10px;color:#7a7a9a;text-transform:uppercase;letter-spacing:.8px;margin-top:3px}
+    34→
+    35→/* ── WORKER CARDS (2-line, bigger font) ── */
+    36→.workers-section{flex:1;overflow:hidden;display:flex;flex-direction:column;padding:6px 14px 0;min-height:0}
+    37→.workers-title{font-size:12px;color:#5a5a7a;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+    38→.workers-title .live-dot{width:8px;height:8px;border-radius:50%;background:#00e676;animation:livePulse 1.5s ease-in-out infinite;flex-shrink:0}
+    39→.workers-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:8px}
+    40→.worker-card{background:linear-gradient(145deg,rgba(22,33,62,.85),rgba(15,23,42,.9));border:1px solid rgba(0,230,118,.25);border-radius:12px;padding:14px 16px;margin-bottom:10px;animation:fadeInUp .5s ease-out both;position:relative;overflow:hidden}
+    41→.worker-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#00e676,#00c853);border-radius:0 2px 2px 0}
+    42→.worker-card:nth-child(1){animation-delay:.1s}
+    43→.worker-card:nth-child(2){animation-delay:.2s}
+    44→.worker-card:nth-child(3){animation-delay:.3s}
+    45→.worker-card:nth-child(4){animation-delay:.4s}
+    46→.worker-card:nth-child(5){animation-delay:.5s}
+    47→.wc-row{display:flex;align-items:center;gap:6px;line-height:1.5}
+    48→.wc-row+.wc-row{margin-top:4px}
+    49→.wc-name{font-size:20px;font-weight:800;color:#00e676;flex-shrink:0}
+    50→.wc-setor{font-size:14px;color:#f59e0b;font-weight:600;flex-shrink:0}
+    51→.wc-sep{color:#2a2a5a;font-size:16px;flex-shrink:0;margin:0 2px}
+    52→.wc-lote-label{font-size:14px;color:#7a7a9a;flex-shrink:0}
+    53→.wc-lote{font-size:18px;color:#f59e0b;font-weight:700;flex-shrink:0}
+    54→.wc-lote-desc{font-size:15px;color:#999;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+    55→.wc-time{font-size:13px;color:#7a7a9a;flex-shrink:0;margin-left:auto}
+    56→.wc-pecas-count{font-size:16px;color:#e0e0e0;font-weight:700;flex-shrink:0}
+    57→.wc-peca-code{font-size:16px;color:#42a5f5;font-weight:700;flex-shrink:0}
+    58→.wc-peca-name{font-size:15px;color:#ccc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+    59→.no-workers{text-align:center;padding:20px;color:#5a5a7a;font-size:15px}
+    60→.no-workers .nw-icon{font-size:36px;margin-bottom:6px;opacity:.4}
+    61→.touch-hint{text-align:center;padding:8px;font-size:12px;color:#5a5a7a;letter-spacing:1px;text-transform:uppercase;flex-shrink:0;animation:hintPulse 3s ease-in-out infinite}
+    62→
+    63→/* ── ANIMATIONS ── */
+    64→@keyframes slideUp{from{transform:translateY(25px);opacity:0}to{transform:translateY(0);opacity:1}}
+    65→@keyframes fadeInUp{from{transform:translateY(15px);opacity:0}to{transform:translateY(0);opacity:1}}
+    66→@keyframes livePulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+    67→@keyframes hintPulse{0%,100%{opacity:.3}50%{opacity:.8}}
+    68→@keyframes spin{to{transform:rotate(360deg)}}
+    69→@keyframes countPulse{0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
+    70→
+    71→/* ══ SCREENS 2-4 (lotes / pecas / usuarios) ══ */
+    72→.header{background:#16213e;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;min-height:60px;border-bottom:3px solid #f59e0b}
+    73→.header h1{font-size:20px;color:#f59e0b;font-weight:700;letter-spacing:1px}
+    74→.header .clock{font-size:26px;color:#00e676;font-weight:700;font-variant-numeric:tabular-nums}
+    75→.btn-touch{background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;font-size:20px;font-weight:700;padding:18px 32px;border:none;border-radius:12px;cursor:pointer;width:90%;max-width:500px;margin:10px auto;text-transform:uppercase;letter-spacing:1px;box-shadow:0 4px 20px rgba(245,158,11,.4)}
+    76→.btn-touch:active{transform:scale(.97);box-shadow:0 2px 10px rgba(245,158,11,.3)}
+    77→.btn-green{background:linear-gradient(135deg,#00e676,#00c853);color:#000}
+    78→.btn-green:active{box-shadow:0 2px 10px rgba(0,230,118,.3)}
+    79→.btn-red{background:linear-gradient(135deg,#ef5350,#c62828);color:#fff}
+    80→.btn-red:active{box-shadow:0 2px 10px rgba(239,83,80,.3)}
+    81→.btn-back{background:#2a2a5a;color:#aaa;font-size:16px;padding:12px 24px;border:none;border-radius:10px;cursor:pointer;width:90%;max-width:500px;margin:6px auto}
+    82→.btn-back:active{background:#3a3a6a}
+    83→.scroll-area{flex:1;overflow-y:auto;padding:12px 16px;-webkit-overflow-scrolling:touch}
+    84→
+    85→/* ── LOTE CARDS (slightly bigger fonts) ── */
+    86→.lote-card{background:#16213e;border:2px solid #2a2a5a;border-radius:14px;padding:16px;margin-bottom:12px;cursor:pointer;transition:border-color .2s;display:flex;align-items:center;gap:12px}
+    87→.lote-card:active{border-color:#f59e0b}
+    88→.lote-card.ativo{border-color:#00e676}
+    89→.lote-card .lote-left{flex:1;min-width:0}
+    90→.lote-card .lote-header{display:flex;align-items:baseline;gap:8px;margin-bottom:3px}
+    91→.lote-card .lote-codigo{font-size:24px;font-weight:700;color:#f59e0b;flex-shrink:0}
+    92→.lote-card .lote-desc-inline{font-size:17px;color:#aaa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+    93→.lote-card .lote-prod-row{font-size:17px;color:#ccc;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    94→.lote-card .lote-info{display:flex;gap:14px;font-size:16px;color:#888;flex-wrap:wrap;margin-top:3px}
+    95→.lote-card .lote-qty{font-size:30px;font-weight:800;color:#fff;line-height:1.2;text-align:center;flex-shrink:0}
+    96→.lote-card .lote-qty-label{font-size:12px;color:rgba(255,255,255,.8);text-transform:uppercase;letter-spacing:1px;text-align:center}
+    97→.lote-card .lote-qty-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;background:rgba(33,150,243,.2);border:2px solid #42a5f5;border-radius:14px;padding:14px 18px;min-width:100px}
+    98→.lote-card .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:13px;font-weight:700;text-transform:uppercase}
+    99→.badge-prod{background:#00e676;color:#000}
+   100→.badge-final{background:#42a5f5;color:#000}
+   101→
+   102→/* ── PECA CARDS (with operations + description) ── */
+   103→.peca-card{background:#16213e;border:1px solid #2a2a5a;border-radius:10px;padding:14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-start;cursor:pointer;transition:all .2s}
+   104→.peca-card:active{border-color:#f59e0b}
+   105→.peca-card.em_producao{border-color:#00e676;opacity:.6;cursor:default}
+   106→.peca-card.selected{border-color:#f59e0b;background:rgba(245,158,11,.1)}
+   107→.peca-card .peca-left{flex:1;min-width:0}
+   108→.peca-card .peca-codigo{font-size:18px;font-weight:700;color:#e0e0e0}
+   109→.peca-card .peca-nome{font-size:15px;color:#ccc;margin-top:2px}
+   110→.peca-card .peca-sub{font-size:12px;color:#7a7a9a;margin-top:3px;font-weight:700}
+   111→.peca-card .peca-setores{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+   112→.peca-card .peca-setor-tag{font-size:10px;padding:2px 7px;border-radius:6px;background:rgba(245,158,11,.12);color:#f59e0b;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+   113→.peca-card .peca-setor-tag.done{background:rgba(0,230,118,.12);color:#00e676}
+   114→.peca-card .peca-qtd{font-size:28px;font-weight:800;color:#fff;line-height:1.2;text-align:center;flex-shrink:0}
+   115→.peca-card .peca-qtd-label{font-size:10px;color:rgba(255,255,255,.8);text-transform:uppercase;letter-spacing:1px;text-align:center}
+   116→.peca-card .peca-qtd-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;background:rgba(33,150,243,.2);border:2px solid #42a5f5;border-radius:12px;padding:10px 16px;min-width:80px}
+   117→.peca-card .peca-badge{font-size:10px;padding:2px 8px;border-radius:8px;font-weight:700;text-transform:uppercase;background:rgba(0,230,118,.15);color:#00e676;margin-top:4px;display:inline-block}
+   118→
+   119→/* ── OPERATIONS LIST in pecas ── */
+   120→.peca-ops{margin-top:6px;padding-top:6px;border-top:1px solid rgba(42,42,90,.5)}
+   121→.peca-ops-title{font-size:11px;color:#5a5a7a;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+   122→.peca-op-row{display:flex;align-items:center;gap:6px;font-size:12px;padding:2px 0;color:#999}
+   123→.peca-op-row .op-seq{color:#f59e0b;font-weight:700;min-width:18px}
+   124→.peca-op-row .op-setor{color:#42a5f5;font-weight:600;min-width:80px;text-transform:uppercase}
+   125→.peca-op-row .op-desc{flex:1;color:#bbb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+   126→.peca-op-row .op-status{font-size:10px;padding:1px 6px;border-radius:4px;font-weight:600;text-transform:uppercase;flex-shrink:0}
+   127→.op-status.pendente{background:rgba(245,158,11,.12);color:#f59e0b}
+   128→.op-status.em_producao{background:rgba(0,230,118,.12);color:#00e676}
+   129→.op-status.concluido{background:rgba(66,165,245,.12);color:#42a5f5}
+   130→
+   131→.usuario-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:12px}
+   132→.usuario-btn{background:#16213e;border:2px solid #2a2a5a;border-radius:14px;padding:20px 10px;text-align:center;cursor:pointer;font-size:18px;font-weight:700;color:#e0e0e0;transition:all .2s}
+   133→.usuario-btn:active{border-color:#f59e0b;background:#1e2a4e}
+   134→.usuario-btn .user-icon{font-size:28px;margin-bottom:6px;color:#f59e0b}
+   135→.usuario-btn .user-setor{font-size:11px;color:#888;margin-top:4px}
+   136→.section-title{font-size:14px;color:#888;padding:8px 16px;text-transform:uppercase;letter-spacing:1px}
+   137→.prod-final{background:linear-gradient(135deg,#0d1b3e,#16213e);border:1px solid #42a5f5;border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
+   138→.prod-final .pf-label{font-size:12px;color:#42a5f5;text-transform:uppercase}
+   139→.prod-final .pf-codigo{font-size:18px;font-weight:700;color:#42a5f5}
+   140→.prod-final .pf-desc{font-size:14px;color:#ccc;margin-top:4px;line-height:1.3}
+   141→.loading{text-align:center;padding:40px;color:#888;font-size:16px}
+   142→.loading .spinner{display:inline-block;width:32px;height:32px;border:3px solid #2a2a5a;border-top-color:#f59e0b;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:12px}
+   143→.dialog-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);z-index:100;justify-content:center;align-items:center}
+   144→.dialog-overlay.active{display:flex}
+   145→.dialog-box{background:#16213e;border:2px solid #f59e0b;border-radius:16px;padding:28px;max-width:420px;width:90%;text-align:center}
+   146→.dialog-box h3{font-size:20px;color:#f59e0b;margin-bottom:12px}
+   147→.dialog-box p{font-size:15px;color:#ccc;margin-bottom:20px}
+   148→.dialog-btns{display:flex;gap:12px;justify-content:center}
+   149→.dialog-btns button{flex:1;padding:14px;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer}
+   150→.dialog-btns .sim{background:#00e676;color:#000}
+   151→.dialog-btns .nao{background:#2a2a5a;color:#aaa}
+   152→.setor-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:16px}
+   153→.setor-btn{background:#16213e;border:2px solid #2a2a5a;border-radius:14px;padding:20px 10px;text-align:center;cursor:pointer;font-size:15px;font-weight:700;color:#e0e0e0;transition:all .2s;text-transform:uppercase;letter-spacing:1px}
+   154→.setor-btn:active{border-color:#f59e0b;background:#1e2a4e}
+   155→.setor-btn .setor-icon{font-size:26px;margin-bottom:6px}
+   156→.setor-btn.active-setor{border-color:#00e676;background:rgba(0,230,118,.1);color:#00e676}
+   157→.pecas-check-icon{width:22px;height:22px;border-radius:50%;border:2px solid #2a2a5a;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:10px;transition:all .2s;font-size:13px;color:transparent}
+   158→.peca-card.selected .pecas-check-icon{border-color:#f59e0b;background:#f59e0b;color:#000}
+   159→.peca-card.em_producao .pecas-check-icon{border-color:#00e676;background:#00e676;color:#000}
+   160→
+   161→@media(max-width:600px){
+   162→  .kpi-value{font-size:26px}
+   163→  .kpi-card{padding:8px 4px}
+   164→  .kpi-label{font-size:9px}
+   165→  .wc-name{font-size:17px}
+   166→  .wc-lote{font-size:15px}
+   167→  .wc-peca-code{font-size:14px}
+   168→  .wc-peca-name{font-size:13px}
+   169→  .lote-codigo{font-size:20px!important}
+   170→  .lote-qty{font-size:26px!important}
+   171→}
+   172→</style>
+   173→</head>
+   174→<body>
+   175→
+   176→<!-- ========== SCREEN 1: DASHBOARD ========== -->
+   177→<div id="screen1" class="screen active" onclick="dashClick(event)">
+   178→  <div class="dash-header">
+   179→    <h1>SERRALHERIA <span>Production Monitor</span></h1>
+   180→    <div class="dash-clock" id="clock">00:00:00</div>
+   181→  </div>
+   182→  <div class="kpi-row">
+   183→    <div class="kpi-card">
+   184→      <div class="kpi-value" id="kpiLotes">--</div>
+   185→      <div class="kpi-label">Lotes Abertos</div>
+   186→    </div>
+   187→    <div class="kpi-card blue-border">
+   188→      <div class="kpi-value blue" id="kpiPecas">--</div>
+   189→      <div class="kpi-label">Pecas</div>
+   190→    </div>
+   191→    <div class="kpi-card green-border">
+   192→      <div class="kpi-value green" id="kpiQtd">--</div>
+   193→      <div class="kpi-label">Total a Produzir</div>
+   194→    </div>
+   195→    <div class="kpi-card red-border">
+   196→      <div class="kpi-value red" id="kpiAndamento">--</div>
+   197→      <div class="kpi-label">Produzindo</div>
+   198→    </div>
+   199→  </div>
+   200→  <div class="workers-section">
+   201→    <div class="workers-title">
+   202→      <div class="live-dot"></div>
+   203→      OPERADORES EM PRODUCAO
+   204→      <span id="activeCount" style="color:#00e676;margin-left:auto;font-size:13px;font-weight:700">0</span>
+   205→    </div>
+   206→    <div class="workers-scroll" id="workersGrid">
+   207→      <div class="loading"><div class="spinner"></div><br>Carregando dados...</div>
+   208→    </div>
+   209→  </div>
+   210→  <div class="touch-hint">Toque para acessar lotes de producao</div>
+   211→</div>
+   212→
+   213→<!-- ========== SCREEN 2: LOTES ========== -->
+   214→<div id="screen2" class="screen">
+   215→  <div class="header">
+   216→    <h1>LOTES DE PRODUCAO</h1>
+   217→    <div class="clock" id="clock2">00:00:00</div>
+   218→  </div>
+   219→  <div class="scroll-area" id="lotesList">
+   220→    <div class="loading"><div class="spinner"></div><br>Carregando lotes...</div>
+   221→  </div>
+   222→  <div style="padding:10px 16px">
+   223→    <button class="btn-back" onclick="showScreen(1)">&#8592; Voltar ao Dashboard</button>
+   224→  </div>
+   225→</div>
+   226→
+   227→<!-- ========== SCREEN 3: PECAS ========== -->
+   228→<div id="screen3" class="screen">
+   229→  <div class="header">
+   230→    <h1 id="pecasTitle">PECAS - LOTE</h1>
+   231→    <div class="clock" id="clock3">00:00:00</div>
+   232→  </div>
+   233→  <div class="scroll-area" id="pecasContent">
+   234→    <div class="loading"><div class="spinner"></div><br>Carregando...</div>
+   235→  </div>
+   236→  <div style="padding:10px 16px" id="pecasActions"></div>
+   237→</div>
+   238→
+   239→<!-- ========== SCREEN 4: USUARIOS ========== -->
+   240→<div id="screen4" class="screen">
+   241→  <div class="header">
+   242→    <h1>SELECIONAR OPERADOR</h1>
+   243→    <div class="clock" id="clock4">00:00:00</div>
+   244→  </div>
+   245→  <div class="section-title" id="selInfo"></div>
+   246→  <div class="usuario-grid" id="usuarioGrid"></div>
+   247→  <div style="padding:10px 16px">
+   248→    <button class="btn-back" onclick="showScreen(3)">&#8592; Voltar as Pecas</button>
+   249→  </div>
+   250→</div>
+   251→
+   252→<!-- ========== CONFIRM DIALOG ========== -->
+   253→<div class="dialog-overlay" id="dialogConfirm">
+   254→  <div class="dialog-box">
+   255→    <h3 id="dialogTitle">Confirmar</h3>
+   256→    <p id="dialogMsg">Tem certeza?</p>
+   257→    <div class="dialog-btns">
+   258→      <button class="nao" onclick="fecharDialog()">NAO</button>
+   259→      <button class="sim" id="dialogSimBtn">SIM</button>
+   260→    </div>
+   261→  </div>
+   262→</div>
+   263→
+   264→<!-- ========== FINALIZAR DIALOG ========== -->
+   265→<div class="dialog-overlay" id="dialogFinalizar">
+   266→  <div class="dialog-box">
+   267→    <h3>Finalizar Producao</h3>
+   268→    <p id="finalizarMsg">Finalizar este lote?</p>
+   269→    <div class="dialog-btns">
+   270→      <button class="nao" onclick="fecharFinalizar()">NAO</button>
+   271→      <button class="sim" id="btnConfirmaFinalizar">SIM, FINALIZAR</button>
+   272→    </div>
+   273→  </div>
+   274→</div>
+   275→
+   276→<!-- ========== SETOR DIALOG ========== -->
+   277→<div class="dialog-overlay" id="dialogSetor">
+   278→  <div class="dialog-box">
+   279→    <h3>Escolha o Setor</h3>
+   280→    <p>Selecione o setor para iniciar a producao</p>
+   281→    <div class="setor-grid">
+   282→      <div class="setor-btn" onclick="selecionarSetor('CORTE')"><div class="setor-icon">&#9986;</div>CORTE</div>
+   283→      <div class="setor-btn" onclick="selecionarSetor('DOBRA')"><div class="setor-icon">&#8634;</div>DOBRA</div>
+   284→      <div class="setor-btn" onclick="selecionarSetor('SOLDA')"><div class="setor-icon">&#9899;</div>SOLDA</div>
+   285→      <div class="setor-btn" onclick="selecionarSetor('ACABAMENTO')"><div class="setor-icon">&#10003;</div>ACABAM.</div>
+   286→      <div class="setor-btn" onclick="selecionarSetor('MONTAGEM')" style="grid-column:span 2"><div class="setor-icon">&#9881;</div>MONTAGEM</div>
+   287→    </div>
+   288→    <div style="margin-top:16px">
+   289→      <button class="btn-back" onclick="fecharSetor()" style="width:100%;max-width:100%;padding:10px">Cancelar</button>
+   290→    </div>
+   291→  </div>
+   292→</div>
+   293→
+   294→<script>
+   295→var currentLote = null;
+   296→var currentPecas = [];
+   297→var currentPecasAtivas = {};
+   298→var selectedSetor = null;
+   299→var selectedPecas = [];
+   300→var DASH_REFRESH = 10000;
+   301→var idleTimer = null;
+   302→var IDLE_TIMEOUT = 60000;
+   303→
+   304→function resetIdle() {
+   305→  if (idleTimer) clearTimeout(idleTimer);
+   306→  idleTimer = setTimeout(function() {
+   307→    var s1 = document.getElementById('screen1');
+   308→    if (!s1.classList.contains('active')) showScreen(1);
+   309→  }, IDLE_TIMEOUT);
+   310→}
+   311→document.addEventListener('touchstart', resetIdle, {passive: true});
+   312→document.addEventListener('click', resetIdle);
+   313→resetIdle();
+   314→
+   315→function showScreen(n) {
+   316→  var i, screens = document.querySelectorAll('.screen');
+   317→  for (i = 0; i < screens.length; i++) screens[i].classList.remove('active');
+   318→  document.getElementById('screen' + n).classList.add('active');
+   319→  if (n === 1) loadDashboard();
+   320→  if (n === 2) loadLotes();
+   321→  resetIdle();
+   322→}
+   323→
+   324→function dashClick(e) { showScreen(2); }
+   325→
+   326→function updateClock() {
+   327→  var now = new Date();
+   328→  var t = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
+   329→  document.getElementById('clock').textContent = t;
+   330→  var c2=document.getElementById('clock2'),c3=document.getElementById('clock3'),c4=document.getElementById('clock4');
+   331→  if(c2)c2.textContent=t; if(c3)c3.textContent=t; if(c4)c4.textContent=t;
+   332→}
+   333→setInterval(updateClock,1000); updateClock();
+   334→
+   335→function esc(s){if(!s)return'';var d=document.createElement('div');d.appendChild(document.createTextNode(String(s)));return d.innerHTML;}
+   336→
+   337→function animateValue(el,end){
+   338→  var startVal=parseInt(el.textContent)||0;if(startVal===end)return;
+   339→  var dur=600,st=null;
+   340→  function step(ts){if(!st)st=ts;var p=Math.min((ts-st)/dur,1);var eased=1-Math.pow(1-p,3);el.textContent=Math.round(startVal+(end-startVal)*eased);if(p<1)requestAnimationFrame(step);else el.style.animation='countPulse .3s ease';}
+   341→  el.style.animation='';requestAnimationFrame(step);
+   342→}
+   343→
+   344→/* ══ LOAD DASHBOARD ══ */
+   345→function loadDashboard(){
+   346→  fetch('/api/dashboard').then(function(r){return r.json();}).then(function(data){
+   347→    if(data.error){console.error('Dashboard error:',data.error);return;}
+   348→    animateValue(document.getElementById('kpiLotes'),data.total_lotes||0);
+   349→    animateValue(document.getElementById('kpiPecas'),data.total_pecas||0);
+   350→    animateValue(document.getElementById('kpiQtd'),data.total_qtd||0);
+   351→    animateValue(document.getElementById('kpiAndamento'),data.em_andamento||0);
+   352→    renderWorkers(data.ativos||[],data);
+   353→  }).catch(function(e){console.error('Dashboard fetch error:',e);});
+   354→}
+   355→
+   356→/* ══ WORKER CARDS (2-line, bigger font) ══ */
+   357→function renderWorkers(ativos,data){
+   358→  var grid=document.getElementById('workersGrid');
+   359→  var countEl=document.getElementById('activeCount');
+   360→  countEl.textContent=ativos.length;
+   361→  if(ativos.length===0){
+   362→    grid.innerHTML='<div class="no-workers"><div class="nw-icon">&#9881;</div><div>Nenhum operador produzindo no momento</div><div style="margin-top:6px;font-size:13px;color:#4a4a6a">Aguardando inicio de producao</div></div>';
+   363→    return;
+   364→  }
+   365→  var grouped={};var i;
+   366→  for(i=0;i<ativos.length;i++){
+   367→    var a=ativos[i];
+   368→    if(!grouped[a.usuario_nome]){
+   369→      grouped[a.usuario_nome]={nome:a.usuario_nome,lote:a.lote,lote_desc:a.lote_desc||'',setor:a.setor||'',pecas:[],data_inicio:a.data_inicio,pecas_count:a.pecas_count||1};
+   370→    }
+   371→    grouped[a.usuario_nome].pecas.push({produto:a.produto,produto_nome:a.produto_nome||''});
+   372→  }
+   373→  var html='';var keys=Object.keys(grouped);
+   374→  for(i=0;i<keys.length;i++){
+   375→    var w=grouped[keys[i]];
+   376→    var timeStr='';
+   377→    if(w.data_inicio){var parts=w.data_inicio.split(' ');if(parts.length>=2)timeStr=parts[1].substring(0,5);}
+   378→    var shortDesc='';
+   379→    if(w.lote_desc){shortDesc=w.lote_desc.length>40?w.lote_desc.substring(0,40)+'...':w.lote_desc;}
+   380→    var firstPeca=w.pecas[0]||{};
+   381→    var pecaCode=firstPeca.produto||'';
+   382→    var pecaName=firstPeca.produto_nome||'';
+   383→
+   384→    /* LINHA 1: Nome(Setor) | Lote: XXXXX | descricao | Hora */
+   385→    html+='<div class="worker-card" style="animation-delay:'+(i*0.1)+'s">'
+   386→      +'<div class="wc-row">'
+   387→      +'<span class="wc-name">'+esc(w.nome)+'</span>'
+   388→      +(w.setor?'<span class="wc-setor">('+esc(w.setor)+')</span>':'')
+   389→      +'<span class="wc-sep">|</span>'
+   390→      +'<span class="wc-lote-label">Lote:</span>'
+   391→      +'<span class="wc-lote">'+esc(w.lote)+'</span>'
+   392→      +(shortDesc?'<span class="wc-sep">|</span><span class="wc-lote-desc">'+esc(shortDesc)+'</span>':'')
+   393→      +'<span class="wc-time">Desde '+esc(timeStr)+'</span>'
+   394→      +'</div>';
+   395→
+   396→    /* LINHA 2: Qtd pecas | PC-XXXX | Nome da peca */
+   397→    html+='<div class="wc-row">'
+   398→      +'<span class="wc-pecas-count">'+w.pecas_count+' peca'+(w.pecas_count>1?'s':'')+'</span>'
+   399→      +(pecaCode?'<span class="wc-sep">|</span><span class="wc-peca-code">'+esc(pecaCode)+'</span>':'')
+   400→      +(pecaName?'<span class="wc-sep">|</span><span class="wc-peca-name">'+esc(pecaName)+'</span>':'')
+   401→      +'</div>';
+   402→    html+='</div>';
+   403→  }
+   404→  grid.innerHTML=html;
+   405→}
+   406→
+   407→/* ══ LOAD LOTES (Screen 2) ══ */
+   408→function loadLotes(){
+   409→  fetch('/api/lotes').then(function(r){return r.json();}).then(function(data){
+   410→    if(!data.lotes||data.lotes.length===0){document.getElementById('lotesList').innerHTML='<div class="loading" style="color:#f59e0b">Nenhum lote em aberto</div>';return;}
+   411→    var html='';
+   412→    for(var i=0;i<data.lotes.length;i++){
+   413→      var l=data.lotes[i];
+   414→      var borderClass=l.status_producao==='em_producao'?' ativo':'';
+   415→      var badge=l.status_producao==='em_producao'?'<span class="badge badge-prod">Produzindo - '+esc(l.operador)+'</span>':'';
+   416→      var descInline='';if(l.descricao){descInline=l.descricao.length>40?l.descricao.substring(0,40)+'...':l.descricao;}
+   417→      html+='<div class="lote-card'+borderClass+'" onclick="verLote(\''+esc(l.lotcod)+'\')">'
+   418→        +'<div class="lote-left">'
+   419→        +'<div class="lote-header"><span class="lote-codigo">LOTE '+esc(l.lotcod)+'</span>'
+   420→        +(descInline?'<span class="lote-desc-inline">'+esc(descInline)+'</span>':'')
+   421→        +badge+'</div>'
+   422→        +(l.pecas_codigos?'<div class="lote-prod-row"><span style="color:#42a5f5;font-weight:700;font-size:14px">'+esc(l.pecas_codigos)+'</span>'+(l.sob_medida?' <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:9999px;background:#e9d5ff;color:#a855f7;vertical-align:middle">SOB MEDIDA</span>':'')+'</div>':'')
+   423→        +'</div>'
+   424→        +'<div class="lote-qty-wrap"><div class="lote-qty">'+(l.qtd_pecas||0)+'</div><div class="lote-qty-label">pecas</div></div>'
+   425→        +'</div>';
+   426→    }
+   427→    document.getElementById('lotesList').innerHTML=html;
+   428→  }).catch(function(e){console.error('Lotes error:',e);document.getElementById('lotesList').innerHTML='<div class="loading" style="color:#ef5350">Erro ao carregar lotes</div>';});
+   429→}
+   430→
+   431→/* ══ VER LOTE -> Screen 3 (Pecas) ══ */
+   432→function verLote(lotcod){
+   433→  currentLote=lotcod;currentPecas=[];currentPecasAtivas={};selectedSetor=null;selectedPecas=[];
+   434→  document.getElementById('pecasTitle').textContent='PECAS - LOTE '+lotcod;
+   435→  document.getElementById('pecasContent').innerHTML='<div class="loading"><div class="spinner"></div><br>Carregando pecas...</div>';
+   436→  document.getElementById('pecasActions').innerHTML='';
+   437→  showScreen(3);
+   438→  fetch('/api/lotes/'+lotcod+'/pecas').then(function(r){return r.json();}).then(function(data){
+   439→    if(data.error){document.getElementById('pecasContent').innerHTML='<div class="loading" style="color:#ef5350">Erro: '+esc(data.error)+'</div>';return;}
+   440→    currentPecas=data.pecas||[];currentPecasAtivas=data.pecas_ativas||{};renderPecas(data);
+   441→  }).catch(function(e){console.error('Pecas error:',e);document.getElementById('pecasContent').innerHTML='<div class="loading" style="color:#ef5350">Erro ao carregar</div>';});
+   442→}
+   443→
+   444→/* ══ RENDER PECAS (with description + operations) ══ */
+   445→function renderPecas(data){
+   446→  var html='';var pecas=currentPecas;var hasAtivas=false;
+   447→
+   448→  /* Produto final com descricao */
+   449→  if(data.produto_final){
+   450→    var qtdFinal=Math.round(parseFloat(data.produto_final.quantidade));
+   451→    html+='<div class="prod-final">'
+   452→      +'<div style="flex:1;min-width:0">'
+   453→      +'<div class="pf-label">Produto Final (referencia)</div>'
+   454→      +'<div class="pf-codigo">'+esc(data.produto_final.codigo)+'</div>'
+   455→      +(data.produto_final.descricao?'<div class="pf-desc">'+esc(data.produto_final.descricao)+'</div>':'')
+   456→      +'</div>'
+   457→      +'<div style="text-align:right;flex-shrink:0;margin-left:12px"><div style="font-size:12px;color:#888">Qtd</div>'
+   458→      +'<div style="font-size:22px;font-weight:700;color:#42a5f5">'+qtdFinal+'</div></div>'
+   459→      +'</div>';
+   460→  }
+   461→  if(data.descricao){
+   462→    html+='<div style="padding:4px 4px 12px;font-size:14px;color:#999;line-height:1.4">'+esc(data.descricao)+'</div>';
+   463→  }
+   464→
+   465→  var disponiveis=0;for(var k=0;k<pecas.length;k++){if(!currentPecasAtivas[pecas[k].codigo])disponiveis++;}
+   466→  html+='<div class="section-title">Pecas para Fabricar ('+disponiveis+' de '+pecas.length+')</div>';
+   467→
+   468→  for(var i=0;i<pecas.length;i++){
+   469→    var p=pecas[i];
+   470→    var tipo=p.codigo.substring(0,2);
+   471→    var tipoLabel=tipo==='CJ'?'Conjunto':'Peca';
+   472→    var qtd=Math.round(parseFloat(p.quantidade));
+   473→    var isActive=currentPecasAtivas[p.codigo];
+   474→    var cardClass='peca-card';var clickAction='';var checkIcon='';
+   475→
+   476→    if(isActive){cardClass+=' em_producao';checkIcon='<div class="pecas-check-icon">&#10003;</div>';hasAtivas=true;}
+   477→    else if(selectedSetor){clickAction=' onclick="togglePecaSelection(\''+esc(p.codigo)+'\')"';var isSelected=selectedPecas.indexOf(p.codigo)>=0;if(isSelected){cardClass+=' selected';checkIcon='<div class="pecas-check-icon">&#10003;</div>';}else{checkIcon='<div class="pecas-check-icon"></div>';}}
+   478→    else{clickAction=' onclick="abrirSetor()"';checkIcon='<div class="pecas-check-icon"></div>';}
+   479→
+   480→    var pNome=p.produto_nome?esc(p.produto_nome):'';
+   481→
+   482→    /* Operations list */
+   483→    var opsHtml='';
+   484→    if(p.operacoes&&p.operacoes.length>0){
+   485→      opsHtml='<div class="peca-ops"><div class="peca-ops-title">Operacoes ('+p.operacoes.length+')</div>';
+   486→      for(var o=0;o<p.operacoes.length;o++){
+   487→        var op=p.operacoes[o];
+   488→        var statusClass='pendente';var statusText='PENDENTE';
+   489→        if(op.status==='em_producao'||op.status==='produzindo'){statusClass='em_producao';statusText='EM PROD.';}
+   490→        else if(op.status==='concluido'||op.status==='finalizado'){statusClass='concluido';statusText='CONCL.';}
+   491→        opsHtml+='<div class="peca-op-row">'
+   492→          +'<span class="op-seq">'+(op.sequencia||(o+1))+'.</span>'
+   493→          +'<span class="op-setor">'+esc(op.departamento||'')+'</span>'
+   494→          +'<span class="op-desc">'+esc(op.descricao_operacao||'')+'</span>'
+   495→          +'<span class="op-status '+statusClass+'">'+statusText+'</span>'
+   496→          +'</div>';
+   497→      }
+   498→      opsHtml+='</div>';
+   499→    }
+   500→
+   501→    /* Setor tags */
+   502→    var setorTags='';
+   503→    if(p.setores&&p.setores.length>0){
+   504→      setorTags='<div class="peca-setores">';
+   505→      for(var s=0;s<p.setores.length;s++){
+   506→        var isDone=isActive&&isActive.setor===p.setores[s];
+   507→        setorTags+='<span class="peca-setor-tag'+(isDone?' done':'')+'">'+esc(p.setores[s])+'</span>';
+   508→      }
+   509→      setorTags+='</div>';
+   510→    }
+   511→
+   512→    html+='<div class="'+cardClass+'"'+clickAction+'>'
+   513→      +'<div style="display:flex;align-items:flex-start">'
+   514→      +checkIcon
+   515→      +'<div class="peca-left">'
+   516→      +'<div class="peca-codigo">'+esc(p.codigo)+'</div>'
+   517→      +(pNome?'<div class="peca-nome">'+pNome+'</div>':'')
+   518→      +'<div class="peca-sub">'+tipoLabel+' | OF '+p.ordem+' | Qtd: '+qtd+'</div>'
+   519→      +setorTags
+   520→      +opsHtml
+   521→      +(isActive?'<div class="peca-badge">'+esc(isActive.setor)+' - '+esc(isActive.usuario)+'</div>':'')
+   522→      +'</div></div>'
+   523→      +'<div class="peca-qtd-wrap"><div class="peca-qtd">'+qtd+'</div><div class="peca-qtd-label">pecas</div></div>'
+   524→      +'</div>';
+   525→  }
+   526→  if(pecas.length===0){html+='<div class="loading" style="color:#f59e0b">Nenhuma peca para fabricar neste lote</div>';}
+   527→  document.getElementById('pecasContent').innerHTML=html;
+   528→
+   529→  /* Actions */
+   530→  var actions='<button class="btn-back" onclick="showScreen(2)">&#8592; Voltar aos Lotes</button>';
+   531→  if(hasAtivas){actions='<button class="btn-touch btn-red" onclick="confirmarFinalizar(\''+esc(currentLote)+'\')">FINALIZAR PRODUCAO</button>'+actions;}
+   532→  if(selectedSetor&&selectedPecas.length>0){actions='<button class="btn-touch btn-green" onclick="iniciarProducaoSetor()">INICIAR PRODUCAO ('+selectedPecas.length+')</button>'+actions;}
+   533→  else if(selectedSetor&&selectedPecas.length===0){actions='<div style="text-align:center;padding:6px;color:#f59e0b;font-size:13px">Selecione as pecas para '+esc(selectedSetor)+'</div>'+actions;}
+   534→  document.getElementById('pecasActions').innerHTML=actions;
+   535→}
+   536→
+   537→function abrirSetor(){document.getElementById('dialogSetor').classList.add('active');}
+   538→function fecharSetor(){document.getElementById('dialogSetor').classList.remove('active');}
+   539→function selecionarSetor(setor){selectedSetor=setor;selectedPecas=[];fecharSetor();fetch('/api/lotes/'+currentLote+'/pecas').then(function(r){return r.json();}).then(function(data){if(!data.error)renderPecas(data);});}
+   540→
+   541→function togglePecaSelection(codigo){
+   542→  var idx=selectedPecas.indexOf(codigo);if(idx>=0)selectedPecas.splice(idx,1);else selectedPecas.push(codigo);
+   543→  var cards=document.querySelectorAll('.peca-card');
+   544→  for(var i=0;i<cards.length;i++){var card=cards[i];var codeEl=card.querySelector('.peca-codigo');if(!codeEl)continue;var code=codeEl.textContent;var checkIcon=card.querySelector('.pecas-check-icon');if(selectedPecas.indexOf(code)>=0){card.classList.add('selected');if(checkIcon)checkIcon.innerHTML='&#10003;';}else if(!card.classList.contains('em_producao')){card.classList.remove('selected');if(checkIcon)checkIcon.innerHTML='';}}
+   545→  var actionsEl=document.getElementById('pecasActions');var actions='';
+   546→  if(selectedPecas.length>0)actions='<button class="btn-touch btn-green" onclick="iniciarProducaoSetor()">INICIAR PRODUCAO ('+selectedPecas.length+')</button>';
+   547→  else actions='<div style="text-align:center;padding:6px;color:#f59e0b;font-size:13px">Selecione as pecas para '+esc(selectedSetor)+'</div>';
+   548→  actions+='<button class="btn-back" onclick="showScreen(2)">&#8592; Voltar aos Lotes</button>';actionsEl.innerHTML=actions;
+   549→}
+   550→
+   551→function iniciarProducaoSetor(){
+   552→  if(selectedPecas.length===0)return;
+   553→  document.getElementById('selInfo').textContent=currentLote+' | '+selectedPecas.length+' pecas | '+selectedSetor;
+   554→  showScreen(4);loadUsuarios();
+   555→}
+   556→
+   557→function loadUsuarios(){
+   558→  fetch('/api/usuarios').then(function(r){return r.json();}).then(function(data){
+   559→    if(!data.usuarios||data.usuarios.length===0){document.getElementById('usuarioGrid').innerHTML='<div class="loading">Nenhum usuario cadastrado</div>';return;}
+   560→    var html='';
+   561→    for(var i=0;i<data.usuarios.length;i++){var u=data.usuarios[i];html+='<div class="usuario-btn" onclick="selecionarUsuario('+u.id+',\''+esc(u.nome)+'\')"><div class="user-icon">&#9881;</div><div>'+esc(u.nome)+'</div><div class="user-setor">'+esc(u.setor)+'</div></div>';}
+   562→    document.getElementById('usuarioGrid').innerHTML=html;
+   563→  }).catch(function(e){console.error('Usuarios error:',e);});
+   564→}
+   565→
+   566→function selecionarUsuario(id,nome){
+   567→  var pecas=[];for(var i=0;i<currentPecas.length;i++){if(selectedPecas.indexOf(currentPecas[i].codigo)>=0)pecas.push({ordem:currentPecas[i].ordem,codigo:currentPecas[i].codigo});}
+   568→  fetch('/api/iniciar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lote:currentLote,usuario_id:id,usuario_nome:nome,setor:selectedSetor,pecas:pecas})}).then(function(r){return r.json();}).then(function(data){if(data.success)showScreen(1);else alert('Erro: '+(data.error||'Erro desconhecido'));}).catch(function(e){alert('Erro de conexao');});
+   569→}
+   570→
+   571→function confirmarFinalizar(lotcod){
+   572→  document.getElementById('finalizarMsg').textContent='Finalizar producao do Lote '+lotcod+'? As pecas serao marcadas como concluidas no totem.';
+   573→  document.getElementById('dialogFinalizar').classList.add('active');
+   574→  document.getElementById('btnConfirmaFinalizar').onclick=function(){
+   575→    fecharFinalizar();
+   576→    fetch('/api/finalizar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lote:lotcod})}).then(function(r){return r.json();}).then(function(data){if(data.success)showScreen(1);else alert('Erro: '+(data.error||'Erro desconhecido'));}).catch(function(e){alert('Erro de conexao');});
+   577→  };
+   578→}
+   579→function fecharFinalizar(){document.getElementById('dialogFinalizar').classList.remove('active');}
+   580→
+   581→/* ══ AUTO-REFRESH TODAS AS TELAS ══ */
+   582→var refreshTimer = setInterval(function(){
+   583→  var s1=document.getElementById('screen1'),s2=document.getElementById('screen2'),s3=document.getElementById('screen3');
+   584→  if(s1&&s1.classList.contains('active'))loadDashboard();
+   585→  else if(s2&&s2.classList.contains('active'))loadLotes();
+   586→  else if(s3&&s3.classList.contains('active')&&currentLote){
+   587→    fetch('/api/lotes/'+currentLote+'/pecas').then(function(r){return r.json();}).then(function(data){
+   588→      if(!data.error){currentPecas=data.pecas||[];currentPecasAtivas=data.pecas_ativas||{};renderPecas(data);}
+   589→    }).catch(function(){});
+   590→  }
+   591→},DASH_REFRESH);
+   592→loadDashboard();
+   593→</script>
+   594→</body>
+   595→</html>
