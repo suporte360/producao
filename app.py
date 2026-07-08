@@ -639,6 +639,10 @@ def pcp_executar_importacao():
                     dept_original = re.sub(r'\s*\([^)]*\)\s*$', '', dept_original).strip()
                     # Mapeia nomes do ERP (fases) para nomes do sistema local
                     dept = MAPEAMENTO_SETORES.get(dept_original, dept_original)
+                    # Correcao automatica: se a operacao envolve dobra, forca DOBRA
+                    desc_op = (proc.get('descricao_processo') or proc.get('operacao','')).upper()
+                    if 'DOBRAR' in desc_op and dept not in ('DOBRA',):
+                        dept = 'DOBRA'
                     db.importar_operacao({
                         'of_numero':          str(of_num),
                         'lote_ordem':         lote_ordem_local,
