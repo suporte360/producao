@@ -422,9 +422,9 @@
 <style>
 .sob-medida-badge{background:#7c3aed;color:#fff;animation:sobMedidaPulse 2.5s ease-in-out infinite}
 @keyframes sobMedidaPulse{0%,100%{opacity:1;box-shadow:0 0 4px rgba(124,58,237,.4)}50%{opacity:.4;box-shadow:0 0 12px rgba(124,58,237,.8)}}
-.obs-icon-btn{animation:obsPulse 2s ease-in-out infinite}
-.obs-icon-btn:hover{animation:none;background:#fef3c7}
-@keyframes obsPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.25);opacity:.6}}
+.obs-icon-btn{animation:obsPulse 1.8s ease-in-out infinite !important;transition:none !important}
+.obs-icon-btn:hover{animation:none !important;background:#fef3c7}
+@keyframes obsPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.3);opacity:.5}}
 </style>
 {% endblock %}
 
