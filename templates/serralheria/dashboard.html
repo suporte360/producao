@@ -302,6 +302,8 @@ var selectedPecasFinalizar = [];
 var DASH_REFRESH = 10000;
 var idleTimer = null;
 var IDLE_TIMEOUT = 60000;
+var setorTimer = null;
+var SETOR_TIMEOUT = 30000;
 
 function resetIdle() {
   if (idleTimer) clearTimeout(idleTimer);
@@ -320,6 +322,7 @@ function showScreen(n) {
   document.getElementById('screen' + n).classList.add('active');
   if (n === 1) loadDashboard();
   if (n === 2) loadLotes();
+  _fecharTodosDialogs();
   resetIdle();
 }
 
@@ -556,8 +559,19 @@ function abrirSetor(pecaCodigo,pecaSetores){
   html+='</div>';
   document.getElementById('setorBtnsDynamic').innerHTML=html;
   document.getElementById('dialogSetor').classList.add('active');
+  if(setorTimer)clearTimeout(setorTimer);
+  setorTimer=setTimeout(fecharSetor,SETOR_TIMEOUT);
 }
-function fecharSetor(){document.getElementById('dialogSetor').classList.remove('active');}
+function fecharSetor(){
+  if(setorTimer){clearTimeout(setorTimer);setorTimer=null;}
+  document.getElementById('dialogSetor').classList.remove('active');
+}
+function _fecharTodosDialogs(){
+  fecharSetor();
+  fecharFinalizar();
+  var dc=document.getElementById('dialogConfirm');
+  if(dc)dc.classList.remove('active');
+}
 function selecionarSetor(setor){selectedSetor=setor;selectedPecas=[];fecharSetor();fetch('/api/lotes/'+currentLote+'/pecas').then(function(r){return r.json();}).then(function(data){if(!data.error)renderPecas(data);});}
 
 function togglePecaSelection(codigo){
