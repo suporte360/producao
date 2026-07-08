@@ -636,11 +636,16 @@ function _bindPecaClicks(){
     var card=e.target.closest('.peca-card');
     if(!card)return;
     var codigo=card.getAttribute('data-codigo');
-    var action=card.getAttribute('data-action');
-    if(!codigo||!action)return;
-    if(action==='finalizar'){toggleFinalizarPeca(codigo);}
-    else if(action==='selecionar'){togglePecaSelection(codigo);}
-    else if(action==='setor'){
+    if(!codigo)return;
+    /* Usa estado global em vez de data-action para evitar condicao de corrida */
+    var isActive=currentPecasAtivas[codigo];
+    if(finalizarMode){
+      if(isActive)toggleFinalizarPeca(codigo);
+    }else if(isActive){
+      return;
+    }else if(selectedSetor){
+      togglePecaSelection(codigo);
+    }else{
       try{var setores=JSON.parse(decodeURIComponent(card.getAttribute('data-setores')||'[]'));}catch(er){setores=[];}
       abrirSetor(codigo,setores);
     }
