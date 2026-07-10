@@ -41,7 +41,7 @@ _produto_cache = {}
 _lotes_ativos = set()
 
 # Setores que aparecem no totem da serralheria
-SETORES_SERRALHERIA = ('CORTE', 'DOBRA', 'SOLDA', 'ACABAMENTO', 'FUNILARIA')
+SETORES_SERRALHERIA = ('CORTE', 'DOBRA', 'SOLDA', 'ACABAMENTO')
 
 # Mapeamento de setores ERP -> Sistema Local (mesmo do app.py)
 MAPEAMENTO_SETORES = {
@@ -369,16 +369,19 @@ def api_dashboard():
         )['t'])
 
         em_andamento = _int(db_query_one(
-            "SELECT COUNT(*) as t FROM serralheria_producao WHERE status = 'em_producao'"
+            "SELECT COUNT(*) as t FROM serralheria_producao WHERE status = 'em_producao' AND setor IN %s",
+            (SETORES_SERRALHERIA,)
         )['t'])
 
         hoje = _int(db_query_one(
-            "SELECT COUNT(*) as t FROM serralheria_producao WHERE DATE(data_inicio) = CURDATE()"
+            "SELECT COUNT(*) as t FROM serralheria_producao WHERE DATE(data_inicio) = CURDATE() AND setor IN %s",
+            (SETORES_SERRALHERIA,)
         )['t'])
 
         finalizadas_hoje = _int(db_query_one(
             "SELECT COUNT(*) as t FROM serralheria_producao "
-            "WHERE status = 'finalizado' AND DATE(data_fim) = CURDATE()"
+            "WHERE status = 'finalizado' AND DATE(data_fim) = CURDATE() AND setor IN %s",
+            (SETORES_SERRALHERIA,)
         )['t'])
 
         # ── Producoes ativas com detalhes ──
@@ -395,16 +398,28 @@ def api_dashboard():
             )
             a['lote_desc'] = _str(r['descricao_produto']) if r else ''
 
-            r = db_query_one(
-                "SELECT descricao_produto, codigo_produto "
-                "FROM ordens_fabricacao WHERE of_numero = %s",
-                (a['produto'],)
-            )
-            if r:
-                nome_real = _get_produto_nome(r.get('codigo_produto'))
-                a['produto_nome'] = nome_real if nome_real else _str(r['descricao_produto'])
-            else:
-                a['produto_nome'] = _str(a['produto'])
+            # produto = codigo_produto (ex: PP-0021), busca nome real
+            nome_real = _get_produto_nome(a['produto'])
+            if not nome_real and a['produto']:
+                # Fallback: consulta direta ao PG se cache falhou
+                try:
+                    pg_row = _pg_query_one(
+                        "SELECT pronome FROM public.produto WHERE TRIM(produto) = %s LIMIT 1",
+                        (a['produto'].strip(),)
+                    )
+                    if pg_row and pg_row.get('pronome'):
+                        nome_real = str(pg_row['pronome']).strip()[:200]
+                        _produto_cache[a['produto'].strip()] = nome_real
+                except Exception:
+                    pass
+            if not nome_real:
+                # Fallback MariaDB: descricao_produto da OF filha
+                r = db_query_one(
+                    "SELECT descricao_produto FROM ordens_fabricacao WHERE codigo_produto = %s AND tipo = 'filho' LIMIT 1",
+                    (a['produto'],)
+                )
+                nome_real = _str(r['descricao_produto']) if r else ''
+            a['produto_nome'] = nome_real if nome_real else _str(a['produto'])
 
             r = db_query_one(
                 "SELECT COUNT(*) as t FROM serralheria_producao "
@@ -669,8 +684,8 @@ def api_pecas(lotcod):
 
         ativas_raw = db_query(
             "SELECT produto, of_numero, setor, usuario_nome "
-            "FROM serralheria_producao WHERE lote = %s AND status = 'em_producao'",
-            (lotcod,)
+            "FROM serralheria_producao WHERE lote = %s AND status = 'em_producao' AND setor IN %s",
+            (lotcod, SETORES_SERRALHERIA)
         )
         pecas_ativas = {}
         for row in ativas_raw:
