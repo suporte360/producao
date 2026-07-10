@@ -1049,6 +1049,7 @@ def admin_lote_detalhe(ordem):
     if not lote:
         flash('Lote nao encontrado.', 'error')
         return redirect(url_for('dashboard_pcp'))
+    lote['sob_medida'] = _is_sob_medida(lote.get('codigo_produto')) or _is_sob_medida(lote.get('lote_codigo'))
     operacoes = db.get_operacoes_por_lote(ordem)
     ofs = db.get_ofs_por_lote(ordem)
     return render_template('admin/lote_detalhe.html',

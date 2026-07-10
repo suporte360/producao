@@ -1,218 +1,277 @@
 {% extends "base.html" %}
 {% block title %}Lote #{{ lote.ordem }} - Detalhe{% endblock %}
+{% block header_title %}Detalhe do Lote #{{ lote.ordem }}{% endblock %}
 {% block content %}
 {% set pct = ((lote.operacoes_concluidas or 0) / (lote.total_operacoes or 1) * 100)|int %}
+{% set cor_pct = '#16a34a' if pct == 100 else '#ea580c' if pct > 50 else '#1e40af' %}
 
-<div class="page-header d-flex justify-content-between align-items-center">
-    <div>
-        <h1><i class="bi bi-file-earmark-text me-2"></i>Lote #{{ lote.ordem }}</h1>
-        <nav aria-label="breadcrumb"><ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
-            <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Lotes</a></li>
-            <li class="breadcrumb-item active">#{{ lote.ordem }}</li>
-        </ol></nav>
-    </div>
-    <div class="d-flex gap-2">
-        <span class="badge badge-{{ lote.prioridade }} fs-6">{{ lote.prioridade|upper }}</span>
-        <span class="badge badge-{{ lote.status }} fs-6">{{ lote.status|replace('_',' ')|upper }}</span>
-    </div>
-</div>
+<!-- BREADCRUMB -->
+<nav class="flex items-center gap-1.5 text-xs text-gray-400 mb-5">
+    <a href="{{ url_for('admin_dashboard') }}" class="hover:text-blue-600 transition">Admin</a>
+    <i class="fa-solid fa-chevron-right text-[8px]"></i>
+    <span class="text-gray-700 font-semibold">Lote #{{ lote.ordem }}</span>
+</nav>
 
-<!-- CABEÇALHO DO LOTE -->
-<div class="row g-3 mb-4">
-    <div class="col-lg-8">
-        <div class="table-card p-4">
-            <h5 class="fw-bold mb-3">{{ lote.descricao_produto }}</h5>
-            <div class="row g-3">
-                <div class="col-6 col-md-3">
-                    <div class="text-muted" style="font-size:0.8rem">Lote ERP</div>
-                    <div class="fw-semibold">{{ lote.lote_codigo or '-' }}</div>
+<!-- CABECALHO: Info do Lote + Progresso -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
+    <!-- Info -->
+    <div class="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div class="flex items-start justify-between mb-4">
+            <div class="min-w-0 flex-1">
+                <h2 class="text-lg font-bold text-gray-900 leading-tight truncate">{{ lote.descricao_produto or 'Sem descricao' }}</h2>
+                <p class="text-sm text-gray-400 mt-0.5">Lote ERP: <span class="font-semibold text-gray-600">{{ lote.lote_codigo or '-' }}</span></p>
+            </div>
+            <div class="flex items-center gap-2 ml-3 flex-shrink-0">
+                <span class="badge-priority {{ lote.prioridade }}">{{ lote.prioridade }}</span>
+                <span class="badge-status {{ lote.status }}">{{ lote.status|replace('_',' ') }}</span>
+                {% if lote.sob_medida %}
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-50 text-red-600 text-[10px] font-bold uppercase">
+                    <i class="fa-solid fa-ruler-combined text-[9px]"></i> Sob Medida
+                </span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div>
+                <div class="text-[11px] text-gray-400 uppercase tracking-wide font-semibold mb-1">Quantidade</div>
+                <div class="text-xl font-bold text-gray-900">{{ lote.qtde_ordem|int }} <span class="text-sm font-normal text-gray-400">{{ lote.unidade_medida }}</span></div>
+            </div>
+            <div>
+                <div class="text-[11px] text-gray-400 uppercase tracking-wide font-semibold mb-1">Previsao ERP</div>
+                <div class="text-sm font-semibold {{ 'text-red-600' if lote.data_previsao_erp and lote.data_previsao_erp < now.date() and lote.status not in ('finalizado','cancelado') else 'text-gray-700' }}">
+                    {% if lote.data_previsao_erp %}{{ lote.data_previsao_erp|formatar_data }}{% else %}-{% endif %}
                 </div>
-                <div class="col-6 col-md-3">
-                    <div class="text-muted" style="font-size:0.8rem">Quantidade</div>
-                    <div class="fw-semibold">{{ lote.qtde_ordem|int }} {{ lote.unidade_medida }}</div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="text-muted" style="font-size:0.8rem">Previsao ERP</div>
-                    <div class="fw-semibold {{ 'text-danger' if lote.data_previsao_erp and lote.data_previsao_erp < now.date() and lote.status not in ('finalizado','cancelado') else '' }}">
-                        {{ lote.data_previsao_erp|formatar_data }}
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="text-muted" style="font-size:0.8rem">Setor Atual</div>
-                    <div class="fw-semibold">{{ lote.departamento_atual or 'Aguardando' }}</div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="text-muted" style="font-size:0.8rem">Inicio Producao</div>
-                    <div class="fw-semibold">{{ lote.data_inicio_producao|formatar_datetime }}</div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="text-muted" style="font-size:0.8rem">Fim Producao</div>
-                    <div class="fw-semibold">{{ lote.data_fim_producao|formatar_datetime }}</div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="text-muted" style="font-size:0.8rem">Total OFs</div>
-                    <div class="fw-semibold">{{ lote.total_ofs or 0 }}</div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="text-muted" style="font-size:0.8rem">Planejador</div>
-                    <div class="fw-semibold">{{ lote.planejador or '-' }}</div>
-                </div>
+            </div>
+            <div>
+                <div class="text-[11px] text-gray-400 uppercase tracking-wide font-semibold mb-1">Setor Atual</div>
+                <div class="text-sm font-semibold text-gray-700">{{ lote.departamento_atual or 'Aguardando' }}</div>
+            </div>
+            <div>
+                <div class="text-[11px] text-gray-400 uppercase tracking-wide font-semibold mb-1">Total OFs</div>
+                <div class="text-sm font-semibold text-gray-700">{{ lote.total_ofs or 0 }}</div>
+            </div>
+            <div>
+                <div class="text-[11px] text-gray-400 uppercase tracking-wide font-semibold mb-1">Inicio Producao</div>
+                <div class="text-sm text-gray-600">{{ lote.data_inicio_producao|formatar_datetime or '-' }}</div>
+            </div>
+            <div>
+                <div class="text-[11px] text-gray-400 uppercase tracking-wide font-semibold mb-1">Fim Producao</div>
+                <div class="text-sm text-gray-600">{{ lote.data_fim_producao|formatar_datetime or '-' }}</div>
+            </div>
+            <div>
+                <div class="text-[11px] text-gray-400 uppercase tracking-wide font-semibold mb-1">Planejador</div>
+                <div class="text-sm text-gray-600">{{ lote.planejador or '-' }}</div>
             </div>
         </div>
     </div>
-    <div class="col-lg-4">
-        <div class="table-card p-4 h-100 d-flex flex-column justify-content-center">
-            <div class="text-center mb-3">
-                <div style="font-size:3rem;font-weight:700;color:{% if pct == 100 %}#2e7d32{% elif pct > 50 %}#f57f17{% else %}#1a237e{% endif %}">{{ pct }}%</div>
-                <div class="text-muted">Progresso Geral</div>
-            </div>
-            <div class="progress mb-2" style="height:12px;border-radius:6px">
-                <div class="progress-bar bg-success" style="width:{{ pct }}%;border-radius:6px"></div>
-            </div>
-            <div class="text-center text-muted" style="font-size:0.85rem">
-                {{ lote.operacoes_concluidas or 0 }} de {{ lote.total_operacoes or 0 }} operacoes concluidas
-            </div>
-            <!-- Alterar Prioridade -->
-            <div class="mt-3">
-                <label class="form-label fw-semibold" style="font-size:0.85rem">Alterar Prioridade</label>
-                <select class="form-select form-select-sm" onchange="alterarPrioridade({{ lote.ordem }}, this.value)">
-                    <option value="urgente" {{ 'selected' if lote.prioridade=='urgente' }}>Urgente</option>
-                    <option value="alta" {{ 'selected' if lote.prioridade=='alta' }}>Alta</option>
-                    <option value="media" {{ 'selected' if lote.prioridade=='media' }}>Media</option>
-                    <option value="baixa" {{ 'selected' if lote.prioridade=='baixa' }}>Baixa</option>
-                </select>
-            </div>
+
+    <!-- Progresso + Prioridade -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col items-center justify-center">
+        <div class="text-5xl font-extrabold" style="color:{{ cor_pct }}">{{ pct }}%</div>
+        <div class="text-xs text-gray-400 mt-1 font-medium">Progresso Geral</div>
+        <div class="w-full bg-gray-100 rounded-full h-2.5 mt-4">
+            <div class="h-2.5 rounded-full transition-all duration-500" style="width:{{ pct }}%;background:{{ cor_pct }}"></div>
+        </div>
+        <div class="text-xs text-gray-400 mt-2">{{ lote.operacoes_concluidas or 0 }} de {{ lote.total_operacoes or 0 }} operacoes</div>
+        <div class="mt-4 w-full">
+            <label class="text-[11px] text-gray-400 uppercase tracking-wide font-semibold block mb-1.5">Prioridade</label>
+            <select class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" onchange="alterarPrioridade({{ lote.ordem }}, this.value)">
+                <option value="urgente" {{ 'selected' if lote.prioridade=='urgente' }}>Urgente</option>
+                <option value="alta" {{ 'selected' if lote.prioridade=='alta' }}>Alta</option>
+                <option value="media" {{ 'selected' if lote.prioridade=='media' }}>Media</option>
+                <option value="baixa" {{ 'selected' if lote.prioridade=='baixa' }}>Baixa</option>
+            </select>
         </div>
     </div>
 </div>
 
 <!-- FLUXO DE SETORES -->
-<div class="table-card p-3 mb-4">
-    <h6 class="fw-bold mb-3"><i class="bi bi-diagram-3 me-2"></i>Fluxo de Fabricacao</h6>
-    <div class="d-flex flex-wrap gap-2 align-items-center">
-        {% set setores = ['ALMOXARIFADO','CORTE','SOLDA','ACABAMENTO','MONTAGEM','EMBALAGEM'] %}
-        {% for setor in setores %}
+<div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-6">
+    <h3 class="text-sm font-bold text-gray-700 mb-4"><i class="fa-solid fa-diagram-project mr-2 text-blue-500"></i>Fluxo de Fabricacao</h3>
+    <div class="flex flex-wrap items-center gap-2">
+        {% set setores_fluxo = ['ALMOXARIFADO','CORTE','DOBRA','SOLDA','ACABAMENTO','PINTURA','MONTAGEM','EMBALAGEM'] %}
+        {% for setor in setores_fluxo %}
         {% set ops_setor = operacoes | selectattr('departamento','equalto',setor) | list %}
         {% set concluidas_setor = ops_setor | selectattr('status','equalto','concluido') | list %}
         {% set em_andamento_setor = ops_setor | selectattr('status','equalto','em_andamento') | list %}
-        <div class="text-center" style="min-width:110px">
-            <div class="p-2 rounded-3 border-2 border
-                {% if em_andamento_setor %}border-warning bg-warning bg-opacity-10
-                {% elif concluidas_setor|length == ops_setor|length and ops_setor %}border-success bg-success bg-opacity-10
-                {% elif ops_setor %}border-primary bg-primary bg-opacity-10
-                {% else %}border-secondary bg-light{% endif %}">
-                <div style="font-size:0.75rem;font-weight:700;color:{% if em_andamento_setor %}#f57f17{% elif concluidas_setor|length == ops_setor|length and ops_setor %}#2e7d32{% elif ops_setor %}#1a237e{% else %}#9e9e9e{% endif %}">
+        {% set has_ops = ops_setor|length > 0 %}
+        {% set all_done = concluidas_setor|length == ops_setor|length and has_ops %}
+        <div class="flex items-center gap-2">
+            <div class="flex flex-col items-center px-4 py-2.5 rounded-xl border-2 min-w-[100px] transition
+                {% if em_andamento_setor %}border-orange-400 bg-orange-50
+                {% elif all_done %}border-green-400 bg-green-50
+                {% elif has_ops %}border-blue-400 bg-blue-50
+                {% else %}border-gray-200 bg-gray-50{% endif %}">
+                <div class="text-[11px] font-bold uppercase tracking-wide
+                    {% if em_andamento_setor %}text-orange-600
+                    {% elif all_done %}text-green-600
+                    {% elif has_ops %}text-blue-600
+                    {% else %}text-gray-400{% endif %}">
                     {{ setor }}
                 </div>
-                <div style="font-size:0.7rem;color:#757575">
-                    {{ concluidas_setor|length }}/{{ ops_setor|length }} ops
-                </div>
+                {% if has_ops %}
+                <div class="text-[10px] text-gray-400 mt-0.5">{{ concluidas_setor|length }}/{{ ops_setor|length }}</div>
+                {% endif %}
             </div>
+            {% if not loop.last %}
+            <i class="fa-solid fa-chevron-right text-gray-300 text-[10px]"></i>
+            {% endif %}
         </div>
-        {% if not loop.last %}
-        <i class="bi bi-chevron-right text-muted"></i>
-        {% endif %}
         {% endfor %}
     </div>
 </div>
 
-<!-- TABS: OPERAÇÕES / OFs -->
-<ul class="nav nav-tabs mb-3" id="tabsLote">
-    <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabOps">
-        <i class="bi bi-list-check me-1"></i>Operacoes ({{ operacoes|length }})
-    </a></li>
-    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabOFs">
-        <i class="bi bi-files me-1"></i>Ordens de Fabricacao ({{ ofs|length }})
-    </a></li>
-</ul>
-
-<div class="tab-content">
-    <!-- TAB OPERAÇÕES -->
-    <div class="tab-pane fade show active" id="tabOps">
-        <div class="table-card">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead>
-                        <tr>
-                            <th>Seq</th><th>OF</th><th>Operacao</th><th>Setor</th>
-                            <th>Status</th><th>Inicio</th><th>Fim</th><th>Operador</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for op in operacoes %}
-                        <tr class="{{ 'table-warning' if op.status=='em_andamento' else 'table-success' if op.status=='concluido' else '' }}">
-                            <td><strong>{{ op.sequencia }}</strong></td>
-                            <td><small>#{{ op.of_numero }}</small></td>
-                            <td>{{ op.descricao_operacao }}</td>
-                            <td>
-                                <span class="badge" style="background:{% if op.departamento=='CORTE' %}#fd7e14{% elif op.departamento=='SOLDA' %}#dc3545{% elif op.departamento=='ACABAMENTO' %}#6f42c1{% elif op.departamento=='MONTAGEM' %}#0d6efd{% elif op.departamento=='EMBALAGEM' %}#198754{% elif op.departamento=='ALMOXARIFADO' %}#17a2b8{% else %}#607d8b{% endif %}">
-                                    {{ op.departamento or '-' }}
-                                </span>
-                            </td>
-                            <td><span class="badge badge-{{ op.status }}">{{ op.status|replace('_',' ')|upper }}</span></td>
-                            <td style="font-size:0.82rem">{{ op.data_inicio|formatar_datetime }}</td>
-                            <td style="font-size:0.82rem">{{ op.data_fim|formatar_datetime }}</td>
-                            <td style="font-size:0.82rem">{{ op.usuario_inicio_nome or '-' }}</td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="8" class="text-center text-muted py-4">Nenhuma operacao registrada.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- TAB OFs -->
-    <div class="tab-pane fade" id="tabOFs">
-        <div class="table-card">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead>
-                        <tr><th>OF</th><th>Produto</th><th>Qtd</th><th>Tipo</th><th>Status</th><th>Progresso</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for of in ofs %}
-                        {% set pct_of = ((of.ops_concluidas or 0) / (of.total_ops or 1) * 100)|int %}
-                        <tr>
-                            <td><strong>#{{ of.of_numero }}</strong></td>
-                            <td>{{ of.descricao_produto or '-' }}</td>
-                            <td>{{ of.qtde_ordem|int }} {{ of.unidade_medida }}</td>
-                            <td><span class="badge {{ 'bg-primary' if of.tipo=='pai' else 'bg-secondary' }}">{{ of.tipo|upper }}</span></td>
-                            <td><span class="badge badge-{{ of.status }}">{{ of.status|replace('_',' ')|upper }}</span></td>
-                            <td style="min-width:100px">
-                                <div class="progress" style="height:6px">
-                                    <div class="progress-bar bg-success" style="width:{{ pct_of }}%"></div>
-                                </div>
-                                <small class="text-muted">{{ of.ops_concluidas }}/{{ of.total_ops }}</small>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="6" class="text-center text-muted py-4">Nenhuma OF registrada.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+<!-- TABS -->
+<div class="mb-2">
+    <div class="flex border-b border-gray-200">
+        <button onclick="switchTab('ops')" id="btnTabOps" class="tab-btn active-tab px-5 py-3 text-sm font-semibold border-b-2 transition">
+            <i class="fa-solid fa-list-check mr-1.5"></i>Operacoes ({{ operacoes|length }})
+        </button>
+        <button onclick="switchTab('ofs')" id="btnTabOfs" class="tab-btn px-5 py-3 text-sm font-semibold border-b-2 transition">
+            <i class="fa-solid fa-file-lines mr-1.5"></i>Ordens de Fabricacao ({{ ofs|length }})
+        </button>
     </div>
 </div>
+
+<!-- TAB OPERACOES -->
+<div id="tabOps" class="tab-panel">
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        {% if operacoes %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="bg-gray-50 text-left">
+                        <th class="px-4 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-wide">Seq</th>
+                        <th class="px-4 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-wide">OF</th>
+                        <th class="px-4 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-wide">Operacao</th>
+                        <th class="px-4 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-wide">Setor</th>
+                        <th class="px-4 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-wide">Status</th>
+                        <th class="px-4 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-wide">Inicio</th>
+                        <th class="px-4 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-wide">Fim</th>
+                        <th class="px-4 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-wide">Operador</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for op in operacoes %}
+                    <tr class="border-t border-gray-100 hover:bg-gray-50/50 transition
+                        {% if op.status == 'em_andamento' %}bg-orange-50/50
+                        {% elif op.status == 'concluido' %}bg-green-50/30{% endif %}">
+                        <td class="px-4 py-3 font-bold text-gray-500">{{ op.sequencia }}</td>
+                        <td class="px-4 py-3 text-gray-500 text-xs font-mono">#{{ op.of_numero }}</td>
+                        <td class="px-4 py-3 text-gray-700 max-w-[250px] truncate">{{ op.descricao_operacao or '-' }}</td>
+                        <td class="px-4 py-3">
+                            {% set dept_colors = {'CORTE':'bg-orange-100 text-orange-700','DOBRA':'bg-yellow-100 text-yellow-700','SOLDA':'bg-red-100 text-red-700','ACABAMENTO':'bg-purple-100 text-purple-700','MONTAGEM':'bg-blue-100 text-blue-700','PINTURA':'bg-pink-100 text-pink-700','EMBALAGEM':'bg-green-100 text-green-700','ALMOXARIFADO':'bg-cyan-100 text-cyan-700','FUNILARIA':'bg-amber-100 text-amber-700'} %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold {{ dept_colors.get(op.departamento, 'bg-gray-100 text-gray-600') }}">
+                                {{ op.departamento or '-' }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3">
+                            {% if op.status == 'concluido' %}
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-green-100 text-green-700 text-[11px] font-bold"><i class="fa-solid fa-check text-[9px]"></i> Concluido</span>
+                            {% elif op.status == 'em_andamento' %}
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-orange-100 text-orange-700 text-[11px] font-bold"><i class="fa-solid fa-play text-[9px]"></i> Em Andamento</span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-md bg-gray-100 text-gray-500 text-[11px] font-bold">Pendente</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-xs text-gray-500">{{ op.data_inicio|formatar_datetime or '-' }}</td>
+                        <td class="px-4 py-3 text-xs text-gray-500">{{ op.data_fim|formatar_datetime or '-' }}</td>
+                        <td class="px-4 py-3 text-xs text-gray-600">{{ op.usuario_inicio_nome or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="p-10 text-center text-gray-400">
+            <i class="fa-solid fa-clipboard-list text-3xl mb-3 block opacity-30"></i>
+            <p class="text-sm">Nenhuma operacao registrada.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- TAB OFs -->
+<div id="tabOfs" class="tab-panel hidden">
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        {% if ofs %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="bg-gray-50 text-left">
+                        <th class="px-4 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-wide">OF</th>
+                        <th class="px-4 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-wide">Produto</th>
+                        <th class="px-4 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-wide">Codigo</th>
+                        <th class="px-4 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-wide">Qtd</th>
+                        <th class="px-4 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-wide">Tipo</th>
+                        <th class="px-4 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-wide">Progresso</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for of in ofs %}
+                    {% set pct_of = ((of.ops_concluidas or 0) / (of.total_ops or 1) * 100)|int %}
+                    <tr class="border-t border-gray-100 hover:bg-gray-50/50 transition">
+                        <td class="px-4 py-3 font-mono text-xs font-bold text-gray-600">#{{ of.of_numero }}</td>
+                        <td class="px-4 py-3 text-gray-700 max-w-[280px] truncate">{{ of.descricao_produto or '-' }}</td>
+                        <td class="px-4 py-3 text-xs text-gray-500 font-mono">{{ of.codigo_produto or '-' }}</td>
+                        <td class="px-4 py-3 font-semibold text-gray-700">{{ of.qtde_ordem|int }} <span class="text-xs font-normal text-gray-400">{{ of.unidade_medida }}</span></td>
+                        <td class="px-4 py-3">
+                            {% if of.tipo == 'pai' %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-100 text-blue-700 text-[11px] font-bold">Produto Final</span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-md bg-gray-100 text-gray-500 text-[11px] font-bold">Componente</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 min-w-[140px]">
+                            <div class="flex items-center gap-2.5">
+                                <div class="flex-1 bg-gray-100 rounded-full h-2">
+                                    <div class="h-2 rounded-full bg-green-500 transition-all" style="width:{{ pct_of }}%"></div>
+                                </div>
+                                <span class="text-xs font-bold text-gray-500 w-8 text-right">{{ pct_of }}%</span>
+                            </div>
+                            <div class="text-[10px] text-gray-400 mt-0.5">{{ of.ops_concluidas or 0 }}/{{ of.total_ops or 0 }} ops</div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="p-10 text-center text-gray-400">
+            <i class="fa-solid fa-file-circle-xmark text-3xl mb-3 block opacity-30"></i>
+            <p class="text-sm">Nenhuma OF registrada.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.tab-btn { color: #9ca3af; border-color: transparent; cursor: pointer; background: none; }
+.tab-btn:hover { color: #6b7280; }
+.tab-btn.active-tab { color: #1e40af; border-color: #3b82f6; }
+</style>
 {% endblock %}
-{% block extra_js %}
+
+{% block scripts %}
 <script>
+function switchTab(tab) {
+    document.getElementById('tabOps').classList.toggle('hidden', tab !== 'ops');
+    document.getElementById('tabOfs').classList.toggle('hidden', tab !== 'ofs');
+    document.getElementById('btnTabOps').classList.toggle('active-tab', tab === 'ops');
+    document.getElementById('btnTabOfs').classList.toggle('active-tab', tab === 'ofs');
+}
 function alterarPrioridade(ordem, prioridade) {
     fetch('/api/lotes/prioridade', {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ordem: ordem, prioridade: prioridade})
-    }).then(r => r.json()).then(d => {
+    }).then(function(r) { return r.json(); }).then(function(d) {
         if (d.success) {
-            const el = document.createElement('div');
-            el.className = 'alert alert-success position-fixed top-0 end-0 m-3';
-            el.style.zIndex = 9999;
-            el.textContent = 'Prioridade atualizada!';
+            var el = document.createElement('div');
+            el.className = 'fixed top-4 right-4 bg-green-600 text-white px-5 py-3 rounded-xl shadow-lg text-sm font-semibold z-50';
+            el.innerHTML = '<i class="fa-solid fa-check-circle mr-2"></i>Prioridade atualizada!';
             document.body.appendChild(el);
-            setTimeout(() => el.remove(), 2000);
+            setTimeout(function() { el.remove(); }, 2500);
         }
     });
 }
