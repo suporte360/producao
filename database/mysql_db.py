@@ -339,12 +339,15 @@ class DatabaseMySQL:
 
     def get_operacoes_por_lote(self, lote_ordem, departamento=None):
         sql = """
-            SELECT op.*, u_ini.nome AS usuario_inicio_nome, u_fim.nome AS usuario_fim_nome,
+            SELECT op.*, COALESCE(u_ini.nome, sp.usuario_nome) AS usuario_inicio_nome,
+                   u_fim.nome AS usuario_fim_nome,
                    of2.codigo_produto, of2.descricao_produto AS produto_of
             FROM operacoes_producao op
             LEFT JOIN ordens_fabricacao of2 ON op.of_numero = of2.of_numero
             LEFT JOIN usuarios u_ini ON op.usuario_inicio_id = u_ini.id
             LEFT JOIN usuarios u_fim ON op.usuario_fim_id = u_fim.id
+            LEFT JOIN serralheria_producao sp ON op.of_numero = sp.of_numero
+                AND op.departamento = sp.setor AND sp.status = 'em_producao'
             WHERE op.lote_ordem = %s
         """
         params = [lote_ordem]
