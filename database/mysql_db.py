@@ -693,6 +693,20 @@ class DatabaseMySQL:
         result = self.query_one(sql, params)
         return result['total'] if result else 0
 
+    def get_lotes_em_atraso(self, departamento=None):
+        """Conta lotes com data_previsao_erp < hoje e status ativo."""
+        sql = """
+            SELECT COUNT(*) as total FROM lotes_producao
+            WHERE data_previsao_erp < CURDATE()
+              AND status NOT IN ('finalizado', 'cancelado')
+        """
+        params = []
+        if departamento:
+            sql += " AND departamento_atual = %s"
+            params.append(departamento)
+        result = self.query_one(sql, params)
+        return result['total'] if result else 0
+
     def move_kanban_card(self, card_id, nova_etapa, operador_id=None):
         return self.execute("""
             UPDATE kanban_cards

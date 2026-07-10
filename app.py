@@ -1423,6 +1423,7 @@ def api_kanban_status():
     departamento_filtro = None if role in ('admin', 'gerente', 'pcp', 'diretor') else depto
     stats = db.get_kanban_stats(departamento=departamento_filtro)
     concluidos_hoje = db.get_kanban_concluidos_hoje(departamento=departamento_filtro)
+    em_atraso = db.get_lotes_em_atraso(departamento=departamento_filtro)
     # Verifica ERP para alerta no TV
     pg_ok = False
     try:
@@ -1431,7 +1432,7 @@ def api_kanban_status():
         pg_ok = True
     except Exception:
         pass
-    return jsonify({'status': 'success', 'stats': stats, 'concluidos_hoje': concluidos_hoje, 'pg_ok': pg_ok})
+    return jsonify({'status': 'success', 'stats': stats, 'concluidos_hoje': concluidos_hoje, 'em_atraso': em_atraso, 'pg_ok': pg_ok})
 
 @app.route('/api/almoxarifado/tv')
 @login_required

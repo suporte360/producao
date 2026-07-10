@@ -107,6 +107,13 @@
       0%, 100% { box-shadow: 0 0 0 0 rgba(217,119,6,0.4); border-color: rgba(217,119,6,0.4); }
       50% { box-shadow: 0 0 20px 4px rgba(217,119,6,0.2); border-color: rgba(217,119,6,0.8); }
     }
+    .stat-card.highlight-red {
+      animation: cardGlowRed 2s ease-in-out infinite;
+    }
+    @keyframes cardGlowRed {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); border-color: rgba(239,68,68,0.4); }
+      50% { box-shadow: 0 0 20px 4px rgba(239,68,68,0.2); border-color: rgba(239,68,68,0.8); }
+    }
     .stat-icon {
       width:40px; height:40px; border-radius:8px;
       display:flex; align-items:center; justify-content:center;
@@ -377,13 +384,13 @@
       <div class="stat-lbl">Em Produção</div>
     </div>
   </div>
-  <div class="stat-card">
-    <div class="stat-icon" style="background:rgba(168,85,247,.15);color:#c084fc">
-      <i class="fa-solid fa-chart-simple"></i>
+  <div class="stat-card" id="cardAtraso">
+    <div class="stat-icon" style="background:rgba(239,68,68,.15);color:#f87171">
+      <i class="fa-solid fa-triangle-exclamation"></i>
     </div>
     <div>
-      <div class="stat-num" style="color:#c084fc" id="sProgresso">0%</div>
-      <div class="stat-lbl">Progresso Médio</div>
+      <div class="stat-num" style="color:#f87171" id="sAtraso">0</div>
+      <div class="stat-lbl">Em Atraso</div>
     </div>
   </div>
   <div class="stat-card">
@@ -591,31 +598,22 @@ function renderKanban(cards) {
   });
 }
 
-function renderStats(stats, concluidos, cards) {
+function renderStats(stats, concluidos, cards, emAtraso) {
   document.getElementById('sAguardando').textContent = stats.aguardando  || 0;
   document.getElementById('sEmProd').textContent     = stats.em_producao || 0;
   document.getElementById('sConcluido').textContent  = concluidos        || 0;
   document.getElementById('sTotal').textContent      = cards.length      || 0;
-
-  /* Progresso medio dos lotes ativos */
-  var ativos = cards.filter(function(c) { return c.etapa !== 'concluido'; });
-  var vistos = {};
-  var totalProg = 0;
-  var countProg = 0;
-  ativos.forEach(function(c) {
-    if (!vistos[c.lote_ordem]) {
-      vistos[c.lote_ordem] = true;
-      totalProg += (c.progresso || 0);
-      countProg += 1;
-    }
-  });
-  var media = countProg > 0 ? Math.round(totalProg / countProg) : 0;
-  document.getElementById('sProgresso').textContent = media + '%';
+  document.getElementById('sAtraso').textContent     = emAtraso          || 0;
 
   // Destaque pulsante quando há OPs em produção
   var cardProd = document.getElementById('cardProd');
   if ((stats.em_producao||0) > 0) cardProd.classList.add('highlight');
   else cardProd.classList.remove('highlight');
+
+  // Destaque pulsante vermelho quando há lotes em atraso
+  var cardAtraso = document.getElementById('cardAtraso');
+  if (emAtraso > 0) cardAtraso.classList.add('highlight-red');
+  else cardAtraso.classList.remove('highlight-red');
 }
 
 function updateTimers() {
@@ -634,6 +632,7 @@ function loadData() {
     const stats = {};
     (statsRes.stats || []).forEach(function(s) { stats[s.etapa] = s.total; });
     const concluidos = statsRes.concluidos_hoje || 0;
+    const emAtraso = statsRes.em_atraso || 0;
 
     /* Atualiza alerta ERP offline via AJAX */
     var pgOk = (cardsRes.pg_ok === true || statsRes.pg_ok === true);
@@ -650,7 +649,7 @@ function loadData() {
 
     renderFluxo(cards);
     renderKanban(cards);
-    renderStats(stats, concluidos, cards);
+    renderStats(stats, concluidos, cards, emAtraso);
 
     document.getElementById('tickerMsg').textContent =
       'Última atualização: ' + new Date().toLocaleTimeString('pt-BR') +
