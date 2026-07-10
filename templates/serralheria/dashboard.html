@@ -152,6 +152,11 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 .loading .spinner{display:inline-block;width:32px;height:32px;border:3px solid #2a2a5a;border-top-color:#f59e0b;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:12px}
 .dialog-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);z-index:100;justify-content:center;align-items:center}
 .dialog-overlay.active{display:flex}
+.fin-qtd-row{display:flex;align-items:center;justify-content:space-between;margin:16px 0 8px;padding:12px 16px;background:rgba(0,230,118,.08);border:2px solid #00e676;border-radius:12px}
+.fin-qtd-label{font-size:14px;color:#999}
+.fin-qtd-input{width:120px;font-size:36px;font-weight:800;color:#00e676;background:transparent;border:none;text-align:right;outline:none;-moz-appearance:textfield}
+.fin-qtd-input::-webkit-outer-spin-button,.fin-qtd-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.fin-qtd-total{font-size:13px;color:#5a5a7a;margin-top:2px;text-align:right}
 .dialog-box{background:#16213e;border:2px solid #f59e0b;border-radius:16px;padding:28px;max-width:420px;width:90%;text-align:center}
 .dialog-box h3{font-size:20px;color:#f59e0b;margin-bottom:12px}
 .dialog-box p{font-size:15px;color:#ccc;margin-bottom:20px}
@@ -278,11 +283,18 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 <!-- ========== FINALIZAR DIALOG ========== -->
 <div class="dialog-overlay" id="dialogFinalizar">
   <div class="dialog-box">
-    <h3>Finalizar Producao</h3>
+    <h3 id="finalizarTitulo">Finalizar Producao</h3>
     <p id="finalizarMsg">Finalizar este lote?</p>
+    <div class="fin-qtd-row" id="finQtdRow">
+      <span class="fin-qtd-label">Qtd Produzida</span>
+      <div>
+        <input type="number" class="fin-qtd-input" id="finQtdInput" inputmode="numeric" min="0">
+        <div class="fin-qtd-total" id="finQtdTotal">Total: --</div>
+      </div>
+    </div>
     <div class="dialog-btns">
       <button class="nao" onclick="fecharFinalizar()">NAO</button>
-      <button class="sim" id="btnConfirmaFinalizar">SIM, FINALIZAR</button>
+      <button class="sim" id="btnConfirmaFinalizar">FINALIZAR</button>
     </div>
   </div>
 </div>
@@ -644,11 +656,24 @@ function selecionarSetor(setor){
 function finalizarSetorPeca(pecaCodigo,setor){
   if(setorTimer){clearTimeout(setorTimer);setorTimer=null;}
   document.getElementById('dialogSetor').classList.remove('active');
-  document.getElementById('finalizarMsg').textContent='Finalizar '+setor+' da peca '+pecaCodigo+'?';
+  /* Busca qtd total da peca */
+  var pecaObj=null;for(var i=0;i<currentPecas.length;i++){if(currentPecas[i].codigo===pecaCodigo){pecaObj=currentPecas[i];break;}}
+  var qtdTotal=pecaObj?Math.round(parseFloat(pecaObj.quantidade)||0):0;
+  /* Preenche dialog */
+  document.getElementById('finalizarTitulo').textContent='FINALIZAR '+setor;
+  document.getElementById('finalizarMsg').textContent=pecaCodigo+' - '+(pecaObj&&pecaObj.produto_nome?pecaObj.produto_nome:'');
+  document.getElementById('finQtdTotal').textContent='Total: '+qtdTotal;
+  var qtdInput=document.getElementById('finQtdInput');
+  qtdInput.value=qtdTotal;
+  qtdInput.max=qtdTotal;
+  document.getElementById('finQtdRow').style.display='flex';
   document.getElementById('dialogFinalizar').classList.add('active');
+  setTimeout(function(){qtdInput.focus();qtdInput.select();},100);
   document.getElementById('btnConfirmaFinalizar').onclick=function(){
+    var qtdFinalizada=parseInt(qtdInput.value)||0;
+    if(qtdFinalizada<=0){qtdInput.style.color='#ef5350';return;}
     fecharFinalizar();
-    fetch('/api/finalizar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lote:currentLote,pecas:[pecaCodigo],setor:setor})}).then(function(r){return r.json();}).then(function(data){if(data.success)showScreen(1);else alert('Erro: '+(data.error||'Erro desconhecido'));}).catch(function(e){alert('Erro de conexao');});
+    fetch('/api/finalizar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lote:currentLote,pecas:[pecaCodigo],setor:setor,qtd_produzida:qtdFinalizada})}).then(function(r){return r.json();}).then(function(data){if(data.success)showScreen(1);else alert('Erro: '+(data.error||'Erro desconhecido'));}).catch(function(e){alert('Erro de conexao');});
   };
 }
 
@@ -702,14 +727,20 @@ function toggleFinalizarPeca(codigo){
 }
 function confirmarFinalizarPecas(){
   if(selectedPecasFinalizar.length===0)return;
+  document.getElementById('finalizarTitulo').textContent='Finalizar Producao';
   document.getElementById('finalizarMsg').textContent='Finalizar '+selectedPecasFinalizar.length+' peca(s) do Lote '+currentLote+'?';
+  document.getElementById('finQtdRow').style.display='none';
   document.getElementById('dialogFinalizar').classList.add('active');
   document.getElementById('btnConfirmaFinalizar').onclick=function(){
     fecharFinalizar();
     fetch('/api/finalizar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lote:currentLote,pecas:selectedPecasFinalizar})}).then(function(r){return r.json();}).then(function(data){if(data.success)showScreen(1);else alert('Erro: '+(data.error||'Erro desconhecido'));}).catch(function(e){alert('Erro de conexao');});
   };
 }
-function fecharFinalizar(){document.getElementById('dialogFinalizar').classList.remove('active');}
+function fecharFinalizar(){
+  document.getElementById('dialogFinalizar').classList.remove('active');
+  var qtdInput=document.getElementById('finQtdInput');
+  qtdInput.style.color='#00e676';
+}
 
 /* ══ EVENT DELEGATION: cliques nas pecas ══ */
 function _findCard(el){

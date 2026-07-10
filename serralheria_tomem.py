@@ -258,10 +258,17 @@ def init_db():
             status VARCHAR(20) DEFAULT 'em_producao',
             data_inicio DATETIME DEFAULT NULL,
             data_fim DATETIME DEFAULT NULL,
+            qtd_produzida INT DEFAULT NULL,
             INDEX idx_sp_lote (lote),
             INDEX idx_sp_status (status)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     """)
+    # Garante coluna qtd_produzida existe (tabelas criadas antes)
+    try:
+        db_execute("ALTER TABLE serralheria_producao ADD COLUMN qtd_produzida INT DEFAULT NULL")
+    except Exception:
+        pass  # coluna ja existe
+
     # Seed serra1-9 — DESABILITADO: operadores agora gerenciados pelo admin (5002)
     # for i in range(1, 10):
     #     nome = 'serra' + str(i)
@@ -883,6 +890,7 @@ def api_finalizar():
         lotcod = data.get('lote')
         pecas = data.get('pecas', [])
         setor = data.get('setor', '')
+        qtd_produzida = data.get('qtd_produzida', 0)
 
         if not lotcod:
             return jsonify({'error': 'Lote obrigatorio'}), 400
@@ -896,13 +904,16 @@ def api_finalizar():
 
         if pecas and setor:
             # Finalizar pecas em um setor especifico
+            update_sql = ("UPDATE serralheria_producao "
+                "SET status = 'finalizado', data_fim = NOW() ")
+            update_params = []
+            if qtd_produzida and qtd_produzida > 0:
+                update_sql += ", qtd_produzida = %s "
+                update_params.append(int(qtd_produzida))
             placeholders = ','.join(['%s'] * len(pecas))
-            db_execute(
-                f"UPDATE serralheria_producao "
-                f"SET status = 'finalizado', data_fim = NOW() "
-                f"WHERE lote = %s AND produto IN ({placeholders}) AND setor = %s AND status = 'em_producao'",
-                [lotcod] + pecas + [setor]
-            )
+            update_sql += (f"WHERE lote = %s AND produto IN ({placeholders}) "
+                f"AND setor = %s AND status = 'em_producao'")
+            db_execute(update_sql, update_params + [lotcod] + pecas + [setor])
             for pcod in pecas:
                 row = db_query_one(
                     "SELECT of_numero FROM serralheria_producao "
