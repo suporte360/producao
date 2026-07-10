@@ -157,6 +157,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 .fin-qtd-input{width:120px;font-size:36px;font-weight:800;color:#00e676;background:transparent;border:none;text-align:right;outline:none;-moz-appearance:textfield}
 .fin-qtd-input::-webkit-outer-spin-button,.fin-qtd-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .fin-qtd-total{font-size:13px;color:#5a5a7a;margin-top:2px;text-align:right}
+.fin-qtd-restante{font-size:12px;color:#f59e0b;margin-top:2px;text-align:right;font-weight:700}
 .dialog-box{background:#16213e;border:2px solid #f59e0b;border-radius:16px;padding:28px;max-width:420px;width:90%;text-align:center}
 .dialog-box h3{font-size:20px;color:#f59e0b;margin-bottom:12px}
 .dialog-box p{font-size:15px;color:#ccc;margin-bottom:20px}
@@ -290,8 +291,10 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
       <div>
         <input type="number" class="fin-qtd-input" id="finQtdInput" inputmode="numeric" min="0">
         <div class="fin-qtd-total" id="finQtdTotal">Total: --</div>
+        <div class="fin-qtd-restante" id="finQtdRestante" style="display:none"></div>
       </div>
     </div>
+    <div id="finQtdError" style="display:none;color:#ef5350;font-size:13px;font-weight:700;text-align:center;padding:4px 0"></div>
     <div class="dialog-btns">
       <button class="nao" onclick="fecharFinalizar()">NAO</button>
       <button class="sim" id="btnConfirmaFinalizar">FINALIZAR</button>
@@ -659,21 +662,54 @@ function finalizarSetorPeca(pecaCodigo,setor){
   /* Busca qtd total da peca */
   var pecaObj=null;for(var i=0;i<currentPecas.length;i++){if(currentPecas[i].codigo===pecaCodigo){pecaObj=currentPecas[i];break;}}
   var qtdTotal=pecaObj?Math.round(parseFloat(pecaObj.quantidade)||0):0;
+  /* Busca qtd ja produzida dessa peca nesse setor */
+  var qtdJaFeita=0;
+  if(currentPecasAtivas&&currentPecasAtivas[pecaCodigo]){
+    for(var j=0;j<currentPecasAtivas[pecaCodigo].length;j++){
+      if(currentPecasAtivas[pecaCodigo][j].setor===setor){
+        qtdJaFeita=currentPecasAtivas[pecaCodigo][j].qtd_produzida||0;
+        break;
+      }
+    }
+  }
+  var qtdRestante=qtdTotal-qtdJaFeita;
   /* Preenche dialog */
   document.getElementById('finalizarTitulo').textContent='FINALIZAR '+setor;
   document.getElementById('finalizarMsg').textContent=pecaCodigo+' - '+(pecaObj&&pecaObj.produto_nome?pecaObj.produto_nome:'');
   document.getElementById('finQtdTotal').textContent='Total: '+qtdTotal;
+  var restEl=document.getElementById('finQtdRestante');
+  if(qtdJaFeita>0){
+    restEl.textContent='Ja feito: '+qtdJaFeita+' | Restam: '+qtdRestante;
+    restEl.style.display='block';
+  }else{
+    restEl.style.display='none';
+  }
   var qtdInput=document.getElementById('finQtdInput');
-  qtdInput.value=qtdTotal;
-  qtdInput.max=qtdTotal;
+  qtdInput.value=qtdRestante;
+  qtdInput.max=qtdRestante;
+  qtdInput.style.color='#00e676';
+  document.getElementById('finQtdError').style.display='none';
   document.getElementById('finQtdRow').style.display='flex';
   document.getElementById('dialogFinalizar').classList.add('active');
   setTimeout(function(){qtdInput.focus();qtdInput.select();},100);
   document.getElementById('btnConfirmaFinalizar').onclick=function(){
     var qtdFinalizada=parseInt(qtdInput.value)||0;
-    if(qtdFinalizada<=0){qtdInput.style.color='#ef5350';return;}
+    if(qtdFinalizada<=0){
+      qtdInput.style.color='#ef5350';
+      var errEl=document.getElementById('finQtdError');
+      errEl.textContent='Informe uma quantidade maior que zero';
+      errEl.style.display='block';
+      return;
+    }
+    if(qtdFinalizada>qtdRestante){
+      qtdInput.style.color='#ef5350';
+      var errEl2=document.getElementById('finQtdError');
+      errEl2.textContent='Maximo permitido: '+qtdRestante+' pecas';
+      errEl2.style.display='block';
+      return;
+    }
     fecharFinalizar();
-    fetch('/api/finalizar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lote:currentLote,pecas:[pecaCodigo],setor:setor,qtd_produzida:qtdFinalizada})}).then(function(r){return r.json();}).then(function(data){if(data.success)showScreen(1);else alert('Erro: '+(data.error||'Erro desconhecido'));}).catch(function(e){alert('Erro de conexao');});
+    fetch('/api/finalizar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lote:currentLote,pecas:[pecaCodigo],setor:setor,qtd_produzida:qtdFinalizada})}).then(function(r){return r.json();}).then(function(data){if(data.success)showScreen(1);else{var errMsg=data.error||'Erro desconhecido';_debugToast(errMsg);}}).catch(function(e){_debugToast('Erro de conexao');});
   };
 }
 
@@ -740,6 +776,7 @@ function fecharFinalizar(){
   document.getElementById('dialogFinalizar').classList.remove('active');
   var qtdInput=document.getElementById('finQtdInput');
   qtdInput.style.color='#00e676';
+  document.getElementById('finQtdError').style.display='none';
 }
 
 /* ══ EVENT DELEGATION: cliques nas pecas ══ */

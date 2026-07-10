@@ -265,9 +265,13 @@ def init_db():
     """)
     # Garante coluna qtd_produzida existe (tabelas criadas antes)
     try:
-        db_execute("ALTER TABLE serralheria_producao ADD COLUMN qtd_produzida INT DEFAULT NULL")
-    except Exception:
-        pass  # coluna ja existe
+        db_execute("ALTER TABLE serralheria_producao ADD COLUMN qtd_produzida INT DEFAULT 0")
+        print('[OK] Coluna qtd_produzida adicionada')
+    except Exception as e:
+        if 'Duplicate column' in str(e):
+            print('[OK] Coluna qtd_produzida ja existe')
+        else:
+            print('[ERRO] Falha ao adicionar qtd_produzida: %s' % e)
 
     # Seed serra1-9 — DESABILITADO: operadores agora gerenciados pelo admin (5002)
     # for i in range(1, 10):
@@ -692,7 +696,7 @@ def api_pecas(lotcod):
             })
 
         ativas_raw = db_query(
-            "SELECT produto, of_numero, setor, usuario_nome "
+            "SELECT produto, of_numero, setor, usuario_nome, qtd_produzida "
             "FROM serralheria_producao WHERE lote = %s AND status = 'em_producao' AND setor IN %s",
             (lotcod, SETORES_SERRALHERIA)
         )
@@ -704,6 +708,7 @@ def api_pecas(lotcod):
             pecas_ativas[peca].append({
                 'setor': row['setor'],
                 'usuario': row['usuario_nome'],
+                'qtd_produzida': _int(row.get('qtd_produzida')),
             })
 
         return jsonify({
@@ -890,12 +895,11 @@ def api_finalizar():
         lotcod = data.get('lote')
         pecas = data.get('pecas', [])
         setor = data.get('setor', '')
-        qtd_produzida = data.get('qtd_produzida', 0)
+        qtd_informada = data.get('qtd_produzida', 0)
 
         if not lotcod:
             return jsonify({'error': 'Lote obrigatorio'}), 400
 
-        # Busca setor e of_numero das pecas ativas para sincronizar
         setor_para_dept = {
             'CORTE': 'CORTE', 'DOBRA': 'DOBRA', 'SOLDA': 'SOLDA',
             'ACABAMENTO': 'ACABAMENTO', 'MONTAGEM': 'MONTAGEM',
@@ -903,30 +907,70 @@ def api_finalizar():
         }
 
         if pecas and setor:
-            # Finalizar pecas em um setor especifico
-            update_sql = ("UPDATE serralheria_producao "
-                "SET status = 'finalizado', data_fim = NOW() ")
-            update_params = []
-            if qtd_produzida and qtd_produzida > 0:
-                update_sql += ", qtd_produzida = %s "
-                update_params.append(int(qtd_produzida))
-            placeholders = ','.join(['%s'] * len(pecas))
-            update_sql += (f"WHERE lote = %s AND produto IN ({placeholders}) "
-                f"AND setor = %s AND status = 'em_producao'")
-            db_execute(update_sql, update_params + [lotcod] + pecas + [setor])
+            # Finalizar pecas em um setor especifico (com suporte a quantidade parcial)
             for pcod in pecas:
                 row = db_query_one(
-                    "SELECT of_numero FROM serralheria_producao "
-                    "WHERE lote = %s AND produto = %s AND setor = %s AND status = 'finalizado' "
-                    "ORDER BY data_fim DESC LIMIT 1",
+                    "SELECT sp.id, sp.of_numero, sp.qtd_produzida, "
+                    "COALESCE(of2.qtde_ordem, 0) as qtde_ordem "
+                    "FROM serralheria_producao sp "
+                    "LEFT JOIN ordens_fabricacao of2 ON sp.of_numero = of2.of_numero "
+                    "WHERE sp.lote = %s AND sp.produto = %s AND sp.setor = %s "
+                    "AND sp.status = 'em_producao'",
                     (lotcod, pcod, setor)
                 )
-                if row:
+                if not row:
+                    app.logger.warning('Finalizar: peca %s setor %s nao encontrada em producao', pcod, setor)
+                    continue
+
+                qtd_total = _int(row['qtde_ordem'])
+                qtd_ja_feita = _int(row['qtd_produzida'])
+                restante = qtd_total - qtd_ja_feita
+
+                if qtd_total <= 0:
+                    # Sem qtde_ordem, finaliza direto
+                    db_execute(
+                        "UPDATE serralheria_producao SET status='finalizado', data_fim=NOW() "
+                        "WHERE id=%s", (row['id'],)
+                    )
                     dept = setor_para_dept.get(setor, setor)
                     _sync_op_status(row['of_numero'], dept, 'concluido')
-            app.logger.info('Lote %s: %d peca(s) finalizada(s) no setor %s', lotcod, len(pecas), setor)
+                    continue
+
+                # Validacao: quantidade nao pode exceder o restante
+                if qtd_informada > restante:
+                    return jsonify({
+                        'error': 'Quantidade maxima permitida: %d (restam %d de %d)' % (restante, restante, qtd_total),
+                        'max_qtd': restante
+                    }), 400
+
+                if qtd_informada <= 0:
+                    return jsonify({'error': 'Informe uma quantidade maior que zero'}), 400
+
+                nova_qtd = qtd_ja_feita + qtd_informada
+
+                if nova_qtd >= qtd_total:
+                    # Finalizacao completa
+                    db_execute(
+                        "UPDATE serralheria_producao "
+                        "SET status='finalizado', data_fim=NOW(), qtd_produzida=%s "
+                        "WHERE id=%s",
+                        (qtd_total, row['id'])
+                    )
+                    dept = setor_para_dept.get(setor, setor)
+                    _sync_op_status(row['of_numero'], dept, 'concluido')
+                    app.logger.info('Lote %s peca %s setor %s: FINALIZADA (%d/%d)', lotcod, pcod, setor, nova_qtd, qtd_total)
+                else:
+                    # Finalizacao parcial: acumula e mantem em_producao
+                    db_execute(
+                        "UPDATE serralheria_producao SET qtd_produzida=%s WHERE id=%s",
+                        (nova_qtd, row['id'])
+                    )
+                    app.logger.info('Lote %s peca %s setor %s: PARCIAL %d/%d (restam %d)',
+                        lotcod, pcod, setor, nova_qtd, qtd_total, qtd_total - nova_qtd)
+
+            return jsonify({'success': True, 'mensagem': 'Producao atualizada!'})
         elif pecas:
-            # Finalizar todas as producoes das pecas selecionadas (todos os setores)
+            # Finalizar todas as producoes das pecas selecionadas (todos os setores) — sem qtde parcial
             placeholders = ','.join(['%s'] * len(pecas))
             rows = db_query(
                 f"SELECT of_numero, setor FROM serralheria_producao "
