@@ -210,6 +210,46 @@ def formatar_data_br(value):
     except Exception:
         return str(value)
 
+@app.template_filter('formatar_data')
+def formatar_data(value):
+    """Formata date para dd/mm/yyyy"""
+    if not value:
+        return '-'
+    try:
+        if hasattr(value, 'strftime'):
+            return value.strftime('%d/%m/%Y')
+        return str(value)
+    except Exception:
+        return str(value)
+
+@app.template_filter('formatar_datetime')
+def formatar_datetime(value):
+    """Formata datetime para dd/mm/yyyy HH:MM:SS"""
+    if not value:
+        return '-'
+    try:
+        if hasattr(value, 'strftime'):
+            if hasattr(value, 'hour'):
+                return value.strftime('%d/%m/%Y %H:%M:%S')
+            return value.strftime('%d/%m/%Y')
+        return str(value)
+    except Exception:
+        return str(value)
+
+@app.template_filter('formatar_data_hora_br')
+def formatar_data_hora_br(value):
+    """Formata datetime para dd/mm/yyyy HH:MM"""
+    if not value:
+        return '-'
+    try:
+        if hasattr(value, 'strftime'):
+            if hasattr(value, 'hour'):
+                return value.strftime('%d/%m/%Y %H:%M')
+            return value.strftime('%d/%m/%Y')
+        return str(value)
+    except Exception:
+        return str(value)
+
 # =============================================
 # Proteção contra força bruta no login
 # Armazena em memória: {ip: {'tentativas': N, 'bloqueado_ate': timestamp}}
@@ -333,9 +373,7 @@ def dashboard():
     elif role in ('gerente', 'diretor'):
         return redirect(url_for('dashboard_gerente'))
     elif role == 'pcp':
-        return render_template('pcp/dashboard.html',
-                               usuario_nome=session['usuario_nome'],
-                               usuario_departamento=depto)
+        return redirect(url_for('dashboard_pcp'))
     elif role == 'almoxarifado':
         return redirect(url_for('dashboard_almoxarifado'))
     elif role == 'almoxarifado_OLD':
