@@ -539,8 +539,8 @@ function renderPecas(data){
   else if(finalizarMode){actions='<button class="btn-touch btn-red" onclick="confirmarFinalizarPecas()">FINALIZAR ('+selectedPecasFinalizar.length+')</button>';
   if(selectedPecasFinalizar.length===0)actions='<div style="text-align:center;padding:6px;color:#f59e0b;font-size:13px">Selecione as pecas para finalizar</div>'+actions;
   actions+='<button class="btn-back" onclick="sairModoFinalizar()" style="margin-left:8px">Cancelar</button>';}
-  if(selectedSetor&&selectedPecas.length>0){actions='<button class="btn-touch btn-green" onclick="iniciarProducaoSetor()">INICIAR PRODUCAO ('+selectedPecas.length+')</button>'+actions;}
-  else if(selectedSetor&&selectedPecas.length===0){actions='<div style="text-align:center;padding:6px;color:#f59e0b;font-size:13px">Selecione as pecas para '+esc(selectedSetor)+'</div>'+actions;}
+  if(selectedSetor&&selectedPecas.length>0){actions='<button class="btn-touch btn-green" onclick="iniciarProducaoSetor()">INICIAR PRODUCAO ('+selectedPecas.length+')</button>'+'<button class="btn-touch btn-red" onclick="cancelarSelecaoSetor()" style="margin-left:8px">CANCELAR</button>'+actions;}
+  else if(selectedSetor&&selectedPecas.length===0){actions='<div style="text-align:center;padding:6px;color:#f59e0b;font-size:13px">Selecione as pecas para '+esc(selectedSetor)+'</div>'+'<button class="btn-touch btn-red" onclick="cancelarSelecaoSetor()">CANCELAR</button>'+actions;}
   document.getElementById('pecasActions').innerHTML=actions;
 }
 
@@ -565,6 +565,13 @@ function abrirSetor(pecaCodigo,pecaSetores){
 function fecharSetor(){
   if(setorTimer){clearTimeout(setorTimer);setorTimer=null;}
   document.getElementById('dialogSetor').classList.remove('active');
+  /* Resetar estado de selecao de setor ao fechar o dialog */
+  if(selectedSetor){
+    selectedSetor=null;
+    selectedPecas=[];
+    /* Re-renderizar pecas para voltar ao estado normal */
+    if(currentPecas.length>0)renderPecas({pecas:currentPecas,pecas_ativas:currentPecasAtivas,descricao:document.querySelector('.section-title')?document.querySelector('.section-title').textContent:''});
+  }
 }
 function _fecharTodosDialogs(){
   fecharSetor();
@@ -572,15 +579,20 @@ function _fecharTodosDialogs(){
   var dc=document.getElementById('dialogConfirm');
   if(dc)dc.classList.remove('active');
 }
-function selecionarSetor(setor){selectedSetor=setor;selectedPecas=[];fecharSetor();fetch('/api/lotes/'+currentLote+'/pecas').then(function(r){return r.json();}).then(function(data){if(!data.error)renderPecas(data);});}
+function selecionarSetor(setor){selectedSetor=setor;selectedPecas=[];if(setorTimer){clearTimeout(setorTimer);setorTimer=null;}document.getElementById('dialogSetor').classList.remove('active');fetch('/api/lotes/'+currentLote+'/pecas').then(function(r){return r.json();}).then(function(data){if(!data.error)renderPecas(data);});}
 
+function cancelarSelecaoSetor(){
+  selectedSetor=null;
+  selectedPecas=[];
+  if(currentPecas.length>0)renderPecas({pecas:currentPecas,pecas_ativas:currentPecasAtivas,descricao:document.querySelector('.section-title')?document.querySelector('.section-title').textContent:''});
+}
 function togglePecaSelection(codigo){
   var idx=selectedPecas.indexOf(codigo);if(idx>=0)selectedPecas.splice(idx,1);else selectedPecas.push(codigo);
   var cards=document.querySelectorAll('.peca-card');
   for(var i=0;i<cards.length;i++){var card=cards[i];var codeEl=card.querySelector('.peca-codigo');if(!codeEl)continue;var code=codeEl.textContent;var checkIcon=card.querySelector('.pecas-check-icon');if(selectedPecas.indexOf(code)>=0){card.classList.add('selected');if(checkIcon)checkIcon.innerHTML='&#10003;';}else if(!card.classList.contains('em_producao')){card.classList.remove('selected');if(checkIcon)checkIcon.innerHTML='';}}
   var actionsEl=document.getElementById('pecasActions');var actions='';
-  if(selectedPecas.length>0)actions='<button class="btn-touch btn-green" onclick="iniciarProducaoSetor()">INICIAR PRODUCAO ('+selectedPecas.length+')</button>';
-  else actions='<div style="text-align:center;padding:6px;color:#f59e0b;font-size:13px">Selecione as pecas para '+esc(selectedSetor)+'</div>';
+  if(selectedPecas.length>0)actions='<button class="btn-touch btn-green" onclick="iniciarProducaoSetor()">INICIAR PRODUCAO ('+selectedPecas.length+')</button>'+'<button class="btn-touch btn-red" onclick="cancelarSelecaoSetor()" style="margin-left:8px">CANCELAR</button>';
+  else actions='<div style="text-align:center;padding:6px;color:#f59e0b;font-size:13px">Selecione as pecas para '+esc(selectedSetor)+'</div>'+'<button class="btn-touch btn-red" onclick="cancelarSelecaoSetor()">CANCELAR</button>';
   actions+='<button class="btn-back" onclick="showScreen(2)">&#8592; Voltar aos Lotes</button>';actionsEl.innerHTML=actions;
 }
 
@@ -657,7 +669,14 @@ function _bindPecaClicks(){
     }else if(isActive){
       return;
     }else if(selectedSetor){
-      togglePecaSelection(codigo);
+      /* Se setor selecionado mas nenhuma peca marcada, abrir popup para esta peca */
+      if(selectedPecas.length===0){
+        selectedSetor=null;
+        try{var setores=JSON.parse(decodeURIComponent(card.getAttribute('data-setores')||'[]'));}catch(er){setores=[];}
+        abrirSetor(codigo,setores);
+      }else{
+        togglePecaSelection(codigo);
+      }
     }else{
       try{var setores=JSON.parse(decodeURIComponent(card.getAttribute('data-setores')||'[]'));}catch(er){setores=[];}
       abrirSetor(codigo,setores);
