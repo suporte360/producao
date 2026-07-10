@@ -386,8 +386,10 @@ def api_dashboard():
 
         # ── Producoes ativas com detalhes ──
         ativos = db_query("""
-            SELECT sp.id, sp.lote, sp.produto, sp.usuario_nome, sp.data_inicio, sp.setor
+            SELECT sp.id, sp.lote, sp.produto, sp.usuario_nome, sp.data_inicio, sp.setor,
+                   of2.qtde_ordem
             FROM serralheria_producao sp
+            LEFT JOIN ordens_fabricacao of2 ON sp.of_numero = of2.of_numero
             WHERE sp.status = 'em_producao' AND sp.setor IN %s
             ORDER BY sp.data_inicio DESC
         """, (SETORES_SERRALHERIA,))
