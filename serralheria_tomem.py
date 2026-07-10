@@ -670,10 +670,13 @@ def api_pecas(lotcod):
         )
         pecas_ativas = {}
         for row in ativas_raw:
-            pecas_ativas[row['produto']] = {
+            peca = row['produto']
+            if peca not in pecas_ativas:
+                pecas_ativas[peca] = []
+            pecas_ativas[peca].append({
                 'setor': row['setor'],
                 'usuario': row['usuario_nome'],
-            }
+            })
 
         return jsonify({
             'lote': lotcod,
@@ -776,6 +779,7 @@ def api_finalizar():
         data = request.get_json()
         lotcod = data.get('lote')
         pecas = data.get('pecas', [])
+        setor = data.get('setor', '')
 
         if not lotcod:
             return jsonify({'error': 'Lote obrigatorio'}), 400
@@ -787,26 +791,43 @@ def api_finalizar():
             'FUNILARIA': 'FUNILARIA', 'PINTURA': 'PINTURA',
         }
 
-        if pecas:
-            # Finalizar apenas as pecas selecionadas
+        if pecas and setor:
+            # Finalizar pecas em um setor especifico
             placeholders = ','.join(['%s'] * len(pecas))
+            db_execute(
+                f"UPDATE serralheria_producao "
+                f"SET status = 'finalizado', data_fim = NOW() "
+                f"WHERE lote = %s AND produto IN ({placeholders}) AND setor = %s AND status = 'em_producao'",
+                [lotcod] + pecas + [setor]
+            )
+            for pcod in pecas:
+                row = db_query_one(
+                    "SELECT of_numero FROM serralheria_producao "
+                    "WHERE lote = %s AND produto = %s AND setor = %s AND status = 'finalizado' "
+                    "ORDER BY data_fim DESC LIMIT 1",
+                    (lotcod, pcod, setor)
+                )
+                if row:
+                    dept = setor_para_dept.get(setor, setor)
+                    _sync_op_status(row['of_numero'], dept, 'concluido')
+            app.logger.info('Lote %s: %d peca(s) finalizada(s) no setor %s', lotcod, len(pecas), setor)
+        elif pecas:
+            # Finalizar todas as producoes das pecas selecionadas (todos os setores)
+            placeholders = ','.join(['%s'] * len(pecas))
+            rows = db_query(
+                f"SELECT of_numero, setor FROM serralheria_producao "
+                f"WHERE lote = %s AND produto IN ({placeholders}) AND status = 'em_producao'",
+                [lotcod] + pecas
+            )
             db_execute(
                 f"UPDATE serralheria_producao "
                 f"SET status = 'finalizado', data_fim = NOW() "
                 f"WHERE lote = %s AND produto IN ({placeholders}) AND status = 'em_producao'",
                 [lotcod] + pecas
             )
-            # Sincroniza cada peca
-            for pcod in pecas:
-                row = db_query_one(
-                    "SELECT of_numero, setor FROM serralheria_producao "
-                    "WHERE lote = %s AND produto = %s AND status = 'finalizado' "
-                    "ORDER BY data_fim DESC LIMIT 1",
-                    (lotcod, pcod)
-                )
-                if row:
-                    dept = setor_para_dept.get(row.get('setor',''), row.get('setor',''))
-                    _sync_op_status(row['of_numero'], dept, 'concluido')
+            for row in rows:
+                dept = setor_para_dept.get(row.get('setor',''), row.get('setor',''))
+                _sync_op_status(row.get('of_numero'), dept, 'concluido')
             app.logger.info('Lote %s: %d peca(s) finalizada(s) no totem', lotcod, len(pecas))
         else:
             # Finalizar todas as pecas do lote

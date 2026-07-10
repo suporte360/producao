@@ -107,6 +107,8 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 .peca-card{background:#16213e;border:1px solid #2a2a5a;border-radius:10px;padding:14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-start;cursor:pointer;transition:all .2s}
 .peca-card:active{border-color:#f59e0b}
 .peca-card.em_producao{border-color:#00e676;opacity:.6;cursor:default}
+.peca-card.parcial{border-color:#f59e0b;border-style:dashed}
+.peca-card.parcial.finalizar-select{cursor:pointer}
 .peca-card.em_producao.finalizar-select{opacity:1;cursor:pointer}
 .peca-card.em_producao.finalizar-select:active{opacity:.8}
 .peca-card.selected{border-color:#f59e0b;background:rgba(245,158,11,.1)}
@@ -120,7 +122,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 .peca-card .peca-qtd{font-size:28px;font-weight:800;color:#fff;line-height:1.2;text-align:center;flex-shrink:0}
 .peca-card .peca-qtd-label{font-size:10px;color:rgba(255,255,255,.8);text-transform:uppercase;letter-spacing:1px;text-align:center}
 .peca-card .peca-qtd-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;background:rgba(33,150,243,.2);border:2px solid #42a5f5;border-radius:12px;padding:10px 16px;min-width:80px}
-.peca-card .peca-badge{font-size:10px;padding:2px 8px;border-radius:8px;font-weight:700;text-transform:uppercase;background:rgba(0,230,118,.15);color:#00e676;margin-top:4px;display:inline-block}
+.peca-badge{font-size:10px;padding:2px 8px;border-radius:8px;font-weight:700;text-transform:uppercase;background:rgba(0,230,118,.15);color:#00e676;margin-top:2px;display:inline-block;margin-right:4px}
 
 /* ── OPERATIONS LIST in pecas ── */
 .peca-ops{margin-top:6px;padding-top:6px;border-top:1px solid rgba(42,42,90,.5)}
@@ -159,6 +161,10 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 .setor-btn{background:#16213e;border:2px solid #2a2a5a;border-radius:14px;padding:20px 10px;text-align:center;cursor:pointer;font-size:15px;font-weight:700;color:#e0e0e0;transition:all .2s;text-transform:uppercase;letter-spacing:1px}
 .setor-btn:active{border-color:#f59e0b;background:#1e2a4e}
 .setor-btn .setor-icon{font-size:26px;margin-bottom:6px}
+.setor-btn.ativo{border-color:#00e676;background:rgba(0,230,118,.08);cursor:default}
+.setor-btn.ativo .setor-info{font-size:10px;color:#00e676;margin-top:4px}
+.setor-btn.ativo .setor-finalizar{display:inline-block;margin-top:8px;padding:6px 14px;background:#ef5350;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;text-transform:uppercase}
+.setor-btn.ativo .setor-finalizar:active{background:#c62828}
 .setor-btn.active-setor{border-color:#00e676;background:rgba(0,230,118,.1);color:#00e676}
 .pecas-check-icon{width:22px;height:22px;border-radius:50%;border:2px solid #2a2a5a;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:10px;transition:all .2s;font-size:13px;color:transparent}
 .peca-card.selected .pecas-check-icon{border-color:#f59e0b;background:#f59e0b;color:#000}
@@ -282,8 +288,8 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 <!-- ========== SETOR DIALOG ========== -->
 <div class="dialog-overlay" id="dialogSetor">
   <div class="dialog-box">
-    <h3>Escolha o Setor</h3>
-    <p>Selecione o setor para iniciar a producao</p>
+    <h3 id="dialogSetorTitle">Escolha o Setor</h3>
+    <p id="dialogSetorDesc">Selecione o setor para iniciar a producao</p>
     <div id="setorBtnsDynamic"></div>
     <div style="margin-top:16px">
       <button class="btn-back" onclick="fecharSetor()" style="width:100%;max-width:100%;padding:10px">Cancelar</button>
@@ -298,6 +304,7 @@ var currentPecasAtivas = {};
 var selectedSetor = null;
 var selectedPecas = [];
 var ultimaPecaClicada = null;
+var ultimaPecaAtivas = [];
 var finalizarMode = false;
 var selectedPecasFinalizar = [];
 var DASH_REFRESH = 10000;
@@ -468,7 +475,7 @@ function renderPecas(data){
     html+='<div style="padding:4px 4px 12px;font-size:14px;color:#999;line-height:1.4">'+esc(data.descricao)+'</div>';
   }
 
-  var disponiveis=0;for(var k=0;k<pecas.length;k++){if(!currentPecasAtivas[pecas[k].codigo])disponiveis++;}
+  var disponiveis=0;for(var k=0;k<pecas.length;k++){var ap=currentPecasAtivas[pecas[k].codigo];var apArr=ap&&ap.length?ap:[];var ps=pecas[k].setores||[];var hasPending2=false;for(var ss=0;ss<ps.length;ss++){var found2=false;for(var aa=0;aa<apArr.length;aa++){if(apArr[aa].setor===ps[ss]){found2=true;break;}}if(!found2){hasPending2=true;break;}}if(hasPending2)disponiveis++;}
   html+='<div class="section-title">Pecas para Fabricar ('+disponiveis+' de '+pecas.length+')</div>';
 
   for(var i=0;i<pecas.length;i++){
@@ -476,13 +483,32 @@ function renderPecas(data){
     var tipo=p.codigo.substring(0,2);
     var tipoLabel=tipo==='CJ'?'Conjunto':'Peca';
     var qtd=Math.round(parseFloat(p.quantidade));
-    var isActive=currentPecasAtivas[p.codigo];
+    var ativasPeca=currentPecasAtivas[p.codigo];
+    var ativasArr=(ativasPeca&&ativasPeca.length)?ativasPeca:[];
+    var pecaSetores=p.setores||[];
+    /* Calcular setores pendentes */
+    var pendingSetores=[];
+    for(var s=0;s<pecaSetores.length;s++){var sFound=false;for(var a=0;a<ativasArr.length;a++){if(ativasArr[a].setor===pecaSetores[s]){sFound=true;break;}}if(!sFound)pendingSetores.push(pecaSetores[s]);}
+    var hasAtivo=ativasArr.length>0;
+    var hasPending=pendingSetores.length>0;
+    var allDone=hasAtivo&&!hasPending;
+
     var cardClass='peca-card';var checkIcon='';
     var dataAttrs=' data-codigo="'+esc(p.codigo)+'"';
 
-    if(isActive){cardClass+=' em_producao';hasAtivas=true;if(finalizarMode){cardClass+=' finalizar-select';var isSelFinal=selectedPecasFinalizar.indexOf(p.codigo)>=0;if(isSelFinal){cardClass+=' selected';checkIcon='<div class="pecas-check-icon">&#10003;</div>';}else{checkIcon='<div class="pecas-check-icon"></div>';}dataAttrs+=' data-action="finalizar"';}else{checkIcon='<div class="pecas-check-icon">&#10003;</div>';dataAttrs+=' data-action="nenhum"';}}
-    else{checkIcon='<div class="pecas-check-icon"></div>';dataAttrs+=' data-action="setor" data-setores="'+encodeURIComponent(JSON.stringify(p.setores||[]))+'"';
-      if(selectedSetor){var isSelected=selectedPecas.indexOf(p.codigo)>=0;if(isSelected){cardClass+=' selected';checkIcon='<div class="pecas-check-icon">&#10003;</div>';}else{checkIcon='<div class="pecas-check-icon"></div>';}}}
+    if(allDone){
+      cardClass+=' em_producao';hasAtivas=true;
+      if(finalizarMode){cardClass+=' finalizar-select';var isSelFinal=selectedPecasFinalizar.indexOf(p.codigo)>=0;if(isSelFinal){cardClass+=' selected';checkIcon='<div class="pecas-check-icon">&#10003;</div>';}else{checkIcon='<div class="pecas-check-icon"></div>';}dataAttrs+=' data-action="finalizar"';}
+      else{checkIcon='<div class="pecas-check-icon">&#10003;</div>';}
+    }else if(hasAtivo&&hasPending){
+      cardClass+=' parcial';hasAtivas=true;
+      if(finalizarMode){cardClass+=' finalizar-select';var isSelFinal=selectedPecasFinalizar.indexOf(p.codigo)>=0;if(isSelFinal){cardClass+=' selected';checkIcon='<div class="pecas-check-icon">&#10003;</div>';}else{checkIcon='<div class="pecas-check-icon"></div>';}dataAttrs+=' data-action="finalizar"';}
+      else{checkIcon='<div class="pecas-check-icon"></div>';}
+    }else{
+      checkIcon='<div class="pecas-check-icon"></div>';
+    }
+    dataAttrs+=' data-setores="'+encodeURIComponent(JSON.stringify(pecaSetores))+'"';
+    dataAttrs+=' data-setores-ativos="'+encodeURIComponent(JSON.stringify(ativasArr))+'"';
 
     var pNome=p.produto_nome?esc(p.produto_nome):'';
 
@@ -507,13 +533,21 @@ function renderPecas(data){
 
     /* Setor tags */
     var setorTags='';
-    if(p.setores&&p.setores.length>0){
+    if(pecaSetores.length>0){
       setorTags='<div class="peca-setores">';
-      for(var s=0;s<p.setores.length;s++){
-        var isDone=isActive&&isActive.setor===p.setores[s];
-        setorTags+='<span class="peca-setor-tag'+(isDone?' done':'')+'">'+esc(p.setores[s])+'</span>';
+      for(var s=0;s<pecaSetores.length;s++){
+        var tagDone=false;for(var a=0;a<ativasArr.length;a++){if(ativasArr[a].setor===pecaSetores[s]){tagDone=true;break;}}
+        setorTags+='<span class="peca-setor-tag'+(tagDone?' done':'')+'">'+esc(pecaSetores[s])+'</span>';
       }
       setorTags+='</div>';
+    }
+
+    /* Badges de producao ativa */
+    var badgesHtml='';
+    if(ativasArr.length>0){
+      for(var a=0;a<ativasArr.length;a++){
+        badgesHtml+='<div class="peca-badge">'+esc(ativasArr[a].setor)+' - '+esc(ativasArr[a].usuario)+'</div>';
+      }
     }
 
     html+='<div class="'+cardClass+'"'+dataAttrs+'>'
@@ -525,7 +559,7 @@ function renderPecas(data){
       +'<div class="peca-sub">'+tipoLabel+' | OF '+p.ordem+' | Qtd: '+qtd+'</div>'
       +setorTags
       +opsHtml
-      +(isActive?'<div class="peca-badge">'+esc(isActive.setor)+' - '+esc(isActive.usuario)+'</div>':'')
+      +badgesHtml
       +'</div></div>'
       +'<div class="peca-qtd-wrap"><div class="peca-qtd">'+qtd+'</div><div class="peca-qtd-label">pecas</div></div>'
       +'</div>';
@@ -545,17 +579,32 @@ function renderPecas(data){
   document.getElementById('pecasActions').innerHTML=actions;
 }
 
-function abrirSetor(pecaCodigo,pecaSetores){
+function abrirSetor(pecaCodigo,pecaSetores,ativasArr){
   ultimaPecaClicada=pecaCodigo;
+  ultimaPecaAtivas=ativasArr||[];
   if(!pecaSetores||pecaSetores.length===0){pecaSetores=['CORTE','DOBRA','SOLDA','ACABAMENTO','MONTAGEM'];}
   var icons={'CORTE':'&#9986;','DOBRA':'&#8634;','SOLDA':'&#9899;','ACABAMENTO':'&#10003;','MONTAGEM':'&#9881;'};
   var labels={'ACABAMENTO':'ACABAM.'};
-  var isOdd=pecaSetores.length%2!==0;
+  /* Separar ativos dos pendentes */
+  var ativosMap={};for(var a=0;a<ultimaPecaAtivas.length;a++){ativosMap[ultimaPecaAtivas[a].setor]=ultimaPecaAtivas[a].usuario;}
+  var hasAtivos=ultimaPecaAtivas.length>0;
+  var hasPendentes=false;
+  for(var i=0;i<pecaSetores.length;i++){if(!ativosMap[pecaSetores[i]]){hasPendentes=true;break;}}
+  /* Atualizar titulo */
+  var tituloEl=document.getElementById('dialogSetorTitle');
+  var descEl=document.getElementById('dialogSetorDesc');
+  if(hasAtivos&&hasPendentes){tituloEl.textContent=pecaCodigo+' - Producao por Setor';descEl.textContent='Setores em producao e pendentes';}
+  else if(hasAtivos){tituloEl.textContent=pecaCodigo+' - Todos os Setores Ativos';descEl.textContent='Clique em FINALIZAR para encerrar';}
+  else{tituloEl.textContent=pecaCodigo+' - Escolha o Setor';descEl.textContent='Selecione o setor para iniciar a producao';}
   var html='<div class="setor-grid">';
   for(var i=0;i<pecaSetores.length;i++){
     var s=pecaSetores[i];
-    var spanStyle=(isOdd&&i===pecaSetores.length-1)?' style="grid-column:span 2"':'';
-    html+='<div class="setor-btn" onclick="selecionarSetor(\''+s+'\')"'+spanStyle+'><div class="setor-icon">'+(icons[s]||'&#9881;')+'</div>'+(labels[s]||s)+'</div>';
+    var usuario=ativosMap[s];
+    if(usuario){
+      html+='<div class="setor-btn ativo"><div class="setor-icon">'+(icons[s]||'&#9881;')+'</div>'+(labels[s]||s)+'<div class="setor-info">Em producao - '+esc(usuario)+'</div><button class="setor-finalizar" onclick="finalizarSetorPeca(\''+esc(pecaCodigo)+'\',\''+s+'\')">FINALIZAR '+s+'</button></div>';
+    }else{
+      html+='<div class="setor-btn" onclick="selecionarSetor(\''+s+'\')"><div class="setor-icon">'+(icons[s]||'&#9881;')+'</div>'+(labels[s]||s)+'</div>';
+    }
   }
   html+='</div>';
   document.getElementById('setorBtnsDynamic').innerHTML=html;
@@ -588,6 +637,16 @@ function selecionarSetor(setor){
   if(setorTimer){clearTimeout(setorTimer);setorTimer=null;}
   document.getElementById('dialogSetor').classList.remove('active');
   iniciarProducaoSetor();
+}
+function finalizarSetorPeca(pecaCodigo,setor){
+  if(setorTimer){clearTimeout(setorTimer);setorTimer=null;}
+  document.getElementById('dialogSetor').classList.remove('active');
+  document.getElementById('finalizarMsg').textContent='Finalizar '+setor+' da peca '+pecaCodigo+'?';
+  document.getElementById('dialogFinalizar').classList.add('active');
+  document.getElementById('btnConfirmaFinalizar').onclick=function(){
+    fecharFinalizar();
+    fetch('/api/finalizar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lote:currentLote,pecas:[pecaCodigo],setor:setor})}).then(function(r){return r.json();}).then(function(data){if(data.success)showScreen(1);else alert('Erro: '+(data.error||'Erro desconhecido'));}).catch(function(e){alert('Erro de conexao');});
+  };
 }
 
 function cancelarSelecaoSetor(){
@@ -671,19 +730,16 @@ function _bindPecaClicks(){
     if(!card)return;
     var codigo=card.getAttribute('data-codigo');
     if(!codigo)return;
-    var isActive=currentPecasAtivas[codigo];
     if(finalizarMode){
-      if(isActive)toggleFinalizarPeca(codigo);
-    }else if(isActive){
+      var ativasCheck=currentPecasAtivas[codigo];
+      if(ativasCheck&&ativasCheck.length>0)toggleFinalizarPeca(codigo);
       return;
-    }else if(selectedSetor&&selectedPecas.length>0){
-      togglePecaSelection(codigo);
-    }else{
-      /* Se tinha setor selecionado mas nenhuma peca marcada, resetar */
-      if(selectedSetor){selectedSetor=null;selectedPecas=[];}
-      try{var setores=JSON.parse(decodeURIComponent(card.getAttribute('data-setores')||'[]'));}catch(er){setores=[];}
-      abrirSetor(codigo,setores);
     }
+    /* Sempre abre o popup de setores (mostra ativos e pendentes) */
+    if(selectedSetor){selectedSetor=null;selectedPecas=[];}
+    try{var setores=JSON.parse(decodeURIComponent(card.getAttribute('data-setores')||'[]'));}catch(er){setores=[];}
+    try{var ativos=JSON.parse(decodeURIComponent(card.getAttribute('data-setores-ativos')||'[]'));}catch(er){ativos=[];}
+    abrirSetor(codigo,setores,ativos);
   };
 }
 
