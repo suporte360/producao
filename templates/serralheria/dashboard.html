@@ -565,13 +565,15 @@ function abrirSetor(pecaCodigo,pecaSetores){
 }
 function fecharSetor(){
   if(setorTimer){clearTimeout(setorTimer);setorTimer=null;}
-  document.getElementById('dialogSetor').classList.remove('active');
-  /* Resetar estado de selecao de setor ao fechar o dialog */
-  if(selectedSetor){
-    selectedSetor=null;
-    selectedPecas=[];
-    /* Re-renderizar pecas para voltar ao estado normal */
-    if(currentPecas.length>0)renderPecas({pecas:currentPecas,pecas_ativas:currentPecasAtivas,descricao:document.querySelector('.section-title')?document.querySelector('.section-title').textContent:''});
+  var dialog=document.getElementById('dialogSetor');
+  /* So reseta estado se o dialog ESTA aberto (cancelamento/timeout) */
+  if(dialog&&dialog.classList.contains('active')){
+    dialog.classList.remove('active');
+    if(selectedSetor){
+      selectedSetor=null;
+      selectedPecas=[];
+      if(currentPecas.length>0)renderPecas({pecas:currentPecas,pecas_ativas:currentPecasAtivas,descricao:document.querySelector('.section-title')?document.querySelector('.section-title').textContent:''});
+    }
   }
 }
 function _fecharTodosDialogs(){
