@@ -766,19 +766,86 @@ def api_iniciar():
         return jsonify({'error': str(e)}), 500
 
 
+def _atualizar_departamento_lote(lote_ordem):
+    """Recalcula departamento_atual, setor_atual_seq e total_setores de um lote.
+    Replica a logica de mysql_db.atualizar_departamento_atual para o totem."""
+    if not lote_ordem:
+        return
+    # Total de departamentos unicos do lote
+    total = db_query_one(
+        "SELECT COUNT(DISTINCT op.departamento) as t FROM operacoes_producao op "
+        "INNER JOIN ordens_fabricacao of2 ON op.of_numero = of2.of_numero "
+        "WHERE of2.lote_ordem = %s AND op.departamento IS NOT NULL AND op.departamento != ''",
+        (lote_ordem,)
+    )
+    total_setores = int(total['t'] or 0) if total else 0
+
+    # Primeira operacao pendente (nao concluida) por sequencia
+    primeira = db_query_one(
+        "SELECT op.departamento, op.sequencia FROM operacoes_producao op "
+        "INNER JOIN ordens_fabricacao of2 ON op.of_numero = of2.of_numero "
+        "WHERE of2.lote_ordem = %s AND op.status != 'concluido' "
+        "ORDER BY op.sequencia ASC LIMIT 1",
+        (lote_ordem,)
+    )
+    dept = primeira['departamento'] if primeira else None
+    seq = int(primeira['sequencia']) if primeira else 0
+
+    db_execute(
+        "UPDATE lotes_producao "
+        "SET departamento_atual = %s, setor_atual_seq = %s, total_setores = %s "
+        "WHERE ordem = %s",
+        (dept, seq, total_setores, lote_ordem)
+    )
+
+
+def _sync_lote_status(of_numero, novo_status):
+    """Atualiza status do lote em lotes_producao conforme operacoes."""
+    if not of_numero:
+        return
+    of_row = db_query_one(
+        "SELECT lote_ordem FROM ordens_fabricacao WHERE of_numero = %s LIMIT 1",
+        (of_numero,)
+    )
+    if not of_row or not of_row.get('lote_ordem'):
+        return
+    lote_ordem = of_row['lote_ordem']
+
+    if novo_status == 'em_andamento':
+        # Muda status do lote para em_producao se ainda estiver liberado
+        db_execute(
+            "UPDATE lotes_producao SET status = 'em_producao' "
+            "WHERE ordem = %s AND status = 'liberado'",
+            (lote_ordem,)
+        )
+    elif novo_status == 'concluido':
+        # Verifica se TODAS as ops do lote estao concluidas
+        total_pend = db_query_one(
+            "SELECT COUNT(*) as t FROM operacoes_producao op "
+            "INNER JOIN ordens_fabricacao of2 ON op.of_numero = of2.of_numero "
+            "WHERE of2.lote_ordem = %s AND op.status != 'concluido'",
+            (lote_ordem,)
+        )
+        if total_pend and int(total_pend['t']) == 0:
+            db_execute(
+                "UPDATE lotes_producao SET status = 'finalizado' WHERE ordem = %s AND status != 'finalizado'",
+                (lote_ordem,)
+            )
+
+
 def _sync_op_status(of_numero, departamento, novo_status):
-    """Sincroniza operacoes_producao e kanban_cards quando totem inicia/finaliza."""
+    """Sincroniza operacoes_producao, kanban_cards e lotes_producao quando totem inicia/finaliza."""
     if not of_numero or not departamento:
         return
     try:
-        # Atualiza operacoes_producao
+        # 1. Atualiza operacoes_producao
         db_execute(
             "UPDATE operacoes_producao SET status = %s, data_inicio = COALESCE(data_inicio, NOW()), "
             "data_fim = CASE WHEN %s = 'concluido' THEN NOW() ELSE data_fim END "
             "WHERE of_numero = %s AND departamento = %s AND status != 'concluido'",
             (novo_status, novo_status, of_numero, departamento)
         )
-        # Atualiza kanban_cards
+        # 2. Atualiza kanban_cards
         etapa_map = {'em_andamento': 'em_producao', 'concluido': 'concluido', 'pendente': 'aguardando'}
         nova_etapa = etapa_map.get(novo_status)
         if nova_etapa:
@@ -787,8 +854,23 @@ def _sync_op_status(of_numero, departamento, novo_status):
                 "WHERE of_numero = %s AND departamento = %s AND etapa != 'concluido'",
                 (nova_etapa, of_numero, departamento)
             )
+        # 3. Sincroniza lotes_producao (status + departamento_atual)
+        _sync_lote_status(of_numero, novo_status)
+        _atualizar_departamento_lote_from_of(of_numero)
     except Exception as e:
         app.logger.warning('Sync op status falhou: %s', e)
+
+
+def _atualizar_departamento_lote_from_of(of_numero):
+    """Recalcula departamento_atual do lote a partir de uma OF."""
+    if not of_numero:
+        return
+    of_row = db_query_one(
+        "SELECT lote_ordem FROM ordens_fabricacao WHERE of_numero = %s LIMIT 1",
+        (of_numero,)
+    )
+    if of_row and of_row.get('lote_ordem'):
+        _atualizar_departamento_lote(of_row['lote_ordem'])
 
 
 @app.route('/api/finalizar', methods=['POST'])
