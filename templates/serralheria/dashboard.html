@@ -297,6 +297,7 @@ var currentPecas = [];
 var currentPecasAtivas = {};
 var selectedSetor = null;
 var selectedPecas = [];
+var ultimaPecaClicada = null;
 var finalizarMode = false;
 var selectedPecasFinalizar = [];
 var DASH_REFRESH = 10000;
@@ -545,6 +546,7 @@ function renderPecas(data){
 }
 
 function abrirSetor(pecaCodigo,pecaSetores){
+  ultimaPecaClicada=pecaCodigo;
   if(!pecaSetores||pecaSetores.length===0){pecaSetores=['CORTE','DOBRA','SOLDA','ACABAMENTO','MONTAGEM'];}
   var icons={'CORTE':'&#9986;','DOBRA':'&#8634;','SOLDA':'&#9899;','ACABAMENTO':'&#10003;','MONTAGEM':'&#9881;'};
   var labels={'ACABAMENTO':'ACABAM.'};
@@ -578,7 +580,13 @@ function _fecharTodosDialogs(){
   var dc=document.getElementById('dialogConfirm');
   if(dc)dc.classList.remove('active');
 }
-function selecionarSetor(setor){selectedSetor=setor;selectedPecas=[];if(setorTimer){clearTimeout(setorTimer);setorTimer=null;}document.getElementById('dialogSetor').classList.remove('active');fetch('/api/lotes/'+currentLote+'/pecas').then(function(r){return r.json();}).then(function(data){if(!data.error)renderPecas(data);});}
+function selecionarSetor(setor){
+  selectedSetor=setor;
+  selectedPecas=ultimaPecaClicada?[ultimaPecaClicada]:[];
+  if(setorTimer){clearTimeout(setorTimer);setorTimer=null;}
+  document.getElementById('dialogSetor').classList.remove('active');
+  iniciarProducaoSetor();
+}
 
 function cancelarSelecaoSetor(){
   selectedSetor=null;
