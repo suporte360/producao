@@ -967,6 +967,68 @@ def api_totem_usuario_deletar(uid):
     return jsonify({'status': 'success'})
 
 # =============================================
+# RELATORIOS (admin, gerente, pcp, diretor)
+# =============================================
+
+@app.route('/admin/relatorios')
+@login_required
+@role_required('admin', 'gerente', 'pcp', 'diretor')
+def admin_relatorios():
+    """Pagina de relatorios completa."""
+    dados_ger = db.get_dashboard_gerente()
+    lotes_atrasados = db.get_relatorio_lotes_atrasados()
+    serralheria = db.get_relatorio_serralheria_resumo()
+    producao_30d = db.get_relatorio_producao_30_dias()
+    usuarios = db.listar_usuarios()
+    return render_template('admin/relatorios.html',
+                           dados_ger=dados_ger,
+                           lotes_atrasados=lotes_atrasados,
+                           serralheria=serralheria,
+                           producao_30d=producao_30d,
+                           usuarios=usuarios,
+                           usuario_nome=session.get('usuario_nome', ''),
+                           now=datetime.now())
+
+@app.route('/api/relatorios/producao_periodo', methods=['GET'])
+@login_required
+@role_required('admin', 'gerente', 'pcp', 'diretor')
+def api_relatorio_producao_periodo():
+    """API: producao finalizada por periodo (AJAX)."""
+    di = request.args.get('data_inicio', '')
+    df = request.args.get('data_fim', '')
+    if not di or not df:
+        return jsonify({'error': 'Informe data_inicio e data_fim'}), 400
+    try:
+        kpis = db.get_relatorio_producao_periodo_kpis(di, df)
+        lotes = db.get_relatorio_producao_periodo(di, df)
+        return jsonify({
+            'kpis': {k: int(v or 0) for k, v in kpis.items()},
+            'lotes': [{k: (str(v) if isinstance(v, (datetime, timedelta)) else v) for k, v in r.items()} for r in lotes],
+            'total': len(lotes)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/relatorios/serralheria_periodo', methods=['GET'])
+@login_required
+@role_required('admin', 'gerente', 'pcp', 'diretor')
+def api_relatorio_serralheria_periodo():
+    """API: producao serralheria por periodo (AJAX)."""
+    di = request.args.get('data_inicio', '')
+    df = request.args.get('data_fim', '')
+    if not di or not df:
+        return jsonify({'error': 'Informe data_inicio e data_fim'}), 400
+    try:
+        rows = db.get_relatorio_serralheria_periodo(di, df)
+        result = []
+        for r in rows:
+            result.append({k: (str(v) if isinstance(v, (datetime, timedelta)) else v) for k, v in r.items()})
+        return jsonify({'dados': result, 'total': len(result)})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# =============================================
+# DIRETOR / GERENTE VIEWS
 # Diretor — Relatórios, Logs, Métricas (somente leitura)
 # =============================================
 

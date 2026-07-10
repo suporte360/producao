@@ -1,66 +1,555 @@
 {% extends "admin/base.html" %}
 {% block title %}Relatórios{% endblock %}
+
 {% block content %}
+{% set k = dados_ger.kpis %}
+
 <h2 class="mb-4"><i class="bi bi-file-earmark-bar-graph me-2"></i>Relatórios de Produção</h2>
 
-<div class="row mb-4">
-    <div class="col-md-6 mb-3">
-        <div class="admin-card">
-            <h5 class="mb-3"><i class="bi bi-clipboard-check me-2"></i>Resumo ERP (PostgreSQL)</h5>
-            <table class="table table-sm">
-                <tr><td><strong>Total Ordens:</strong></td><td>{{ erp_stats.total }}</td></tr>
-                <tr><td><strong>Urgentes:</strong></td><td class="text-danger">{{ erp_stats.urgentes }}</td></tr>
-                <tr><td><strong>Atrasadas:</strong></td><td class="text-warning">{{ erp_stats.atrasadas }}</td></tr>
-                <tr><td><strong>Normais:</strong></td><td class="text-success">{{ erp_stats.normais }}</td></tr>
-            </table>
-        </div>
+<!-- TABS -->
+<ul class="nav nav-tabs mb-4" id="relTabs" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" id="tab-geral" data-bs-toggle="tab" data-bs-target="#painel-geral" type="button" role="tab">
+      <i class="bi bi-speedometer2 me-1"></i> Visão Geral
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="tab-atrasados" data-bs-toggle="tab" data-bs-target="#painel-atrasados" type="button" role="tab">
+      <i class="bi bi-exclamation-triangle me-1"></i> Atrasados
+      {% if lotes_atrasados|length > 0 %}
+      <span class="badge bg-danger ms-1">{{ lotes_atrasados|length }}</span>
+      {% endif %}
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="tab-periodo" data-bs-toggle="tab" data-bs-target="#painel-periodo" type="button" role="tab">
+      <i class="bi bi-calendar-range me-1"></i> Produção por Período
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="tab-serralheria" data-bs-toggle="tab" data-bs-target="#painel-serralheria" type="button" role="tab">
+      <i class="bi bi-gear me-1"></i> Serralheria (Totem)
+    </button>
+  </li>
+</ul>
+
+<div class="tab-content">
+
+<!-- ═══════════════ TAB 1: VISÃO GERAL ═══════════════ -->
+<div class="tab-pane fade show active" id="painel-geral" role="tabpanel">
+
+  <!-- KPIs -->
+  <div class="row g-3 mb-4">
+    <div class="col-lg-2 col-md-4 col-6">
+      <div class="admin-card stat-card text-center" style="border-left-color:#0d6efd">
+        <div class="fs-2 fw-bold text-primary">{{ k.total_lotes }}</div>
+        <div class="text-muted small">Total Lotes</div>
+      </div>
     </div>
-    <div class="col-md-6 mb-3">
-        <div class="admin-card">
-            <h5 class="mb-3"><i class="bi bi-people me-2"></i>Usuários Ativos</h5>
-            <table class="table table-sm">
-                <tr><td><strong>Total:</strong></td><td>{{ usuarios|length }}</td></tr>
-                <tr><td><strong>Admins:</strong></td><td>{{ usuarios|selectattr('role','eq','admin')|list|length }}</td></tr>
-                <tr><td><strong>Gerentes:</strong></td><td>{{ usuarios|selectattr('role','eq','gerente')|list|length }}</td></tr>
-                <tr><td><strong>Operadores:</strong></td><td>{{ usuarios|selectattr('role','eq','operador')|list|length }}</td></tr>
-            </table>
-        </div>
+    <div class="col-lg-2 col-md-4 col-6">
+      <div class="admin-card stat-card text-center" style="border-left-color:#ffc107">
+        <div class="fs-2 fw-bold text-warning">{{ k.aguardando_liberacao + k.aguardando_inicio }}</div>
+        <div class="text-muted small">Aguardando</div>
+      </div>
     </div>
+    <div class="col-lg-2 col-md-4 col-6">
+      <div class="admin-card stat-card text-center" style="border-left-color:#fd7e14">
+        <div class="fs-2 fw-bold" style="color:#fd7e14">{{ k.em_producao }}</div>
+        <div class="text-muted small">Em Produção</div>
+      </div>
+    </div>
+    <div class="col-lg-2 col-md-4 col-6">
+      <div class="admin-card stat-card text-center" style="border-left-color:#198754">
+        <div class="fs-2 fw-bold text-success">{{ k.concluidos_hoje }}</div>
+        <div class="text-muted small">Finaliz. Hoje</div>
+      </div>
+    </div>
+    <div class="col-lg-2 col-md-4 col-6">
+      <div class="admin-card stat-card text-center" style="border-left-color:#dc3545">
+        <div class="fs-2 fw-bold text-danger">{{ k.atrasados }}</div>
+        <div class="text-muted small">Atrasados</div>
+      </div>
+    </div>
+    <div class="col-lg-2 col-md-4 col-6">
+      <div class="admin-card stat-card text-center" style="border-left-color:#6f42c1">
+        <div class="fs-2 fw-bold" style="color:#6f42c1">{{ k.concluidos_mes }}</div>
+        <div class="text-muted small">Mês Atual</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gráficos -->
+  <div class="row g-3 mb-4">
+    <div class="col-lg-8">
+      <div class="admin-card">
+        <h6 class="mb-3"><i class="bi bi-bar-chart me-2 text-primary"></i>Produção — Últimos 30 dias <span class="text-muted fw-normal small">(lotes finalizados)</span></h6>
+        <div style="height:280px"><canvas id="chart30dias"></canvas></div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="admin-card">
+        <h6 class="mb-3"><i class="bi bi-pie-chart me-2 text-info"></i>Status Geral</h6>
+        <div style="height:200px"><canvas id="chartStatus"></canvas></div>
+        <div class="mt-3 small">
+          <div class="d-flex justify-content-between mb-1"><span><span class="badge bg-warning me-1">&nbsp;</span>Aguardando</span><strong>{{ k.aguardando_liberacao + k.aguardando_inicio }}</strong></div>
+          <div class="d-flex justify-content-between mb-1"><span><span class="badge me-1" style="background:#fd7e14">&nbsp;</span>Em Produção</span><strong>{{ k.em_producao }}</strong></div>
+          <div class="d-flex justify-content-between mb-1"><span><span class="badge bg-success me-1">&nbsp;</span>Concluídos Hoje</span><strong>{{ k.concluidos_hoje }}</strong></div>
+          <div class="d-flex justify-content-between"><span><span class="badge bg-danger me-1">&nbsp;</span>Atrasados</span><strong class="text-danger">{{ k.atrasados }}</strong></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Carga por Setor -->
+  <div class="admin-card mb-4">
+    <h6 class="mb-3"><i class="bi bi-building me-2 text-primary"></i>Carga por Setor <span class="text-muted fw-normal small">(operações ativas)</span></h6>
+    {% if dados_ger.por_setor %}
+    <div class="table-responsive">
+      <table class="table table-sm table-hover">
+        <thead class="table-light">
+          <tr>
+            <th>Setor</th>
+            <th class="text-center">Pendentes</th>
+            <th class="text-center">Em Andamento</th>
+            <th class="text-center">Pausados</th>
+            <th class="text-center">Concl. Hoje</th>
+            <th class="text-center">Total</th>
+            <th style="min-width:150px">Carga</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set max_carga = (dados_ger.por_setor | map(attribute='total_ops') | max) or 1 %}
+          {% for s in dados_ger.por_setor %}
+          {% if s.total_ops and s.total_ops > 0 %}
+          <tr>
+            <td>
+              <span class="d-inline-block rounded-circle me-2" style="width:10px;height:10px;background:{{ s.cor_hex }}"></span>
+              <strong>{{ s.nome_departamento }}</strong>
+            </td>
+            <td class="text-center text-primary fw-bold">{{ s.pendentes or 0 }}</td>
+            <td class="text-center fw-bold" style="color:#fd7e14">{{ s.em_andamento or 0 }}</td>
+            <td class="text-center text-warning fw-bold">{{ s.pausados or 0 }}</td>
+            <td class="text-center text-success fw-bold">{{ s.concluidas_hoje or 0 }}</td>
+            <td class="text-center fw-black">{{ s.total_ops }}</td>
+            <td>
+              {% set carga_pct = (s.total_ops * 100 / max_carga)|round(0) %}
+              <div class="d-flex align-items-center gap-2">
+                <div class="progress flex-grow-1" style="height:10px">
+                  <div class="progress-bar" style="width:{{ carga_pct }}%;background:{{ s.cor_hex }}"></div>
+                </div>
+                <span class="text-muted small" style="min-width:35px;text-align:right">{{ carga_pct }}%</span>
+              </div>
+            </td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted text-center py-4">Nenhum dado disponível</p>
+    {% endif %}
+  </div>
 </div>
 
-<div class="admin-card">
-    <h5 class="mb-3"><i class="bi bi-list-ol me-2"></i>Últimas Ordens do ERP</h5>
+<!-- ═══════════════ TAB 2: ATRASADOS ═══════════════ -->
+<div class="tab-pane fade" id="painel-atrasados" role="tabpanel">
+  <div class="admin-card">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h6 class="mb-0"><i class="bi bi-exclamation-triangle me-2 text-danger"></i>Lotes em Atraso</h6>
+      <span class="badge bg-danger fs-6">{{ lotes_atrasados|length }} lotes</span>
+    </div>
+    {% if lotes_atrasados %}
     <div class="table-responsive">
-        <table class="table table-hover table-sm">
-            <thead>
-                <tr>
-                    <th>Ordem</th>
-                    <th>Lote</th>
-                    <th>Produto</th>
-                    <th>Qtd</th>
-                    <th>Previsão</th>
-                    <th>Status</th>
-                </tr>
+      <table class="table table-sm table-hover">
+        <thead class="table-danger">
+          <tr>
+            <th>Lote</th>
+            <th>Descrição</th>
+            <th class="text-center">Qtd</th>
+            <th>Setor</th>
+            <th>Previsão</th>
+            <th class="text-center">Dias Atraso</th>
+            <th class="text-center">Prioridade</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for l in lotes_atrasados %}
+          <tr class="{% if l.prioridade == 'urgente' %}table-danger{% elif l.prioridade == 'alta' %}table-warning{% endif %}">
+            <td><strong class="text-primary">{{ l.lote_codigo or l.ordem }}</strong></td>
+            <td class="text-truncate" style="max-width:250px" title="{{ l.descricao_produto or '' }}">{{ l.descricao_produto or '—' }}</td>
+            <td class="text-center fw-bold">{{ l.qtde_ordem or 0 }}</td>
+            <td>{{ l.departamento_atual or '—' }}</td>
+            <td class="text-danger fw-bold">{{ l.data_previsao_erp.strftime('%d/%m/%Y') if l.data_previsao_erp else '—' }}</td>
+            <td class="text-center">
+              <span class="badge bg-danger fs-6">{{ l.dias_atraso }}d</span>
+            </td>
+            <td class="text-center">
+              {% if l.prioridade == 'urgente' %}<span class="badge bg-danger">URGENTE</span>
+              {% elif l.prioridade == 'alta' %}<span class="badge bg-warning text-dark">ALTA</span>
+              {% elif l.prioridade == 'media' %}<span class="badge bg-info text-dark">MÉDIA</span>
+              {% else %}<span class="badge bg-secondary">BAIXA</span>{% endif %}
+            </td>
+            <td><span class="badge bg-light text-dark">{{ l.status }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5 text-success">
+      <i class="bi bi-check-circle fs-1"></i>
+      <p class="mt-2 fw-bold">Nenhum lote em atraso!</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ═══════════════ TAB 3: PRODUÇÃO POR PERÍODO ═══════════════ -->
+<div class="tab-pane fade" id="painel-periodo" role="tabpanel">
+  <!-- Filtros -->
+  <div class="admin-card mb-3">
+    <div class="row align-items-end g-2">
+      <div class="col-md-3">
+        <label class="form-label small fw-bold">Data Início</label>
+        <input type="date" class="form-control" id="filtroDtInicio" value="{{ (now - timedelta(days=30)).strftime('%Y-%m-%d') if now else '' }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small fw-bold">Data Fim</label>
+        <input type="date" class="form-control" id="filtroDtFim" value="{{ now.strftime('%Y-%m-%d') if now else '' }}">
+      </div>
+      <div class="col-md-2">
+        <button class="btn btn-primary w-100" onclick="buscarProducaoPeriodo()">
+          <i class="bi bi-search me-1"></i> Buscar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPIs dinâmicos -->
+  <div class="row g-3 mb-3" id="periodoKpis">
+    <div class="col-md-2 col-6">
+      <div class="admin-card stat-card text-center" style="border-left-color:#198754">
+        <div class="fs-2 fw-bold text-success" id="pKpiFinalizados">—</div>
+        <div class="text-muted small">Finalizados</div>
+      </div>
+    </div>
+    <div class="col-md-2 col-6">
+      <div class="admin-card stat-card text-center" style="border-left-color:#0d6efd">
+        <div class="fs-2 fw-bold text-primary" id="pKpiPecas">—</div>
+        <div class="text-muted small">Peças</div>
+      </div>
+    </div>
+    <div class="col-md-2 col-6">
+      <div class="admin-card stat-card text-center" style="border-left-color:#6f42c1">
+        <div class="fs-2 fw-bold" style="color:#6f42c1" id="pKpiTempo">—</div>
+        <div class="text-muted small">Tempo Médio</div>
+      </div>
+    </div>
+    <div class="col-md-2 col-6">
+      <div class="admin-card stat-card text-center" style="border-left-color:#198754">
+        <div class="fs-2 fw-bold text-success" id="pKpiNoPrazo">—</div>
+        <div class="text-muted small">No Prazo</div>
+      </div>
+    </div>
+    <div class="col-md-2 col-6">
+      <div class="admin-card stat-card text-center" style="border-left-color:#dc3545">
+        <div class="fs-2 fw-bold text-danger" id="pKpiComAtraso">—</div>
+        <div class="text-muted small">Com Atraso</div>
+      </div>
+    </div>
+    <div class="col-md-2 col-6">
+      <div class="admin-card stat-card text-center" style="border-left-color:#0d6efd">
+        <div class="fs-2 fw-bold text-primary" id="pKpiTotal">—</div>
+        <div class="text-muted small">Total Registros</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabela -->
+  <div class="admin-card">
+    <h6 class="mb-3"><i class="bi bi-list-check me-2 text-success"></i>Lotes Finalizados no Período</h6>
+    <div id="periodoLoader" class="text-center py-3 text-muted" style="display:none">
+      <div class="spinner-border spinner-border-sm me-2"></div> Buscando...
+    </div>
+    <div class="table-responsive" id="periodoTabelaWrap">
+      <p class="text-muted text-center py-4">Clique em <strong>Buscar</strong> para carregar os dados.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ TAB 4: SERRALHERIA (TOTEM) ═══════════════ -->
+<div class="tab-pane fade" id="painel-serralheria" role="tabpanel">
+
+  <!-- Filtros serralheria -->
+  <div class="admin-card mb-3">
+    <div class="row align-items-end g-2">
+      <div class="col-md-3">
+        <label class="form-label small fw-bold">Data Início</label>
+        <input type="date" class="form-control" id="serrDtInicio" value="{{ (now - timedelta(days=30)).strftime('%Y-%m-%d') if now else '' }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small fw-bold">Data Fim</label>
+        <input type="date" class="form-control" id="serrDtFim" value="{{ now.strftime('%Y-%m-%d') if now else '' }}">
+      </div>
+      <div class="col-md-2">
+        <button class="btn btn-primary w-100" onclick="buscarSerralheriaPeriodo()">
+          <i class="bi bi-search me-1"></i> Buscar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Resumo por Setor -->
+  <div class="row g-3 mb-4">
+    <div class="col-lg-6">
+      <div class="admin-card">
+        <h6 class="mb-3"><i class="bi bi-building me-2 text-primary"></i>Produção por Setor</h6>
+        {% if serralheria.por_setor %}
+        <div class="table-responsive">
+          <table class="table table-sm table-hover">
+            <thead class="table-light">
+              <tr>
+                <th>Setor</th>
+                <th class="text-center">Total</th>
+                <th class="text-center">Finalizadas</th>
+                <th class="text-center">Em Produção</th>
+                <th class="text-center">Peças</th>
+              </tr>
             </thead>
             <tbody>
-                {% for ordem in ordens_erp %}
-                <tr>
-                    <td>{{ ordem.ordem }}</td>
-                    <td>{{ ordem.lote_codigo }}</td>
-                    <td>{{ ordem.produto_nome or ordem.produto_codigo }}</td>
-                    <td>{{ ordem.quantidade }}</td>
-                    <td>{{ ordem.data_previsao }}</td>
-                    <td>
-                        {% if ordem.data_previsao < now %}
-                        <span class="badge bg-danger">Atrasado</span>
-                        {% else %}
-                        <span class="badge bg-success">OK</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
+              {% for s in serralheria.por_setor %}
+              <tr>
+                <td><strong>{{ s.setor }}</strong></td>
+                <td class="text-center fw-bold">{{ s.total }}</td>
+                <td class="text-center text-success fw-bold">{{ s.finalizadas }}</td>
+                <td class="text-center" style="color:#fd7e14">{{ s.em_producao }}</td>
+                <td class="text-center fw-bold text-primary">{{ s.total_pecas }}</td>
+              </tr>
+              {% endfor %}
             </tbody>
-        </table>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted text-center py-3">Sem dados de serralheria</p>
+        {% endif %}
+      </div>
     </div>
+
+    <!-- Resumo por Operador -->
+    <div class="col-lg-6">
+      <div class="admin-card">
+        <h6 class="mb-3"><i class="bi bi-person-badge me-2 text-info"></i>Produção por Operador</h6>
+        {% if serralheria.por_operador %}
+        <div class="table-responsive" style="max-height:400px;overflow-y:auto">
+          <table class="table table-sm table-hover">
+            <thead class="table-light" style="position:sticky;top:0">
+              <tr>
+                <th>Operador</th>
+                <th>Setor</th>
+                <th class="text-center">Finaliz.</th>
+                <th class="text-center">Em Prod.</th>
+                <th class="text-center">Peças</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for o in serralheria.por_operador %}
+              <tr>
+                <td><strong>{{ o.operador }}</strong></td>
+                <td>{{ o.setor }}</td>
+                <td class="text-center text-success fw-bold">{{ o.finalizadas }}</td>
+                <td class="text-center" style="color:#fd7e14">{{ o.em_producao }}</td>
+                <td class="text-center fw-bold text-primary">{{ o.total_pecas_produzidas }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted text-center py-3">Sem dados de operadores</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Detalhamento por período -->
+  <div class="admin-card">
+    <h6 class="mb-3"><i class="bi bi-clock-history me-2" style="color:#fd7e14"></i>Detalhamento por Período</h6>
+    <div id="serrLoader" class="text-center py-3 text-muted" style="display:none">
+      <div class="spinner-border spinner-border-sm me-2"></div> Buscando...
+    </div>
+    <div class="table-responsive" id="serrTabelaWrap">
+      <p class="text-muted text-center py-4">Clique em <strong>Buscar</strong> para carregar os dados do período.</p>
+    </div>
+  </div>
 </div>
+
+</div><!-- /tab-content -->
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+// ════════════════ GRÁFICO 30 DIAS ════════════════
+var ctx30 = document.getElementById('chart30dias');
+if (ctx30) {
+  var dados30 = {{ producao_30d | tojson }};
+  var labels30 = [];
+  var vals30 = [];
+  var pecas30 = [];
+  // Preenche todos os dias (mesmo sem dados)
+  for (var i = 29; i >= 0; i--) {
+    var d = new Date(); d.setDate(d.getDate() - i);
+    var ds = d.toISOString().split('T')[0];
+    labels30.push(d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'}));
+    vals30.push(0);
+    pecas30.push(0);
+  }
+  for (var j = 0; j < dados30.length; j++) {
+    var diaStr = dados30[j].dia;
+    var idx = -1;
+    for (var k = 0; k < 30; k++) {
+      var dd = new Date(); dd.setDate(dd.getDate() - (29 - k));
+      if (dd.toISOString().split('T')[0] === diaStr) { idx = k; break; }
+    }
+    if (idx >= 0) {
+      vals30[idx] = dados30[j].lotes;
+      pecas30[idx] = dados30[j].pecas;
+    }
+  }
+  new Chart(ctx30, {
+    type: 'bar',
+    data: {
+      labels: labels30,
+      datasets: [
+        { label: 'Lotes', data: vals30, backgroundColor: 'rgba(13,110,253,0.7)', borderRadius: 4, borderSkipped: false, order: 2 },
+        { label: 'Peças', data: pecas30, type: 'line', borderColor: '#198754', backgroundColor: 'rgba(25,135,84,0.1)', fill: true, tension: 0.3, pointRadius: 2, order: 1 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } } },
+      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } }, x: { ticks: { maxRotation: 45, font: { size: 10 } } } }
+    }
+  });
+}
+
+// ════════════════ GRÁFICO STATUS (DOUGHNUT) ════════════════
+var ctxS = document.getElementById('chartStatus');
+if (ctxS) {
+  new Chart(ctxS, {
+    type: 'doughnut',
+    data: {
+      labels: ['Aguardando', 'Em Produção', 'Concluídos Hoje', 'Atrasados'],
+      datasets: [{ data: [
+        {{ k.aguardando_liberacao + k.aguardando_inicio }},
+        {{ k.em_producao }},
+        {{ k.concluidos_hoje }},
+        {{ k.atrasados }}
+      ], backgroundColor: ['#ffc107', '#fd7e14', '#198754', '#dc3545'], borderWidth: 0 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { display: false } } }
+  });
+}
+
+// ════════════════ PRODUÇÃO POR PERÍODO (AJAX) ════════════════
+function buscarProducaoPeriodo() {
+  var di = document.getElementById('filtroDtInicio').value;
+  var df = document.getElementById('filtroDtFim').value;
+  if (!di || !df) return;
+
+  document.getElementById('periodoLoader').style.display = 'block';
+  document.getElementById('periodoTabelaWrap').innerHTML = '';
+
+  fetch('/api/relatorios/producao_periodo?data_inicio=' + di + '&data_fim=' + df)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      document.getElementById('periodoLoader').style.display = 'none';
+      if (data.error) {
+        document.getElementById('periodoTabelaWrap').innerHTML = '<p class="text-danger text-center py-3">Erro: ' + data.error + '</p>';
+        return;
+      }
+      var kp = data.kpis;
+      document.getElementById('pKpiFinalizados').textContent = kp.total_finalizados;
+      document.getElementById('pKpiPecas').textContent = kp.total_pecas;
+      document.getElementById('pKpiTempo').textContent = kp.tempo_medio_dias + 'd';
+      document.getElementById('pKpiNoPrazo').textContent = kp.finalizados_no_prazo;
+      document.getElementById('pKpiComAtraso').textContent = kp.finalizados_com_atraso;
+      document.getElementById('pKpiTotal').textContent = data.total;
+
+      if (data.lotes.length === 0) {
+        document.getElementById('periodoTabelaWrap').innerHTML = '<p class="text-muted text-center py-4">Nenhum lote finalizado neste período.</p>';
+        return;
+      }
+      var html = '<table class="table table-sm table-hover"><thead class="table-success"><tr>' +
+        '<th>Lote</th><th>Descrição</th><th class="text-center">Qtd</th><th>Setor</th><th>Início</th><th>Fim</th><th class="text-center">Dias</th></tr></thead><tbody>';
+      for (var i = 0; i < data.lotes.length; i++) {
+        var l = data.lotes[i];
+        html += '<tr><td><strong class="text-primary">' + (l.lote_codigo || l.ordem || '') + '</strong></td>' +
+          '<td class="text-truncate" style="max-width:220px">' + (l.descricao_produto || '—') + '</td>' +
+          '<td class="text-center fw-bold">' + (l.qtde_ordem || 0) + '</td>' +
+          '<td>' + (l.departamento_atual || '—') + '</td>' +
+          '<td class="small">' + (l.data_inicio_producao || '').substring(0, 10) + '</td>' +
+          '<td class="small">' + (l.data_fim_producao || '').substring(0, 10) + '</td>' +
+          '<td class="text-center fw-bold">' + (l.dias_producao || '—') + '</td></tr>';
+      }
+      html += '</tbody></table>';
+      document.getElementById('periodoTabelaWrap').innerHTML = html;
+    })
+    .catch(function(e) {
+      document.getElementById('periodoLoader').style.display = 'none';
+      document.getElementById('periodoTabelaWrap').innerHTML = '<p class="text-danger text-center py-3">Erro de conexão</p>';
+    });
+}
+
+// ════════════════ SERRALHERIA POR PERÍODO (AJAX) ════════════════
+function buscarSerralheriaPeriodo() {
+  var di = document.getElementById('serrDtInicio').value;
+  var df = document.getElementById('serrDtFim').value;
+  if (!di || !df) return;
+
+  document.getElementById('serrLoader').style.display = 'block';
+  document.getElementById('serrTabelaWrap').innerHTML = '';
+
+  fetch('/api/relatorios/serralheria_periodo?data_inicio=' + di + '&data_fim=' + df)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      document.getElementById('serrLoader').style.display = 'none';
+      if (data.error) {
+        document.getElementById('serrTabelaWrap').innerHTML = '<p class="text-danger text-center py-3">Erro: ' + data.error + '</p>';
+        return;
+      }
+      if (data.dados.length === 0) {
+        document.getElementById('serrTabelaWrap').innerHTML = '<p class="text-muted text-center py-4">Nenhuma produção no período.</p>';
+        return;
+      }
+      var html = '<table class="table table-sm table-hover"><thead class="table-warning"><tr>' +
+        '<th>Data</th><th>Lote</th><th>Peça</th><th>Operador</th><th>Setor</th><th class="text-center">Qtd Ordem</th><th class="text-center">Qtd Feita</th><th class="text-center">Status</th><th>Tempo</th></tr></thead><tbody>';
+      for (var i = 0; i < data.dados.length; i++) {
+        var r = data.dados[i];
+        var statusBadge = r.status === 'finalizado'
+          ? '<span class="badge bg-success">FINALIZADO</span>'
+          : '<span class="badge" style="background:#fd7e14">EM PRODUÇÃO</span>';
+        var dataInicio = r.data_inicio ? r.data_inicio.substring(0, 16) : '—';
+        html += '<tr>' +
+          '<td class="small">' + dataInicio + '</td>' +
+          '<td class="text-primary fw-bold">' + (r.lote || '') + '</td>' +
+          '<td>' + (r.produto || '') + '</td>' +
+          '<td>' + (r.operador || '') + '</td>' +
+          '<td>' + (r.setor || '') + '</td>' +
+          '<td class="text-center fw-bold">' + (r.qtde_ordem || 0) + '</td>' +
+          '<td class="text-center fw-bold text-success">' + (r.qtd_produzida || 0) + '</td>' +
+          '<td class="text-center">' + statusBadge + '</td>' +
+          '<td class="small text-muted">' + (r.tempo_gasto || '—') + '</td></tr>';
+      }
+      html += '</tbody></table>';
+      document.getElementById('serrTabelaWrap').innerHTML = html;
+    })
+    .catch(function(e) {
+      document.getElementById('serrLoader').style.display = 'none';
+      document.getElementById('serrTabelaWrap').innerHTML = '<p class="text-danger text-center py-3">Erro de conexão</p>';
+    });
+}
+</script>
 {% endblock %}

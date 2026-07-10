@@ -1199,3 +1199,112 @@ class DatabaseMySQL:
         """)
         return set(str(r['codigo_produto']) for r in rows)
 
+    # =============================================
+    # RELATORIOS
+    # =============================================
+
+    def get_relatorio_lotes_atrasados(self):
+        """Lotes com data_previsao_erp vencida e status ativo."""
+        return self.query("""
+            SELECT ordem, lote_codigo, descricao_produto, qtde_ordem,
+                   prioridade, data_previsao_erp, status, departamento_atual,
+                   DATEDIFF(CURDATE(), data_previsao_erp) AS dias_atraso
+            FROM lotes_producao
+            WHERE data_previsao_erp IS NOT NULL
+              AND data_previsao_erp < CURDATE()
+              AND status NOT IN ('finalizado', 'cancelado')
+            ORDER BY FIELD(prioridade, 'urgente','alta','media','baixa'),
+                     data_previsao_erp ASC
+        """)
+
+    def get_relatorio_producao_periodo(self, data_inicio, data_fim):
+        """Lotes finalizados em um periodo, com detalhes."""
+        return self.query("""
+            SELECT ordem, lote_codigo, descricao_produto, qtde_ordem,
+                   data_inicio_producao, data_fim_producao, departamento_atual,
+                   DATEDIFF(data_fim_producao, data_inicio_producao) AS dias_producao
+            FROM lotes_producao
+            WHERE status = 'finalizado'
+              AND data_fim_producao >= %s
+              AND data_fim_producao < DATE_ADD(%s, INTERVAL 1 DAY)
+            ORDER BY data_fim_producao DESC
+        """, (data_inicio, data_fim))
+
+    def get_relatorio_producao_periodo_kpis(self, data_inicio, data_fim):
+        """KPIs de producao em um periodo."""
+        row = self.query_one("""
+            SELECT
+                COUNT(*) AS total_finalizados,
+                COALESCE(SUM(qtde_ordem), 0) AS total_pecas,
+                COALESCE(AVG(DATEDIFF(data_fim_producao, data_inicio_producao)), 0) AS tempo_medio_dias,
+                SUM(CASE WHEN DATEDIFF(data_fim_producao, data_previsao_erp) > 0 THEN 1 ELSE 0 END) AS finalizados_com_atraso,
+                SUM(CASE WHEN data_fim_producao <= data_previsao_erp OR data_previsao_erp IS NULL THEN 1 ELSE 0 END) AS finalizados_no_prazo
+            FROM lotes_producao
+            WHERE status = 'finalizado'
+              AND data_fim_producao >= %s
+              AND data_fim_producao < DATE_ADD(%s, INTERVAL 1 DAY)
+        """, (data_inicio, data_fim))
+        return row
+
+    def get_relatorio_serralheria_resumo(self):
+        """Resumo da producao do totem serralheria: por operador e por setor."""
+        por_operador = self.query("""
+            SELECT
+                sp.usuario_nome AS operador,
+                sp.setor,
+                COUNT(*) AS total_producoes,
+                SUM(CASE WHEN sp.status = 'finalizado' THEN 1 ELSE 0 END) AS finalizadas,
+                SUM(CASE WHEN sp.status = 'em_producao' THEN 1 ELSE 0 END) AS em_producao,
+                COALESCE(SUM(sp.qtd_produzida), 0) AS total_pecas_produzidas,
+                MIN(sp.data_inicio) AS primeira_producao,
+                MAX(COALESCE(sp.data_fim, sp.data_inicio)) AS ultima_atividade
+            FROM serralheria_producao sp
+            WHERE sp.usuario_nome IS NOT NULL AND sp.usuario_nome != ''
+            GROUP BY sp.usuario_nome, sp.setor
+            ORDER BY sp.usuario_nome, sp.setor
+        """)
+        por_setor = self.query("""
+            SELECT
+                sp.setor,
+                COUNT(*) AS total,
+                SUM(CASE WHEN sp.status = 'finalizado' THEN 1 ELSE 0 END) AS finalizadas,
+                SUM(CASE WHEN sp.status = 'em_producao' THEN 1 ELSE 0 END) AS em_producao,
+                COALESCE(SUM(sp.qtd_produzida), 0) AS total_pecas,
+                COALESCE(SUM(CASE WHEN sp.status = 'finalizado' THEN sp.qtd_produzida ELSE 0 END), 0) AS pecas_finalizadas
+            FROM serralheria_producao sp
+            WHERE sp.setor IS NOT NULL AND sp.setor != ''
+            GROUP BY sp.setor
+            ORDER BY sp.setor
+        """)
+        return {'por_operador': por_operador, 'por_setor': por_setor}
+
+    def get_relatorio_serralheria_periodo(self, data_inicio, data_fim):
+        """Producao serralheria em um periodo (por data_inicio)."""
+        return self.query("""
+            SELECT
+                sp.lote, sp.produto, sp.usuario_nome AS operador,
+                sp.setor, sp.status, sp.qtd_produzida,
+                sp.data_inicio, sp.data_fim,
+                COALESCE(of2.qtde_ordem, 0) AS qtde_ordem,
+                TIMEDIFF(COALESCE(sp.data_fim, NOW()), sp.data_inicio) AS tempo_gasto
+            FROM serralheria_producao sp
+            LEFT JOIN ordens_fabricacao of2 ON sp.of_numero = of2.of_numero
+            WHERE sp.data_inicio >= %s
+              AND sp.data_inicio < DATE_ADD(%s, INTERVAL 1 DAY)
+            ORDER BY sp.data_inicio DESC
+        """, (data_inicio, data_fim))
+
+    def get_relatorio_producao_30_dias(self):
+        """Producao por dia nos ultimos 30 dias para grafico."""
+        return self.query("""
+            SELECT
+                DATE(data_fim_producao) AS dia,
+                COUNT(*) AS lotes,
+                COALESCE(SUM(qtde_ordem), 0) AS pecas
+            FROM lotes_producao
+            WHERE status = 'finalizado'
+              AND data_fim_producao >= DATE_SUB(CURDATE(), INTERVAL 29 DAY)
+            GROUP BY DATE(data_fim_producao)
+            ORDER BY dia
+        """)
+
