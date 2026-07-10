@@ -480,8 +480,8 @@ function renderPecas(data){
     var dataAttrs=' data-codigo="'+esc(p.codigo)+'"';
 
     if(isActive){cardClass+=' em_producao';hasAtivas=true;if(finalizarMode){cardClass+=' finalizar-select';var isSelFinal=selectedPecasFinalizar.indexOf(p.codigo)>=0;if(isSelFinal){cardClass+=' selected';checkIcon='<div class="pecas-check-icon">&#10003;</div>';}else{checkIcon='<div class="pecas-check-icon"></div>';}dataAttrs+=' data-action="finalizar"';}else{checkIcon='<div class="pecas-check-icon">&#10003;</div>';dataAttrs+=' data-action="nenhum"';}}
-    else if(selectedSetor){var isSelected=selectedPecas.indexOf(p.codigo)>=0;if(isSelected){cardClass+=' selected';checkIcon='<div class="pecas-check-icon">&#10003;</div>';}else{checkIcon='<div class="pecas-check-icon"></div>';}dataAttrs+=' data-action="selecionar"';}
-    else{checkIcon='<div class="pecas-check-icon"></div>';dataAttrs+=' data-action="setor" data-setores="'+encodeURIComponent(JSON.stringify(p.setores||[]))+'"';}
+    else{checkIcon='<div class="pecas-check-icon"></div>';dataAttrs+=' data-action="setor" data-setores="'+encodeURIComponent(JSON.stringify(p.setores||[]))+'"';
+      if(selectedSetor){var isSelected=selectedPecas.indexOf(p.codigo)>=0;if(isSelected){cardClass+=' selected';checkIcon='<div class="pecas-check-icon">&#10003;</div>';}else{checkIcon='<div class="pecas-check-icon"></div>';}}}
 
     var pNome=p.produto_nome?esc(p.produto_nome):'';
 
@@ -546,7 +546,6 @@ function renderPecas(data){
 
 function abrirSetor(pecaCodigo,pecaSetores){
   if(!pecaSetores||pecaSetores.length===0){pecaSetores=['CORTE','DOBRA','SOLDA','ACABAMENTO','MONTAGEM'];}
-  if(pecaSetores.length===1){selecionarSetor(pecaSetores[0]);return;}
   var icons={'CORTE':'&#9986;','DOBRA':'&#8634;','SOLDA':'&#9899;','ACABAMENTO':'&#10003;','MONTAGEM':'&#9881;'};
   var labels={'ACABAMENTO':'ACABAM.'};
   var isOdd=pecaSetores.length%2!==0;
@@ -659,25 +658,19 @@ function _bindPecaClicks(){
   if(!container)return;
   container.onclick=function(e){
     var card=_findCard(e.target);
-    if(!card){_debugToast('CLIQUE FORA DO CARD');return;}
+    if(!card)return;
     var codigo=card.getAttribute('data-codigo');
-    if(!codigo){_debugToast('CODIGO VAZIO: '+codigo);return;}
-    /* Usa estado global em vez de data-action para evitar condicao de corrida */
+    if(!codigo)return;
     var isActive=currentPecasAtivas[codigo];
     if(finalizarMode){
       if(isActive)toggleFinalizarPeca(codigo);
     }else if(isActive){
       return;
-    }else if(selectedSetor){
-      /* Se setor selecionado mas nenhuma peca marcada, abrir popup para esta peca */
-      if(selectedPecas.length===0){
-        selectedSetor=null;
-        try{var setores=JSON.parse(decodeURIComponent(card.getAttribute('data-setores')||'[]'));}catch(er){setores=[];}
-        abrirSetor(codigo,setores);
-      }else{
-        togglePecaSelection(codigo);
-      }
+    }else if(selectedSetor&&selectedPecas.length>0){
+      togglePecaSelection(codigo);
     }else{
+      /* Se tinha setor selecionado mas nenhuma peca marcada, resetar */
+      if(selectedSetor){selectedSetor=null;selectedPecas=[];}
       try{var setores=JSON.parse(decodeURIComponent(card.getAttribute('data-setores')||'[]'));}catch(er){setores=[];}
       abrirSetor(codigo,setores);
     }
@@ -696,6 +689,8 @@ var refreshTimer = setInterval(function(){
     if(selectedSetor)return;
     if(finalizarMode)return;
     fetch('/api/lotes/'+currentLote+'/pecas').then(function(r){return r.json();}).then(function(data){
+      /* Re-checar estado antes de renderizar (fetch e async, estado pode ter mudado) */
+      if(selectedSetor||finalizarMode)return;
       if(!data.error){currentPecas=data.pecas||[];currentPecasAtivas=data.pecas_ativas||{};renderPecas(data);}
     }).catch(function(){});
   }
