@@ -1047,10 +1047,15 @@ def operador_lote_detalhe(ordem):
 def admin_lote_detalhe(ordem):
     lote = db.get_lote_por_ordem(ordem)
     if not lote:
-        flash('Lote não encontrado.', 'error')
+        flash('Lote nao encontrado.', 'error')
         return redirect(url_for('dashboard_pcp'))
+    operacoes = db.get_operacoes_por_lote(ordem)
+    ofs = db.get_ofs_por_lote(ordem)
     return render_template('admin/lote_detalhe.html',
                            lote=lote,
+                           operacoes=operacoes or [],
+                           ofs=ofs or [],
+                           now=datetime.now(),
                            usuario_nome=session.get('usuario_nome'))
 
 @app.route('/api/lotes')
