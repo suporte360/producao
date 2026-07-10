@@ -152,6 +152,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 .loading .spinner{display:inline-block;width:32px;height:32px;border:3px solid #2a2a5a;border-top-color:#f59e0b;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:12px}
 .dialog-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);z-index:100;justify-content:center;align-items:center}
 .dialog-overlay.active{display:flex}
+.dialog-overlay.dialog-top{align-items:flex-start;padding-top:30px}
 .fin-qtd-row{display:flex;align-items:center;justify-content:space-between;margin:16px 0 8px;padding:12px 16px;background:rgba(0,230,118,.08);border:2px solid #00e676;border-radius:12px}
 .fin-qtd-label{font-size:14px;color:#999}
 .fin-qtd-input{width:120px;font-size:36px;font-weight:800;color:#00e676;background:transparent;border:none;text-align:right;outline:none;-moz-appearance:textfield}
@@ -282,7 +283,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 </div>
 
 <!-- ========== FINALIZAR DIALOG ========== -->
-<div class="dialog-overlay" id="dialogFinalizar">
+<div class="dialog-overlay dialog-top" id="dialogFinalizar">
   <div class="dialog-box">
     <h3 id="finalizarTitulo">Finalizar Producao</h3>
     <p id="finalizarMsg">Finalizar este lote?</p>
