@@ -40,6 +40,9 @@ _produto_cache = {}
 # Set of lote_codigo ativos (loaded from MariaDB, no ERP needed)
 _lotes_ativos = set()
 
+# Setores que aparecem no totem da serralheria
+SETORES_SERRALHERIA = ('CORTE', 'DOBRA', 'SOLDA', 'ACABAMENTO', 'FUNILARIA')
+
 # Mapeamento de setores ERP -> Sistema Local (mesmo do app.py)
 MAPEAMENTO_SETORES = {
     'ALMOXARIFADO': 'ALMOXARIFADO',
@@ -382,9 +385,9 @@ def api_dashboard():
         ativos = db_query("""
             SELECT sp.id, sp.lote, sp.produto, sp.usuario_nome, sp.data_inicio, sp.setor
             FROM serralheria_producao sp
-            WHERE sp.status = 'em_producao'
+            WHERE sp.status = 'em_producao' AND sp.setor IN %s
             ORDER BY sp.data_inicio DESC
-        """)
+        """, (SETORES_SERRALHERIA,))
         for a in ativos:
             r = db_query_one(
                 "SELECT descricao_produto FROM lotes_producao WHERE lote_codigo = %s",
@@ -634,7 +637,8 @@ def api_pecas(lotcod):
             """, (p['of_numero'],))
 
             setores = list(set(
-                op['departamento'] for op in ops if op.get('departamento')
+                op['departamento'] for op in ops
+                if op.get('departamento') and op['departamento'] in SETORES_SERRALHERIA
             ))
 
             peca_cod = str(p.get('codigo', '')).strip()

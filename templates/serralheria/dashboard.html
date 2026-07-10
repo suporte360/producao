@@ -582,7 +582,7 @@ function renderPecas(data){
 function abrirSetor(pecaCodigo,pecaSetores,ativasArr){
   ultimaPecaClicada=pecaCodigo;
   ultimaPecaAtivas=ativasArr||[];
-  if(!pecaSetores||pecaSetores.length===0){pecaSetores=['CORTE','DOBRA','SOLDA','ACABAMENTO','MONTAGEM'];}
+  if(!pecaSetores||pecaSetores.length===0){pecaSetores=['CORTE','DOBRA','SOLDA','ACABAMENTO','FUNILARIA'];}
   var icons={'CORTE':'&#9986;','DOBRA':'&#8634;','SOLDA':'&#9899;','ACABAMENTO':'&#10003;','MONTAGEM':'&#9881;'};
   var labels={'ACABAMENTO':'ACABAM.'};
   /* Separar ativos dos pendentes */
