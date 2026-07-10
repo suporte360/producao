@@ -383,7 +383,7 @@ function renderWorkers(ativos,data){
     if(!grouped[a.usuario_nome]){
       grouped[a.usuario_nome]={nome:a.usuario_nome,lote:a.lote,lote_desc:a.lote_desc||'',setor:a.setor||'',pecas:[],data_inicio:a.data_inicio,pecas_count:a.pecas_count||1};
     }
-    grouped[a.usuario_nome].pecas.push({produto:a.produto,produto_nome:a.produto_nome||'',setor:a.setor||'',qtd:a.qtde_ordem||''});
+    grouped[a.usuario_nome].pecas.push({produto:a.produto,produto_nome:a.produto_nome||'',setor:a.setor||'',qtd:Math.round(parseFloat(a.qtde_ordem||0))});
   }
   var html='';var keys=Object.keys(grouped);
   for(i=0;i<keys.length;i++){
