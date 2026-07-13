@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Serralheria Totem</title>
+<title>{% if setor_nome %}{{ setor_nome }}{% else %}Serralheria{% endif %} Totem</title>
 <style>
+:root{--accent:{% if setor_cor %}{{ setor_cor }}{% else %}#f59e0b{% endif %};--accent-glow:rgba({% if setor_cor == '#e040fb' %}224,64,251{% elif setor_cor == '#42a5f5' %}66,165,245{% elif setor_cor == '#66bb6a' %}102,187,106{% else %}245,158,11{% endif %},.5)}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
 html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;background:#0a0e1a;color:#e0e0e0}
 .screen{display:none;position:absolute;top:0;left:0;width:100%;height:100%;flex-direction:column}
@@ -12,8 +13,8 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 
 /* ══ SCREEN 1: DASHBOARD ══ */
 #screen1{background:linear-gradient(170deg,#0a0e1a 0%,#111827 40%,#0f172a 100%);cursor:pointer}
-.dash-header{background:rgba(15,23,42,.92);backdrop-filter:blur(8px);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #f59e0b;position:relative;z-index:5}
-.dash-header h1{font-size:20px;color:#f59e0b;font-weight:800;letter-spacing:2px;text-transform:uppercase}
+.dash-header{background:rgba(15,23,42,.92);backdrop-filter:blur(8px);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--accent);position:relative;z-index:5}
+.dash-header h1{font-size:20px;color:var(--accent);font-weight:800;letter-spacing:2px;text-transform:uppercase}
 .dash-header h1 span{color:#fff;font-weight:300;letter-spacing:0;margin-left:6px;font-size:14px}
 .dash-clock{font-size:30px;color:#00e676;font-weight:700;font-variant-numeric:tabular-nums;text-shadow:0 0 12px rgba(0,230,118,.5)}
 .kpi-row{display:flex;gap:10px;padding:10px 14px;flex-shrink:0}
@@ -22,11 +23,11 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 .kpi-card:nth-child(2){animation-delay:.2s}
 .kpi-card:nth-child(3){animation-delay:.3s}
 .kpi-card:nth-child(4){animation-delay:.4s}
-.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#f59e0b,transparent)}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--accent),transparent)}
 .kpi-card.green-border::before{background:linear-gradient(90deg,transparent,#00e676,transparent)}
 .kpi-card.blue-border::before{background:linear-gradient(90deg,transparent,#42a5f5,transparent)}
 .kpi-card.red-border::before{background:linear-gradient(90deg,transparent,#ef5350,transparent)}
-.kpi-value{font-size:32px;font-weight:800;color:#f59e0b;line-height:1.1}
+.kpi-value{font-size:32px;font-weight:800;color:var(--accent);line-height:1.1}
 .kpi-value.green{color:#00e676}
 .kpi-value.blue{color:#42a5f5}
 .kpi-value.red{color:#ef5350}
@@ -47,16 +48,16 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 .wc-row{display:flex;align-items:center;gap:6px;line-height:1.5}
 .wc-row+.wc-row{margin-top:4px}
 .wc-name{font-size:20px;font-weight:800;color:#00e676;flex-shrink:0}
-.wc-setor{font-size:14px;color:#f59e0b;font-weight:600;flex-shrink:0}
+.wc-setor{font-size:14px;color:var(--accent);font-weight:600;flex-shrink:0}
 .wc-sep{color:#2a2a5a;font-size:16px;flex-shrink:0;margin:0 2px}
 .wc-lote-label{font-size:14px;color:#7a7a9a;flex-shrink:0}
-.wc-lote{font-size:18px;color:#f59e0b;font-weight:700;flex-shrink:0}
+.wc-lote{font-size:18px;color:var(--accent);font-weight:700;flex-shrink:0}
 .wc-lote-desc{font-size:15px;color:#999;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
 .wc-time{font-size:13px;color:#7a7a9a;flex-shrink:0;margin-left:auto}
 .wc-pecas-count{font-size:16px;color:#e0e0e0;font-weight:700;flex-shrink:0}
 .wc-peca-code{font-size:15px;color:#42a5f5;font-weight:700;flex-shrink:0;min-width:70px}
 .wc-peca-name{font-size:14px;color:#ccc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
-.wc-peca-setor{font-size:13px;color:#f59e0b;font-weight:700;flex-shrink:0;min-width:75px;text-transform:uppercase}
+.wc-peca-setor{font-size:13px;color:var(--accent);font-weight:700;flex-shrink:0;min-width:75px;text-transform:uppercase}
 .wc-peca-qtd{font-size:14px;color:#e0e0e0;font-weight:700;flex-shrink:0;min-width:30px;text-align:right}
 .no-workers{text-align:center;padding:20px;color:#5a5a7a;font-size:15px}
 .no-workers .nw-icon{font-size:36px;margin-bottom:6px;opacity:.4}
@@ -71,10 +72,10 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 @keyframes countPulse{0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
 
 /* ══ SCREENS 2-4 (lotes / pecas / usuarios) ══ */
-.header{background:#16213e;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;min-height:60px;border-bottom:3px solid #f59e0b}
-.header h1{font-size:20px;color:#f59e0b;font-weight:700;letter-spacing:1px}
+.header{background:#16213e;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;min-height:60px;border-bottom:3px solid var(--accent)}
+.header h1{font-size:20px;color:var(--accent);font-weight:700;letter-spacing:1px}
 .header .clock{font-size:26px;color:#00e676;font-weight:700;font-variant-numeric:tabular-nums}
-.btn-touch{background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;font-size:20px;font-weight:700;padding:18px 32px;border:none;border-radius:12px;cursor:pointer;width:90%;max-width:500px;margin:10px auto;text-transform:uppercase;letter-spacing:1px;box-shadow:0 4px 20px rgba(245,158,11,.4)}
+.btn-touch{background:linear-gradient(135deg,var(--accent),#d97706);color:#000;font-size:20px;font-weight:700;padding:18px 32px;border:none;border-radius:12px;cursor:pointer;width:90%;max-width:500px;margin:10px auto;text-transform:uppercase;letter-spacing:1px;box-shadow:0 4px 20px rgba(245,158,11,.4)}
 .btn-touch:active{transform:scale(.97);box-shadow:0 2px 10px rgba(245,158,11,.3)}
 .btn-green{background:linear-gradient(135deg,#00e676,#00c853);color:#000}
 .btn-green:active{box-shadow:0 2px 10px rgba(0,230,118,.3)}
@@ -86,7 +87,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 
 /* ── LOTE CARDS (slightly bigger fonts) ── */
 .lote-card{background:#16213e;border:2px solid #2a2a5a;border-radius:14px;padding:16px;margin-bottom:12px;cursor:pointer;transition:border-color .2s;display:flex;align-items:center;gap:12px}
-.lote-card:active{border-color:#f59e0b}
+.lote-card:active{border-color:var(--accent)}
 .lote-card.ativo{border-color:#00e676}
 .lote-card.sob-medida{background:rgba(220,38,38,.45);border-color:#ef4444;animation:sobMedidaPulse 2.5s ease-in-out infinite}
 .lote-card.sob-medida.ativo{border-color:#ef4444}
@@ -94,7 +95,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 @keyframes sobMedidaPulse{0%,100%{background:rgba(220,38,38,.3)}50%{background:rgba(220,38,38,.6)}}
 .lote-card .lote-left{flex:1;min-width:0}
 .lote-card .lote-header{display:flex;align-items:baseline;gap:8px;margin-bottom:3px}
-.lote-card .lote-codigo{font-size:24px;font-weight:700;color:#f59e0b;flex-shrink:0}
+.lote-card .lote-codigo{font-size:24px;font-weight:700;color:var(--accent);flex-shrink:0}
 .lote-card .lote-desc-inline{font-size:17px;color:#aaa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
 .lote-card .lote-prod-row{font-size:17px;color:#ccc;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lote-card .lote-info{display:flex;gap:14px;font-size:16px;color:#888;flex-wrap:wrap;margin-top:3px}
@@ -107,19 +108,19 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 
 /* ── PECA CARDS (with operations + description) ── */
 .peca-card{background:#16213e;border:1px solid #2a2a5a;border-radius:10px;padding:14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-start;cursor:pointer;transition:all .2s}
-.peca-card:active{border-color:#f59e0b}
+.peca-card:active{border-color:var(--accent)}
 .peca-card.em_producao{border-color:#00e676;opacity:.6;cursor:default}
-.peca-card.parcial{border-color:#f59e0b;border-style:dashed}
+.peca-card.parcial{border-color:var(--accent);border-style:dashed}
 .peca-card.parcial.finalizar-select{cursor:pointer}
 .peca-card.em_producao.finalizar-select{opacity:1;cursor:pointer}
 .peca-card.em_producao.finalizar-select:active{opacity:.8}
-.peca-card.selected{border-color:#f59e0b;background:rgba(245,158,11,.1)}
+.peca-card.selected{border-color:var(--accent);background:rgba(245,158,11,.1)}
 .peca-card .peca-left{flex:1;min-width:0}
 .peca-card .peca-codigo{font-size:18px;font-weight:700;color:#e0e0e0}
 .peca-card .peca-nome{font-size:15px;color:#ccc;margin-top:2px}
 .peca-card .peca-sub{font-size:12px;color:#7a7a9a;margin-top:3px;font-weight:700}
 .peca-card .peca-setores{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
-.peca-card .peca-setor-tag{font-size:10px;padding:2px 7px;border-radius:6px;background:rgba(245,158,11,.12);color:#f59e0b;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.peca-card .peca-setor-tag{font-size:10px;padding:2px 7px;border-radius:6px;background:rgba(245,158,11,.12);color:var(--accent);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
 .peca-card .peca-setor-tag.done{background:rgba(0,230,118,.12);color:#00e676}
 .peca-card .peca-qtd{font-size:28px;font-weight:800;color:#fff;line-height:1.2;text-align:center;flex-shrink:0}
 .peca-card .peca-qtd-label{font-size:10px;color:rgba(255,255,255,.8);text-transform:uppercase;letter-spacing:1px;text-align:center}
@@ -130,18 +131,18 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 .peca-ops{margin-top:6px;padding-top:6px;border-top:1px solid rgba(42,42,90,.5)}
 .peca-ops-title{font-size:11px;color:#5a5a7a;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
 .peca-op-row{display:flex;align-items:center;gap:6px;font-size:12px;padding:2px 0;color:#999}
-.peca-op-row .op-seq{color:#f59e0b;font-weight:700;min-width:18px}
+.peca-op-row .op-seq{color:var(--accent);font-weight:700;min-width:18px}
 .peca-op-row .op-setor{color:#42a5f5;font-weight:600;min-width:80px;text-transform:uppercase}
 .peca-op-row .op-desc{flex:1;color:#bbb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .peca-op-row .op-status{font-size:10px;padding:1px 6px;border-radius:4px;font-weight:600;text-transform:uppercase;flex-shrink:0}
-.op-status.pendente{background:rgba(245,158,11,.12);color:#f59e0b}
+.op-status.pendente{background:rgba(245,158,11,.12);color:var(--accent)}
 .op-status.em_producao{background:rgba(0,230,118,.12);color:#00e676}
 .op-status.concluido{background:rgba(66,165,245,.12);color:#42a5f5}
 
 .usuario-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:12px}
 .usuario-btn{background:#16213e;border:2px solid #2a2a5a;border-radius:14px;padding:20px 10px;text-align:center;cursor:pointer;font-size:18px;font-weight:700;color:#e0e0e0;transition:all .2s}
-.usuario-btn:active{border-color:#f59e0b;background:#1e2a4e}
-.usuario-btn .user-icon{font-size:28px;margin-bottom:6px;color:#f59e0b}
+.usuario-btn:active{border-color:var(--accent);background:#1e2a4e}
+.usuario-btn .user-icon{font-size:28px;margin-bottom:6px;color:var(--accent)}
 .usuario-btn .user-setor{font-size:11px;color:#888;margin-top:4px}
 .section-title{font-size:14px;color:#888;padding:8px 16px;text-transform:uppercase;letter-spacing:1px}
 .prod-final{background:linear-gradient(135deg,#0d1b3e,#16213e);border:1px solid #42a5f5;border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
@@ -149,7 +150,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 .prod-final .pf-codigo{font-size:18px;font-weight:700;color:#42a5f5}
 .prod-final .pf-desc{font-size:14px;color:#ccc;margin-top:4px;line-height:1.3}
 .loading{text-align:center;padding:40px;color:#888;font-size:16px}
-.loading .spinner{display:inline-block;width:32px;height:32px;border:3px solid #2a2a5a;border-top-color:#f59e0b;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:12px}
+.loading .spinner{display:inline-block;width:32px;height:32px;border:3px solid #2a2a5a;border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:12px}
 .dialog-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);z-index:100;justify-content:center;align-items:center}
 .dialog-overlay.active{display:flex}
 .dialog-overlay.dialog-top{align-items:flex-start;padding-top:30px}
@@ -158,9 +159,9 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 .fin-qtd-input{width:120px;font-size:36px;font-weight:800;color:#00e676;background:transparent;border:none;text-align:right;outline:none;-moz-appearance:textfield}
 .fin-qtd-input::-webkit-outer-spin-button,.fin-qtd-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .fin-qtd-total{font-size:13px;color:#5a5a7a;margin-top:2px;text-align:right}
-.fin-qtd-restante{font-size:12px;color:#f59e0b;margin-top:2px;text-align:right;font-weight:700}
-.dialog-box{background:#16213e;border:2px solid #f59e0b;border-radius:16px;padding:28px;max-width:420px;width:90%;text-align:center}
-.dialog-box h3{font-size:20px;color:#f59e0b;margin-bottom:12px}
+.fin-qtd-restante{font-size:12px;color:var(--accent);margin-top:2px;text-align:right;font-weight:700}
+.dialog-box{background:#16213e;border:2px solid var(--accent);border-radius:16px;padding:28px;max-width:420px;width:90%;text-align:center}
+.dialog-box h3{font-size:20px;color:var(--accent);margin-bottom:12px}
 .dialog-box p{font-size:15px;color:#ccc;margin-bottom:20px}
 .dialog-btns{display:flex;gap:12px;justify-content:center}
 .dialog-btns button{flex:1;padding:14px;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer}
@@ -168,7 +169,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 .dialog-btns .nao{background:#2a2a5a;color:#aaa}
 .setor-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:16px}
 .setor-btn{background:#16213e;border:2px solid #2a2a5a;border-radius:14px;padding:20px 10px;text-align:center;cursor:pointer;font-size:15px;font-weight:700;color:#e0e0e0;transition:all .2s;text-transform:uppercase;letter-spacing:1px}
-.setor-btn:active{border-color:#f59e0b;background:#1e2a4e}
+.setor-btn:active{border-color:var(--accent);background:#1e2a4e}
 .setor-btn .setor-icon{font-size:26px;margin-bottom:6px}
 .setor-btn.ativo{border-color:#00e676;background:rgba(0,230,118,.08);cursor:default}
 .setor-btn.ativo .setor-info{font-size:10px;color:#00e676;margin-top:4px}
@@ -176,7 +177,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 .setor-btn.ativo .setor-finalizar:active{background:#c62828}
 .setor-btn.active-setor{border-color:#00e676;background:rgba(0,230,118,.1);color:#00e676}
 .pecas-check-icon{width:22px;height:22px;border-radius:50%;border:2px solid #2a2a5a;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:10px;transition:all .2s;font-size:13px;color:transparent}
-.peca-card.selected .pecas-check-icon{border-color:#f59e0b;background:#f59e0b;color:#000}
+.peca-card.selected .pecas-check-icon{border-color:var(--accent);background:var(--accent);color:#000}
 .peca-card.em_producao .pecas-check-icon{border-color:#00e676;background:#00e676;color:#000}
 
 @media(max-width:600px){
@@ -197,7 +198,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 <!-- ========== SCREEN 1: DASHBOARD ========== -->
 <div id="screen1" class="screen active" onclick="dashClick(event)">
   <div class="dash-header">
-    <h1>SERRALHERIA <span>Production Monitor</span></h1>
+    <h1>{% if setor_nome %}{{ setor_nome }}{% else %}SERRALHERIA{% endif %} <span>Production Monitor</span></h1>
     <div class="dash-clock" id="clock">00:00:00</div>
   </div>
   <div class="kpi-row">
@@ -439,7 +440,7 @@ function renderWorkers(ativos,data){
 /* ══ LOAD LOTES (Screen 2) ══ */
 function loadLotes(){
   fetch('/api/lotes').then(function(r){return r.json();}).then(function(data){
-    if(!data.lotes||data.lotes.length===0){document.getElementById('lotesList').innerHTML='<div class="loading" style="color:#f59e0b">Nenhum lote em aberto</div>';return;}
+    if(!data.lotes||data.lotes.length===0){document.getElementById('lotesList').innerHTML='<div class="loading" style="color:var(--accent)">Nenhum lote em aberto</div>';return;}
     var html='';
     for(var i=0;i<data.lotes.length;i++){
       var l=data.lotes[i];
@@ -583,7 +584,7 @@ function renderPecas(data){
       +'<div class="peca-qtd-wrap"><div class="peca-qtd">'+qtd+'</div><div class="peca-qtd-label">pecas</div></div>'
       +'</div>';
   }
-  if(pecas.length===0){html+='<div class="loading" style="color:#f59e0b">Nenhuma peca para fabricar neste lote</div>';}
+  if(pecas.length===0){html+='<div class="loading" style="color:var(--accent)">Nenhuma peca para fabricar neste lote</div>';}
   document.getElementById('pecasContent').innerHTML=html;
   _bindPecaClicks();
 
@@ -591,10 +592,10 @@ function renderPecas(data){
   var actions='<button class="btn-back" onclick="showScreen(2)">&#8592; Voltar aos Lotes</button>';
   if(hasAtivas&&!finalizarMode){actions='<button class="btn-touch btn-red" onclick="entrarModoFinalizar()">FINALIZAR PRODUCAO</button>'+actions;}
   else if(finalizarMode){actions='<button class="btn-touch btn-red" onclick="confirmarFinalizarPecas()">FINALIZAR ('+selectedPecasFinalizar.length+')</button>';
-  if(selectedPecasFinalizar.length===0)actions='<div style="text-align:center;padding:6px;color:#f59e0b;font-size:13px">Selecione as pecas para finalizar</div>'+actions;
+  if(selectedPecasFinalizar.length===0)actions='<div style="text-align:center;padding:6px;color:var(--accent);font-size:13px">Selecione as pecas para finalizar</div>'+actions;
   actions+='<button class="btn-back" onclick="sairModoFinalizar()" style="margin-left:8px">Cancelar</button>';}
   if(selectedSetor&&selectedPecas.length>0){actions='<button class="btn-touch btn-green" onclick="iniciarProducaoSetor()">INICIAR PRODUCAO ('+selectedPecas.length+')</button>'+'<button class="btn-touch btn-red" onclick="cancelarSelecaoSetor()" style="margin-left:8px">CANCELAR</button>'+actions;}
-  else if(selectedSetor&&selectedPecas.length===0){actions='<div style="text-align:center;padding:6px;color:#f59e0b;font-size:13px">Selecione as pecas para '+esc(selectedSetor)+'</div>'+'<button class="btn-touch btn-red" onclick="cancelarSelecaoSetor()">CANCELAR</button>'+actions;}
+  else if(selectedSetor&&selectedPecas.length===0){actions='<div style="text-align:center;padding:6px;color:var(--accent);font-size:13px">Selecione as pecas para '+esc(selectedSetor)+'</div>'+'<button class="btn-touch btn-red" onclick="cancelarSelecaoSetor()">CANCELAR</button>'+actions;}
   document.getElementById('pecasActions').innerHTML=actions;
 }
 
@@ -725,7 +726,7 @@ function togglePecaSelection(codigo){
   for(var i=0;i<cards.length;i++){var card=cards[i];var codeEl=card.querySelector('.peca-codigo');if(!codeEl)continue;var code=codeEl.textContent;var checkIcon=card.querySelector('.pecas-check-icon');if(selectedPecas.indexOf(code)>=0){card.classList.add('selected');if(checkIcon)checkIcon.innerHTML='&#10003;';}else if(!card.classList.contains('em_producao')){card.classList.remove('selected');if(checkIcon)checkIcon.innerHTML='';}}
   var actionsEl=document.getElementById('pecasActions');var actions='';
   if(selectedPecas.length>0)actions='<button class="btn-touch btn-green" onclick="iniciarProducaoSetor()">INICIAR PRODUCAO ('+selectedPecas.length+')</button>'+'<button class="btn-touch btn-red" onclick="cancelarSelecaoSetor()" style="margin-left:8px">CANCELAR</button>';
-  else actions='<div style="text-align:center;padding:6px;color:#f59e0b;font-size:13px">Selecione as pecas para '+esc(selectedSetor)+'</div>'+'<button class="btn-touch btn-red" onclick="cancelarSelecaoSetor()">CANCELAR</button>';
+  else actions='<div style="text-align:center;padding:6px;color:var(--accent);font-size:13px">Selecione as pecas para '+esc(selectedSetor)+'</div>'+'<button class="btn-touch btn-red" onclick="cancelarSelecaoSetor()">CANCELAR</button>';
   actions+='<button class="btn-back" onclick="showScreen(2)">&#8592; Voltar aos Lotes</button>';actionsEl.innerHTML=actions;
 }
 
@@ -757,7 +758,7 @@ function toggleFinalizarPeca(codigo){
   for(var i=0;i<cards.length;i++){var card=cards[i];var codeEl=card.querySelector('.peca-codigo');if(!codeEl)continue;var code=codeEl.textContent;var checkIcon=card.querySelector('.pecas-check-icon');if(selectedPecasFinalizar.indexOf(code)>=0){card.classList.add('selected');if(checkIcon)checkIcon.innerHTML='&#10003;';}else{card.classList.remove('selected');if(checkIcon)checkIcon.innerHTML='';}}
   var actionsEl=document.getElementById('pecasActions');var actions='';
   if(selectedPecasFinalizar.length>0)actions='<button class="btn-touch btn-red" onclick="confirmarFinalizarPecas()">FINALIZAR ('+selectedPecasFinalizar.length+')</button>';
-  else actions='<div style="text-align:center;padding:6px;color:#f59e0b;font-size:13px">Selecione as pecas para finalizar</div>';
+  else actions='<div style="text-align:center;padding:6px;color:var(--accent);font-size:13px">Selecione as pecas para finalizar</div>';
   actions+='<button class="btn-back" onclick="sairModoFinalizar()" style="margin-left:8px">Cancelar</button>';
   actions+='<button class="btn-back" onclick="showScreen(2)" style="margin-left:8px">&#8592; Voltar</button>';
   actionsEl.innerHTML=actions;
