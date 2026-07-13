@@ -1218,32 +1218,51 @@ class DatabaseMySQL:
         """)
 
     def get_relatorio_producao_periodo(self, data_inicio, data_fim):
-        """Lotes finalizados em um periodo, com detalhes."""
+        """Lotes com atividade em um periodo (finalizados ou em producao)."""
         return self.query("""
             SELECT ordem, lote_codigo, descricao_produto, qtde_ordem,
-                   data_inicio_producao, data_fim_producao, departamento_atual,
-                   DATEDIFF(data_fim_producao, data_inicio_producao) AS dias_producao
+                   status, prioridade, departamento_atual,
+                   data_inicio_producao,
+                   data_fim_producao,
+                   data_previsao_erp,
+                   DATEDIFF(COALESCE(data_fim_producao, CURDATE()), data_inicio_producao) AS dias_producao
             FROM lotes_producao
-            WHERE status = 'finalizado'
-              AND data_fim_producao >= %s
-              AND data_fim_producao < DATE_ADD(%s, INTERVAL 1 DAY)
-            ORDER BY data_fim_producao DESC
-        """, (data_inicio, data_fim))
+            WHERE status NOT IN ('cancelado')
+              AND (
+                (data_fim_producao IS NOT NULL AND data_fim_producao >= %s AND data_fim_producao < DATE_ADD(%s, INTERVAL 1 DAY))
+                OR
+                (data_inicio_producao IS NOT NULL AND data_inicio_producao >= %s AND data_inicio_producao < DATE_ADD(%s, INTERVAL 1 DAY))
+                OR
+                (data_inicio_producao IS NOT NULL AND data_inicio_producao < %s AND (data_fim_producao IS NULL OR data_fim_producao >= %s))
+              )
+            ORDER BY FIELD(status, 'em_producao','pausado','liberado','importado','finalizado'),
+                     data_previsao_erp ASC
+        """, (data_inicio, data_fim, data_inicio, data_fim, data_inicio, data_fim))
 
     def get_relatorio_producao_periodo_kpis(self, data_inicio, data_fim):
         """KPIs de producao em um periodo."""
         row = self.query_one("""
             SELECT
-                COUNT(*) AS total_finalizados,
+                COUNT(*) AS total_lotes,
+                SUM(CASE WHEN status = 'finalizado' THEN 1 ELSE 0 END) AS total_finalizados,
+                SUM(CASE WHEN status = 'em_producao' THEN 1 ELSE 0 END) AS total_em_producao,
+                SUM(CASE WHEN status = 'pausado' THEN 1 ELSE 0 END) AS total_pausados,
                 COALESCE(SUM(qtde_ordem), 0) AS total_pecas,
-                COALESCE(AVG(DATEDIFF(data_fim_producao, data_inicio_producao)), 0) AS tempo_medio_dias,
-                SUM(CASE WHEN DATEDIFF(data_fim_producao, data_previsao_erp) > 0 THEN 1 ELSE 0 END) AS finalizados_com_atraso,
-                SUM(CASE WHEN data_fim_producao <= data_previsao_erp OR data_previsao_erp IS NULL THEN 1 ELSE 0 END) AS finalizados_no_prazo
+                COALESCE(SUM(CASE WHEN status = 'finalizado' THEN qtde_ordem ELSE 0 END), 0) AS pecas_produzidas,
+                COALESCE(AVG(DATEDIFF(COALESCE(data_fim_producao, CURDATE()), data_inicio_producao)), 0) AS tempo_medio_dias,
+                SUM(CASE WHEN status = 'finalizado' AND DATEDIFF(data_fim_producao, data_previsao_erp) > 0 THEN 1 ELSE 0 END) AS finalizados_com_atraso,
+                SUM(CASE WHEN status = 'finalizado' AND (data_fim_producao <= data_previsao_erp OR data_previsao_erp IS NULL) THEN 1 ELSE 0 END) AS finalizados_no_prazo,
+                SUM(CASE WHEN status NOT IN ('finalizado','cancelado') AND data_previsao_erp < CURDATE() THEN 1 ELSE 0 END) AS atrasados_agora
             FROM lotes_producao
-            WHERE status = 'finalizado'
-              AND data_fim_producao >= %s
-              AND data_fim_producao < DATE_ADD(%s, INTERVAL 1 DAY)
-        """, (data_inicio, data_fim))
+            WHERE status NOT IN ('cancelado')
+              AND (
+                (data_fim_producao IS NOT NULL AND data_fim_producao >= %s AND data_fim_producao < DATE_ADD(%s, INTERVAL 1 DAY))
+                OR
+                (data_inicio_producao IS NOT NULL AND data_inicio_producao >= %s AND data_inicio_producao < DATE_ADD(%s, INTERVAL 1 DAY))
+                OR
+                (data_inicio_producao IS NOT NULL AND data_inicio_producao < %s AND (data_fim_producao IS NULL OR data_fim_producao >= %s))
+              )
+        """, (data_inicio, data_fim, data_inicio, data_fim, data_inicio, data_fim))
         return row
 
     def get_relatorio_serralheria_resumo(self):
