@@ -237,7 +237,7 @@
     <div class="flex flex-wrap items-end gap-3">
       <div class="flex flex-col gap-1">
         <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Data Inicio</label>
-        <input type="date" id="filtroDtInicio" value="{{ (now - timedelta(days=30)).strftime('%Y-%m-%d') if now else '' }}"
+        <input type="date" id="filtroDtInicio" value="{{ data_30d }}"
           class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
       </div>
       <div class="flex flex-col gap-1">
@@ -320,7 +320,7 @@
     <div class="flex flex-wrap items-end gap-3">
       <div class="flex flex-col gap-1">
         <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Data Inicio</label>
-        <input type="date" id="serrDtInicio" value="{{ (now - timedelta(days=30)).strftime('%Y-%m-%d') if now else '' }}"
+        <input type="date" id="serrDtInicio" value="{{ data_30d }}"
           class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
       </div>
       <div class="flex flex-col gap-1">

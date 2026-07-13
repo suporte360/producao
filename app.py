@@ -987,7 +987,8 @@ def admin_relatorios():
                            producao_30d=producao_30d,
                            usuarios=usuarios,
                            usuario_nome=session.get('usuario_nome', ''),
-                           now=datetime.now())
+                           now=datetime.now(),
+                           data_30d=(datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d'))
 
 @app.route('/api/relatorios/producao_periodo', methods=['GET'])
 @login_required
