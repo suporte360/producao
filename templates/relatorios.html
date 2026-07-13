@@ -205,7 +205,7 @@
           <tr class="hover:bg-red-50/50 {{ 'bg-red-50' if l.prioridade == 'urgente' }}">
             <td class="px-3 py-2.5 font-bold text-blue-700">{{ l.lote_codigo or l.ordem }}</td>
             <td class="px-3 py-2.5 text-gray-700 max-w-[250px] truncate" title="{{ l.descricao_produto or '' }}">{{ l.descricao_produto or '—' }}</td>
-            <td class="px-3 py-2.5 text-center font-bold">{{ l.qtde_ordem or 0 }}</td>
+            <td class="px-3 py-2.5 text-center font-bold">{{ '%d' | format(l.qtde_ordem or 0) }}</td>
             <td class="px-3 py-2.5 text-gray-600">{{ l.departamento_atual or '—' }}</td>
             <td class="px-3 py-2.5 text-center text-red-600 font-bold">{{ l.data_previsao_erp.strftime('%d/%m/%Y') if l.data_previsao_erp else '—' }}</td>
             <td class="px-3 py-2.5 text-center">
@@ -362,7 +362,7 @@
               <td class="px-3 py-2.5 text-center font-bold">{{ s.total }}</td>
               <td class="px-3 py-2.5 text-center font-bold text-green-600">{{ s.finalizadas }}</td>
               <td class="px-3 py-2.5 text-center font-bold text-orange-500">{{ s.em_producao }}</td>
-              <td class="px-3 py-2.5 text-center font-bold text-blue-600">{{ s.total_pecas }}</td>
+              <td class="px-3 py-2.5 text-center font-bold text-blue-600">{{ '%d' | format(s.total_pecas or 0) }}</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -397,7 +397,7 @@
               <td class="px-3 py-2.5 text-gray-600">{{ o.setor }}</td>
               <td class="px-3 py-2.5 text-center font-bold text-green-600">{{ o.finalizadas }}</td>
               <td class="px-3 py-2.5 text-center font-bold text-orange-500">{{ o.em_producao }}</td>
-              <td class="px-3 py-2.5 text-center font-bold text-blue-600">{{ o.total_pecas_produzidas }}</td>
+              <td class="px-3 py-2.5 text-center font-bold text-blue-600">{{ '%d' | format(o.total_pecas_produzidas or 0) }}</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -536,7 +536,7 @@ function buscarProducaoPeriodo() {
       document.getElementById('pKpiTotal').textContent = kp.total_lotes || 0;
       document.getElementById('pKpiEmProducao').textContent = kp.total_em_producao || 0;
       document.getElementById('pKpiFinalizados').textContent = kp.total_finalizados || 0;
-      document.getElementById('pKpiPecas').textContent = kp.total_pecas || 0;
+      document.getElementById('pKpiPecas').textContent = Math.round(Number(kp.total_pecas) || 0);
       document.getElementById('pKpiAtrasados').textContent = kp.atrasados_agora || 0;
       document.getElementById('pKpiTempo').textContent = Math.round(kp.tempo_medio_dias || 0) + 'd';
 
@@ -557,7 +557,7 @@ function buscarProducaoPeriodo() {
         var prevStr = (l.data_previsao_erp || '').substring(0, 10);
         html += '<tr class="hover:bg-gray-50"><td class="px-3 py-2.5 font-bold text-blue-700">' + (l.lote_codigo || l.ordem || '') + '</td>' +
           '<td class="px-3 py-2.5 text-gray-700 max-w-[200px] truncate">' + (l.descricao_produto || '—') + '</td>' +
-          '<td class="px-3 py-2.5 text-center font-bold">' + (l.qtde_ordem || 0) + '</td>' +
+          '<td class="px-3 py-2.5 text-center font-bold">' + (Math.round(Number(l.qtde_ordem) || 0)) + '</td>' +
           '<td class="px-3 py-2.5 text-center"><span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ' + sc + '">' + sl + '</span></td>' +
           '<td class="px-3 py-2.5 text-gray-600 text-xs">' + (l.departamento_atual || '—') + '</td>' +
           '<td class="px-3 py-2.5 text-center text-xs ' + pc + '">' + (prevStr || '—') + '</td>' +
@@ -607,8 +607,8 @@ function buscarSerralheriaPeriodo() {
           '<td class="px-3 py-2.5 text-gray-700">' + (r.produto || '') + '</td>' +
           '<td class="px-3 py-2.5 text-gray-600">' + (r.operador || '') + '</td>' +
           '<td class="px-3 py-2.5 text-gray-600">' + (r.setor || '') + '</td>' +
-          '<td class="px-3 py-2.5 text-center font-bold">' + (r.qtde_ordem || 0) + '</td>' +
-          '<td class="px-3 py-2.5 text-center font-bold text-green-600">' + (r.qtd_produzida || 0) + '</td>' +
+          '<td class="px-3 py-2.5 text-center font-bold">' + (Math.round(Number(r.qtde_ordem) || 0)) + '</td>' +
+          '<td class="px-3 py-2.5 text-center font-bold text-green-600">' + (Math.round(Number(r.qtd_produzida) || 0)) + '</td>' +
           '<td class="px-3 py-2.5 text-center">' + statusBadge + '</td>' +
           '<td class="px-3 py-2.5 text-xs text-gray-400">' + (r.tempo_gasto || '—') + '</td></tr>';
       }
