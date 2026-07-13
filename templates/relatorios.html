@@ -8,7 +8,7 @@
 {% endblock %}
 
 {% block content %}
-{% set k = dados_ger.kpis %}
+{% set k = (dados_ger.kpis if dados_ger else {'total_lotes':0,'aguardando_liberacao':0,'aguardando_inicio':0,'em_producao':0,'pausados':0,'concluidos_hoje':0,'concluidos_mes':0,'urgentes':0,'altas':0,'atrasados':0}) %}
 
 {# ═══════════════ TABS ═══════════════ #}
 <div class="flex items-center gap-1 mb-5 bg-white rounded-2xl border border-gray-200 p-1.5 overflow-x-auto">
