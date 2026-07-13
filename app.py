@@ -980,8 +980,10 @@ def admin_relatorios():
     serralheria = db.get_relatorio_serralheria_resumo()
     producao_30d = db.get_relatorio_producao_30_dias()
     usuarios = db.listar_usuarios()
+    kpis = dados_ger.get('kpis', {}) if dados_ger else {}
     return render_template('relatorios.html',
                            dados_ger=dados_ger,
+                           k=kpis,
                            lotes_atrasados=lotes_atrasados,
                            serralheria=serralheria,
                            producao_30d=producao_30d,
