@@ -71,8 +71,8 @@
                 </a>
                 {% endif %}
 
-                <!-- PCP (admin, gerente, pcp) -->
-                {% if role in ['admin', 'gerente', 'pcp'] %}
+                <!-- PCP (admin, gerente, pcp, diretor) -->
+                {% if role in ['admin', 'gerente', 'pcp', 'diretor'] %}
                 <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 mt-3">Planejamento</p>
                 <a href="{{ url_for('dashboard_pcp') }}" class="nav-item {% if endpoint == 'dashboard_pcp' %}active{% endif %}">
                     <i class="fa-solid fa-diagram-project"></i>
@@ -84,17 +84,43 @@
                 </a>
                 {% endif %}
 
-                <!-- GERENTE (admin, gerente) -->
-                {% if role in ['admin', 'gerente'] %}
+                <!-- RELATORIOS (admin, gerente, pcp, diretor) -->
+                {% if role in ['admin', 'gerente', 'pcp', 'diretor'] %}
+                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 mt-3">Relatórios</p>
+                <a href="{{ url_for('admin_relatorios') }}" class="nav-item {% if endpoint == 'admin_relatorios' %}active{% endif %}">
+                    <i class="fa-solid fa-chart-pie text-emerald-400"></i>
+                    <span>Relatórios</span>
+                </a>
+                {% endif %}
+
+                <!-- GERENTE / DIRETOR (admin, gerente, diretor) -->
+                {% if role in ['admin', 'gerente', 'diretor'] %}
                 <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 mt-3">Gestão</p>
                 <a href="{{ url_for('dashboard_gerente') }}" class="nav-item {% if endpoint == 'dashboard_gerente' %}active{% endif %}">
                     <i class="fa-solid fa-chart-line"></i>
                     <span>Painel Gerencial</span>
                 </a>
+                <a href="{{ url_for('kanban_setores') }}" class="nav-item {% if endpoint == 'kanban_setores' %}active{% endif %}">
+                    <i class="fa-solid fa-table-cells text-purple-400"></i>
+                    <span>Kanban por Setor</span>
+                </a>
                 {% endif %}
 
-                <!-- ALMOXARIFADO (admin, almoxarifado, gerente) -->
-                {% if role in ['admin', 'almoxarifado', 'gerente'] %}
+                <!-- DIRETORIA (admin, diretor) -->
+                {% if role in ['admin', 'diretor'] %}
+                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 mt-3">Diretoria</p>
+                <a href="{{ url_for('diretor_logs') }}" class="nav-item {% if endpoint == 'diretor_logs' %}active{% endif %}">
+                    <i class="fa-solid fa-clock-rotate-left text-amber-400"></i>
+                    <span>Logs do Sistema</span>
+                </a>
+                <a href="{{ url_for('diretor_acessos') }}" class="nav-item {% if endpoint == 'diretor_acessos' %}active{% endif %}">
+                    <i class="fa-solid fa-users-gear text-pink-400"></i>
+                    <span>Acessos</span>
+                </a>
+                {% endif %}
+
+                <!-- ALMOXARIFADO (admin, almoxarifado, gerente, diretor) -->
+                {% if role in ['admin', 'almoxarifado', 'gerente', 'diretor'] %}
                 <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 mt-3">Logística</p>
                 <a href="{{ url_for('dashboard_almoxarifado') }}" class="nav-item {% if endpoint == 'dashboard_almoxarifado' %}active{% endif %}">
                     <i class="fa-solid fa-warehouse"></i>
@@ -110,14 +136,14 @@
 
                 <!-- TV / Painéis -->
                 <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 mt-3">TVs / Painéis</p>
-                {% if role in ['admin', 'gerente', 'pcp', 'encarregado'] %}
+                {% if role in ['admin', 'gerente', 'pcp', 'encarregado', 'diretor'] %}
                 <a href="{{ url_for('kanban_tv') }}" target="_blank" class="nav-item">
                     <i class="fa-solid fa-tv text-blue-400"></i>
                     <span>TV Kanban</span>
                     <i class="fa-solid fa-arrow-up-right-from-square ml-auto text-[10px] text-slate-500"></i>
                 </a>
                 {% endif %}
-                {% if role in ['admin', 'almoxarifado', 'gerente'] %}
+                {% if role in ['admin', 'almoxarifado', 'gerente', 'diretor'] %}
                 <a href="{{ url_for('tv_almoxarifado') }}" target="_blank" class="nav-item">
                     <i class="fa-solid fa-box-open text-cyan-400"></i>
                     <span>TV Almoxarifado</span>
