@@ -477,16 +477,35 @@ setInterval(tick,1000); tick();
 
 /* ─── Cronômetro de card ─── */
 function tempoDecorrido(isoStr) {
-  if (!isoStr) return '';
+  if (!isoStr || isoStr === 'None') return '';
   try {
-    const p = isoStr.replace('T',' ').split(/[- :]/).map(Number);
-    const inicio = new Date(p[0],p[1]-1,p[2],p[3]||0,p[4]||0,p[5]||0);
-    const diff = Math.max(0, Math.floor((Date.now() - inicio.getTime())/1000));
-    const h = String(Math.floor(diff/3600)).padStart(2,'0');
-    const m = String(Math.floor((diff%3600)/60)).padStart(2,'0');
-    const s = String(diff%60).padStart(2,'0');
-    return `${h}:${m}:${s}`;
-  } catch(e){ return ''; }
+    // Aceita formato "YYYY-MM-DD HH:MM:SS" ou "YYYY-MM-DDTHH:MM:SS"
+    var clean = isoStr.replace('T', ' ');
+    var parts = clean.substring(0, 19).split(/[- :]/);
+    if (parts.length < 3) return '';
+    var y = parseInt(parts[0], 10), mo = parseInt(parts[1], 10) - 1, d = parseInt(parts[2], 10);
+    var h = parseInt(parts[3] || 0, 10), mi = parseInt(parts[4] || 0, 10), s = parseInt(parts[5] || 0, 10);
+    if (isNaN(y) || isNaN(mo) || isNaN(d)) return '';
+    var inicio = new Date(y, mo, d, h, mi, s);
+    if (isNaN(inicio.getTime())) return '';
+    var diff = Math.max(0, Math.floor((Date.now() - inicio.getTime()) / 1000));
+    var hh = String(Math.floor(diff / 3600)).padStart(2, '0');
+    var mm = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
+    var ss = String(diff % 60).padStart(2, '0');
+    return hh + ':' + mm + ':' + ss;
+  } catch (e) { return ''; }
+}
+
+/* ─── Minutos decorridos desde data formato YYYY-MM-DD HH:MM:SS ─── */
+function minutosDecorridos(isoStr) {
+  if (!isoStr || isoStr === 'None') return -1;
+  try {
+    var parts = isoStr.replace('T', ' ').substring(0, 19).split(/[- :]/);
+    if (parts.length < 3) return -1;
+    var inicio = new Date(parseInt(parts[0],10), parseInt(parts[1],10)-1, parseInt(parts[2],10), parseInt(parts[3]||0,10), parseInt(parts[4]||0,10), parseInt(parts[5]||0,10));
+    if (isNaN(inicio.getTime())) return -1;
+    return Math.max(0, (Date.now() - inicio.getTime()) / 60000);
+  } catch (e) { return -1; }
 }
 
 /* ─── Render ─── */
@@ -508,33 +527,73 @@ function renderFluxo(cards) {
   }).join('');
 }
 
+/* ─── Tempos médios globais (preenchido pelo loadData) ─── */
+var _temposMedios = {};
+
+function calcProgressoTempo(card) {
+  /* Prioridade: tempo estimado > operações concluídas > 0 */
+  if (card.etapa === 'concluido') return 100;
+  if (card.etapa !== 'em_producao') return 0;
+
+  var dtInicio = card.data_inicio_fmt || null;
+  var minDecorridos = minutosDecorridos(dtInicio);
+
+  /* Busca tempo medio para este produto+setor */
+  var peca = (card.cod_peca || '').trim();
+  var setor = (card.departamento || '').trim().toUpperCase();
+  var chave = peca + '|' + setor;
+  var tempoEstimado = _temposMedios[chave];
+
+  /* Se tem tempo medio historico, calcula % por tempo */
+  if (tempoEstimado > 0 && minDecorridos >= 0) {
+    var pct = Math.min(99, Math.round((minDecorridos / tempoEstimado) * 100));
+    return Math.max(1, pct);
+  }
+  /* Se tem data inicio mas sem historico, mostra 10% (sinalizando que comecou) */
+  if (minDecorridos >= 0) return 10;
+  /* Fallback: progresso por operacoes */
+  return card.progresso_ops || 0;
+}
+
 function buildCard(card) {
-  const prio = (card.prioridade||'media').toLowerCase();
-  const timer = card.etapa === 'em_producao' && card.data_inicio
-    ? '<span class="kc-timer" style="color:#4ade80" data-inicio="' + card.data_inicio + '">' + tempoDecorrido(card.data_inicio) + '</span>'
-    : '';
-  const pausaBadge = card.etapa === 'pausado'
+  var prio = (card.prioridade || 'media').toLowerCase();
+
+  /* Operador + timer */
+  var operador = (card.operador_nome || '').trim();
+  var timerHtml = '';
+  var dtInicio = card.data_inicio_fmt || card.data_inicio || null;
+  if (card.etapa === 'em_producao') {
+    if (operador) {
+      timerHtml = '<span class="kc-timer" style="color:#4ade80" data-inicio="' + dtInicio + '"><i class="fa-solid fa-user" style="font-size:.5rem;margin-right:3px"></i>' + operador + '</span>';
+    } else if (dtInicio) {
+ timerHtml = '<span class="kc-timer" style="color:#4ade80" data-inicio="' + dtInicio + '">' + tempoDecorrido(dtInicio) + '</span>';
+    }
+  }
+  var pausaBadge = card.etapa === 'pausado'
     ? '<span style="display:inline-flex;align-items:center;gap:3px;font-size:.5rem;font-weight:800;padding:1px 6px;border-radius:9999px;background:rgba(245,158,11,.2);color:#f59e0b"><i class="fa-solid fa-pause" style="font-size:.45rem"></i>PAUSADO</span>'
     : '';
-  const badge = '<span class="badge-p ' + prio + '">' + ((card.prioridade||'MEDIA')).toUpperCase() + '</span>';
-  const pecaCode = card.cod_peca || '';
-  const pecaName = card.nome_peca || '';
-  const prod = pecaCode
-    ? '<span style="color:#60a5fa;font-weight:700">' + pecaCode + '</span>' + (card.sob_medida ? ' <span style="font-size:.5rem;font-weight:700;padding:1px 5px;border-radius:9999px;background:#e9d5ff;color:#a855f7">SOB MEDIDA</span>' : '') + (pecaName ? ' <span style="color:#ccc">' + pecaName.substring(0,35) + '</span>' : '')
-    : (card.descricao_operacao || 'Produto').substring(0,45);
-  const op2  = card.descricao_operacao
-    ? '<div class="kc-op2"><i class="fa-solid fa-screwdriver-wrench" style="font-size:.55rem;margin-right:3px"></i>' + card.descricao_operacao.substring(0,38) + '</div>' : '';
-  const qtd  = card.qtde_ordem ? '<span style="font-size:.6rem;color:var(--muted)">' + Math.round(card.qtde_ordem) + 'pc</span>' : '';
-  var prog = card.progresso || 0;
+  var badge = '<span class="badge-p ' + prio + '">' + ((card.prioridade || 'MEDIA')).toUpperCase() + '</span>';
+  var pecaCode = card.cod_peca || '';
+  var pecaName = card.nome_peca || '';
+  var prod = pecaCode
+    ? '<span style="color:#60a5fa;font-weight:700">' + pecaCode + '</span>' + (card.sob_medida ? ' <span style="font-size:.5rem;font-weight:700;padding:1px 5px;border-radius:9999px;background:#e9d5ff;color:#a855f7">SOB MEDIDA</span>' : '') + (pecaName ? ' <span style="color:#ccc">' + pecaName.substring(0, 35) + '</span>' : '')
+    : (card.descricao_operacao || 'Produto').substring(0, 45);
+  var op2 = card.descricao_operacao
+    ? '<div class="kc-op2"><i class="fa-solid fa-screwdriver-wrench" style="font-size:.55rem;margin-right:3px"></i>' + card.descricao_operacao.substring(0, 38) + '</div>' : '';
+  var qtd = card.qtde_ordem ? '<span style="font-size:.6rem;color:var(--muted)">' + Math.round(card.qtde_ordem) + 'pc</span>' : '';
+
+  /* Progresso baseado em tempo */
+  var prog = calcProgressoTempo(card);
   var progColor = prog >= 75 ? '#4ade80' : (prog >= 40 ? '#fbbf24' : '#f87171');
+  var progLabel = prog >= 100 ? 'OK' : prog + '%';
   var progBar = card.etapa !== 'concluido'
-    ? '<div style="display:flex;align-items:center;gap:4px;margin-top:4px"><div style="flex:1;height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden"><div style="height:100%;width:' + prog + '%;background:' + progColor + ';border-radius:2px;transition:width .5s"></div></div><span style="font-size:.55rem;color:' + progColor + ';font-weight:700">' + prog + '%</span></div>'
+    ? '<div style="display:flex;align-items:center;gap:4px;margin-top:4px"><div style="flex:1;height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden"><div style="height:100%;width:' + prog + '%;background:' + progColor + ';border-radius:2px;transition:width .5s"></div></div><span style="font-size:.55rem;color:' + progColor + ';font-weight:700">' + progLabel + '</span></div>'
     : '';
   return '<div class="k-card p-' + prio + '">'
     + '<div class="kc-op">OP #' + card.lote_ordem + (card.lote_codigo ? ' &middot; ' + card.lote_codigo : '') + '</div>'
     + '<div class="kc-prod">' + prod + '</div>'
     + op2
-    + '<div class="kc-meta">' + badge + pausaBadge + qtd + timer + '</div>'
+    + '<div class="kc-meta">' + badge + pausaBadge + qtd + timerHtml + '</div>'
     + progBar
     + '</div>';
 }
@@ -617,7 +676,9 @@ function renderStats(stats, concluidos, cards, emAtraso) {
 }
 
 function updateTimers() {
-  document.querySelectorAll('[data-inicio]').forEach(el => {
+  document.querySelectorAll('[data-inicio]').forEach(function(el) {
+    /* Se tem icone de usuario, nao sobrescreve o nome - apenas atualiza se for timer puro */
+    if (el.querySelector('i')) return;
     el.textContent = tempoDecorrido(el.dataset.inicio);
   });
 }
@@ -629,6 +690,8 @@ function loadData() {
     fetch('/api/kanban/status').then(r=>r.json()).catch(()=>({stats:{},concluidos_hoje:0})),
   ]).then(([cardsRes, statsRes]) => {
     const cards = cardsRes.cards || cardsRes.data || [];
+    /* Carrega tempos medios na memoria */
+    _temposMedios = cardsRes.tempos || {};
     const stats = {};
     (statsRes.stats || []).forEach(function(s) { stats[s.etapa] = s.total; });
     const concluidos = statsRes.concluidos_hoje || 0;

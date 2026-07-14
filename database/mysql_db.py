@@ -637,14 +637,18 @@ class DatabaseMySQL:
             SELECT k.*, l.lote_codigo, l.descricao_produto, l.qtde_ordem,
                    l.data_previsao_erp, l.prioridade AS prioridade_lote,
                    op.descricao_operacao, op.sequencia, op.status AS status_operacao,
-                   op.qtde_produzida, op.data_inicio,
+                   op.qtde_produzida,
+                   CASE WHEN op.data_inicio IS NOT NULL
+                        THEN DATE_FORMAT(op.data_inicio, '%%Y-%%m-%%d %%H:%%i:%%s')
+                        ELSE NULL
+                   END AS data_inicio_fmt,
                    of2.codigo_produto AS cod_peca,
                    u.nome AS operador_nome,
                    (SELECT CASE WHEN COUNT(*) = 0 THEN 0
                        ELSE ROUND(SUM(CASE WHEN status = 'concluido' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 0)
                        END
                     FROM operacoes_producao WHERE lote_ordem = k.lote_ordem
-                   ) AS progresso
+                   ) AS progresso_ops
             FROM kanban_cards k
             LEFT JOIN lotes_producao l ON k.lote_ordem = l.ordem
             LEFT JOIN operacoes_producao op ON k.operacao_id = op.id
@@ -1318,5 +1322,27 @@ class DatabaseMySQL:
               AND data_fim_producao >= DATE_SUB(CURDATE(), INTERVAL 29 DAY)
             GROUP BY DATE(data_fim_producao)
             ORDER BY dia
+        """)
+
+    def get_tempo_medio_producao(self):
+        """Tempo medio de fabricacao por produto+setor (minutos).
+        Usa dados historicos do totem (serralheria_producao) para calcular
+        a media de tempo gasto por peca concluida."""
+        return self.query("""
+            SELECT
+                produto,
+                setor,
+                COUNT(*) AS total_concluidas,
+                ROUND(AVG(TIMESTAMPDIFF(MINUTE, data_inicio, data_fim)), 1) AS tempo_medio_min,
+                ROUND(MIN(TIMESTAMPDIFF(MINUTE, data_inicio, data_fim)), 1) AS tempo_min_min,
+                ROUND(MAX(TIMESTAMPDIFF(MINUTE, data_inicio, data_fim)), 1) AS tempo_max_min
+            FROM serralheria_producao
+            WHERE status = 'finalizado'
+              AND data_inicio IS NOT NULL
+              AND data_fim IS NOT NULL
+              AND TIMESTAMPDIFF(MINUTE, data_inicio, data_fim) > 0
+              AND TIMESTAMPDIFF(MINUTE, data_inicio, data_fim) < 1440
+            GROUP BY produto, setor
+            HAVING total_concluidas >= 1
         """)
 

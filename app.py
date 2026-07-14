@@ -1470,6 +1470,17 @@ def api_kanban_cards():
         cod = c.get('cod_peca') or ''
         c['nome_peca'] = _get_nome_produto(cod) if cod else ''
         c['sob_medida'] = _is_sob_medida(cod) or _is_sob_medida(c.get('lote_codigo'))
+    # Tempo medio de fabricacao por peca+setor (para progresso por tempo)
+    tempos = {}
+    try:
+        rows = db.get_tempo_medio_producao()
+        for r in rows:
+            p = str(r.get('produto', '')).strip()
+            s = str(r.get('setor', '')).strip().upper()
+            if p and s:
+                tempos[p + '|' + s] = float(r.get('tempo_medio_min', 0) or 0)
+    except Exception:
+        pass
     # Verifica ERP para alerta no TV
     pg_ok = False
     try:
@@ -1478,7 +1489,7 @@ def api_kanban_cards():
         pg_ok = True
     except Exception:
         pass
-    return jsonify({'status': 'success', 'cards': cards, 'pg_ok': pg_ok})
+    return jsonify({'status': 'success', 'cards': cards, 'tempos': tempos, 'pg_ok': pg_ok})
 
 @app.route('/api/kanban/status')
 @login_required
