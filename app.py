@@ -1576,6 +1576,9 @@ def api_separacao_materiais():
         mats_filtrados = []
         for m in mats:
             cod = str(m.get('produto') or '')
+            # Exclui PC- (pecas em producao que circulam entre setores, nao passam pelo almoxarifado)
+            if cod.upper().startswith('PC-') or cod.upper().startswith('PC '):
+                continue
             if cod in codigos_fabricados:
                 continue
             mats_filtrados.append({
