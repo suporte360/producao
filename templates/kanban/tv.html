@@ -650,6 +650,7 @@ function loadData() {
     renderFluxo(cards);
     renderKanban(cards);
     renderStats(stats, concluidos, cards, emAtraso);
+    startAutoScroll();
 
     document.getElementById('tickerMsg').textContent =
       'Última atualização: ' + new Date().toLocaleTimeString('pt-BR') +
@@ -661,10 +662,62 @@ function loadData() {
   });
 }
 
+/* ─── Auto-scroll lento nas colunas com overflow ─── */
+var _scrollIntervals = [];
+
+function startAutoScroll() {
+  // Limpa scrolls anteriores
+  _scrollIntervals.forEach(function(id) { clearInterval(id); });
+  _scrollIntervals = [];
+
+  var cols = document.querySelectorAll('.setor-col-body');
+  for (var i = 0; i < cols.length; i++) {
+    (function(col) {
+      // Pausa 3s antes de começar
+      var waitTimer = setTimeout(function() {
+        // Verifica se precisa de scroll
+        if (col.scrollHeight <= col.clientHeight + 2) return;
+
+        var speed = 0.5; // pixels por tick
+        var direction = 1; // 1 = baixo, -1 = cima
+        var pauseTicks = 0;
+        var pauseMax = 120; // pausa de ~2s no topo/fundo
+
+        var intervalId = setInterval(function() {
+          // Pausa se mouse sobre a coluna
+          if (col.matches(':hover')) return;
+
+          if (pauseTicks > 0) {
+            pauseTicks--;
+            return;
+          }
+
+          col.scrollTop += speed * direction;
+
+          // Chegou no fundo?
+          if (col.scrollTop + col.clientHeight >= col.scrollHeight - 1) {
+            direction = -1;
+            pauseTicks = pauseMax;
+          }
+          // Chegou no topo?
+          if (col.scrollTop <= 0) {
+            direction = 1;
+            pauseTicks = pauseMax;
+          }
+        }, 30);
+
+        _scrollIntervals.push(intervalId);
+      }, 3000 + (i * 500)); // escalona inicio entre colunas
+
+      _scrollIntervals.push(waitTimer);
+    })(cols[i]);
+  }
+}
+
 loadData();
 setInterval(loadData, 30000);
 setInterval(updateTimers, 1000);
-setTimeout(() => location.reload(), 1800000);
+setTimeout(function() { location.reload(); }, 1800000);
 </script>
 </body>
 </html>
