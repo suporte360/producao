@@ -10,12 +10,26 @@
 {% block content %}
 
 {# ═══════════════ KPIs ═══════════════ #}
-<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+<div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-5">
   <div class="kpi-card">
     <div class="kpi-icon" style="background:#cffafe;color:#0891b2"><i class="fa-solid fa-boxes-stacked"></i></div>
     <div>
-      <div class="kpi-num text-cyan-600" id="kpiMateriaisPend">0</div>
-      <div class="kpi-lbl">Materiais p/ Separar</div>
+      <div class="kpi-num text-cyan-600" id="kpiPend">0</div>
+      <div class="kpi-lbl">Pendentes</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#e0f2fe;color:#0284c7"><i class="fa-solid fa-arrows-spin"></i></div>
+    <div>
+      <div class="kpi-num text-sky-600" id="kpiSep">0</div>
+      <div class="kpi-lbl">Separando</div>
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#dcfce7;color:#15803d"><i class="fa-solid fa-check-double"></i></div>
+    <div>
+      <div class="kpi-num text-green-600" id="kpiSepOk">0</div>
+      <div class="kpi-lbl">Separados</div>
     </div>
   </div>
   <div class="kpi-card">
@@ -32,14 +46,21 @@
       <div class="kpi-lbl">Sem Estoque</div>
     </div>
   </div>
-  <div class="kpi-card">
-    <div class="kpi-icon" style="background:#dcfce7;color:#15803d"><i class="fa-solid fa-circle-check"></i></div>
-    <div>
-      <div class="kpi-num text-green-600">{{ aprovadas_hoje }}</div>
-      <div class="kpi-lbl">Entregues Hoje</div>
+</div>
+
+{# ═══════════════ SEPARACAO DE OPs ═══════════════ #}
+<section class="mb-5">
+  <h2 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+    <span class="inline-block w-2.5 h-2.5 rounded-full bg-cyan-500"></span>
+    Separação de OPs
+    <span class="ml-1 text-[10px] text-gray-400 font-normal normal-case">(pendente → separando → separado → entregue)</span>
+  </h2>
+  <div id="listaSeparacaoOPs" class="prodsys-card overflow-hidden">
+    <div class="p-4 text-center">
+      <i class="fa-solid fa-rotate fa-spin text-gray-300 text-lg"></i>
     </div>
   </div>
-</div>
+</section>
 
 {# ═══════════════ MATERIAIS P/ SEPARAR (das OFs liberadas) ═══════════════ #}
 <section class="mb-5" id="secaoMateriaisOF">
@@ -279,7 +300,81 @@ function carregarResumoEstoque() {
 document.addEventListener('DOMContentLoaded', () => {
   carregarResumoEstoque();
   carregarMateriaisOF();
+  carregarSeparacaoOPs();
 });
+
+// ════════════════ SEPARACAO DE OPs (PC) ════════════════
+function carregarSeparacaoOPs() {
+  fetch('/api/almoxarifado/separacao').then(r => r.json()).then(d => {
+    var lotes = d.lotes || [];
+    var stats = d.stats || {};
+    document.getElementById('kpiPend').textContent = stats.pendentes || 0;
+    document.getElementById('kpiSep').textContent = stats.separando || 0;
+    document.getElementById('kpiSepOk').textContent = stats.separados || 0;
+    var el = document.getElementById('listaSeparacaoOPs');
+    if (!lotes.length) {
+      el.innerHTML = '<div class="p-6 text-center text-gray-400 text-sm"><i class="fa-solid fa-circle-check text-green-400 mr-1"></i>Nenhuma OP aguardando separação</div>';
+      return;
+    }
+    var html = '<div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-slate-50 text-slate-500 text-[10px] uppercase tracking-wider border-b border-gray-100"><tr>' +
+      '<th class="px-3 py-2.5 text-left">OP</th><th class="px-3 py-2.5 text-left">Produto</th><th class="px-3 py-2.5 text-center">Qtd</th><th class="px-3 py-2.5 text-center">Prioridade</th><th class="px-3 py-2.5 text-center">Status</th><th class="px-3 py-2.5 text-center">Atraso</th><th class="px-3 py-2.5 text-right">Ações</th></tr></thead><tbody class="divide-y divide-gray-50">';
+    for (var i = 0; i < lotes.length; i++) {
+      var l = lotes[i];
+      var sep = l.separacao_status || 'pendente';
+      var prio = (l.prioridade || 'media').toLowerCase();
+      var atraso = l.dias_atraso || 0;
+      var rowBg = '';
+      if (sep === 'separando') rowBg = 'bg-sky-50/40';
+      else if (sep === 'separado') rowBg = 'bg-green-50/40';
+      else if (prio === 'urgente') rowBg = 'bg-red-50/30';
+      else if (atraso > 0) rowBg = 'bg-amber-50/30';
+      var statusBadge = {
+        'pendente': '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-cyan-700 bg-cyan-50 px-2 py-0.5 rounded-full"><i class="fa-solid fa-clock"></i>Pendente</span>',
+        'separando': '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-full"><i class="fa-solid fa-arrows-spin"></i>Separando</span>',
+        'separado': '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded-full"><i class="fa-solid fa-check"></i>Separado</span>',
+        'entregue': '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full"><i class="fa-solid fa-truck"></i>Entregue</span>'
+      };
+      var acoes = '';
+      if (sep === 'pendente') {
+        acoes = '<button onclick="mudarSeparacao(' + l.ordem + ',\'separando\')" class="btn-touch btn-start text-[10px] px-2.5 py-1.5" style="min-height:30px"><i class="fa-solid fa-play"></i>Separar</button>';
+      } else if (sep === 'separando') {
+        acoes = '<button onclick="mudarSeparacao(' + l.ordem + ',\'separado\')" class="btn-touch btn-start text-[10px] px-2.5 py-1.5" style="min-height:30px"><i class="fa-solid fa-check"></i>Pronto</button>';
+      } else if (sep === 'separado') {
+        acoes = '<button onclick="mudarSeparacao(' + l.ordem + ',\'entregue\')" class="btn-touch btn-start text-[10px] px-2.5 py-1.5" style="min-height:30px;background:#15803d"><i class="fa-solid fa-truck"></i>Entregar</button>';
+      } else {
+        acoes = '<span class="text-[10px] text-gray-400"><i class="fa-solid fa-check-double"></i> Concluída</span>';
+      }
+      html += '<tr class="hover:bg-gray-50 ' + rowBg + '">' +
+        '<td class="px-3 py-2.5 font-bold text-blue-700">#' + l.ordem + (l.lote_codigo ? '<br><span class="text-[10px] text-gray-400">' + l.lote_codigo + '</span>' : '') + '</td>' +
+        '<td class="px-3 py-2.5 text-gray-700 max-w-[220px] truncate" title="' + (l.descricao_produto || '') + '">' + (l.descricao_produto || '—') + '</td>' +
+        '<td class="px-3 py-2.5 text-center font-bold">' + Math.round(l.qtde_ordem || 0) + ' pc</td>' +
+        '<td class="px-3 py-2.5 text-center">' + (l.prioridade ? '<span class="badge-priority ' + prio + '">' + l.prioridade.toUpperCase() + '</span>' : '—') + '</td>' +
+        '<td class="px-3 py-2.5 text-center">' + (statusBadge[sep] || statusBadge['pendente']) + '</td>' +
+        '<td class="px-3 py-2.5 text-center">' + (atraso > 0 ? '<span class="text-red-600 font-bold">' + atraso + 'd</span>' : '<span class="text-gray-300">—</span>') + '</td>' +
+        '<td class="px-3 py-2.5 text-right">' + acoes + '</td></tr>';
+    }
+    html += '</tbody></table></div>';
+    el.innerHTML = html;
+  }).catch(function() {
+    document.getElementById('listaSeparacaoOPs').innerHTML = '<div class="p-4 text-center text-sm text-red-400">Erro ao carregar OPs</div>';
+  });
+}
+
+function mudarSeparacao(ordem, novoStatus) {
+  var statusLabel = {separando:'SEPARANDO', separado:'SEPARADO', entregue:'ENTREGUE'};
+  if (!confirm('Marcar OP #' + ordem + ' como ' + (statusLabel[novoStatus] || novoStatus) + '?')) return;
+  fetch('/api/lotes/' + ordem + '/' + novoStatus, {method:'POST', headers:{'Content-Type':'application/json'}})
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.status === 'success') {
+        showToast('OP #' + ordem + ' → ' + (statusLabel[novoStatus] || novoStatus) + '!');
+        carregarSeparacaoOPs();
+      } else {
+        showToast('Erro ao atualizar', 'error');
+      }
+    })
+    .catch(function() { showToast('Erro de conexão', 'error'); });
+}
 
 // ════════════════ MATERIAIS DAS OFs ════════════════
 function carregarMateriaisOF() {

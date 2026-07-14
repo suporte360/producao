@@ -97,7 +97,7 @@ except Exception:
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     """)
 
-# Operadores da Serralheria — reset uma vez (usado flag na tabela para controlar)
+# Operadores da Serralheria — so insere se a tabela estiver vazia
 OPERADORES_SERRALHERIA = [
     ('Gabriel',      'CORTE'),
     ('Erivaldo',     'SERRALHERIA'),
@@ -111,23 +111,16 @@ OPERADORES_SERRALHERIA = [
     ('Jhonatas',     'DOBRA'),
 ]
 try:
-    # Verifica se precisa resetar: conta operadores que NAO sao da lista oficial
-    nomes_oficiais = [n for n, s in OPERADORES_SERRALHERIA]
-    if nomes_oficiais:
-        placeholders = ','.join(['%s'] * len(nomes_oficiais))
-        fora = db.query_one(
-            "SELECT COUNT(*) as c FROM serralheria_usuarios WHERE nome NOT IN (" + placeholders + ")",
-            nomes_oficiais
-        )
-        total = db.query_one("SELECT COUNT(*) as c FROM serralheria_usuarios")
-        if fora['c'] > 0 or total['c'] == 0:
-            db.execute("DELETE FROM serralheria_usuarios")
-            for nome, setor in OPERADORES_SERRALHERIA:
-                db.execute(
-                    "INSERT INTO serralheria_usuarios (nome, setor, ativo) VALUES (%s, %s, 1)",
-                    (nome, setor)
-                )
-            print('[OK] Operadores serralheria resetados: %d' % len(OPERADORES_SERRALHERIA))
+    total = db.query_one("SELECT COUNT(*) as c FROM serralheria_usuarios")
+    if total['c'] == 0:
+        for nome, setor in OPERADORES_SERRALHERIA:
+            db.execute(
+                "INSERT INTO serralheria_usuarios (nome, setor, ativo) VALUES (%s, %s, 1)",
+                (nome, setor)
+            )
+        print('[OK] Operadores serralheria iniciais criados: %d' % len(OPERADORES_SERRALHERIA))
+    else:
+        print('[OK] Operadores serralheria: %d existentes (preservados)' % total['c'])
 except Exception as e:
     print('[WARN] Operadores serralheria: %s' % e)
 
@@ -1177,7 +1170,6 @@ def api_lotes():
     return jsonify({'status': 'success', 'data': lotes})
 
 @app.route('/api/requisicoes/pendentes')
-@login_required
 def api_requisicoes_pendentes():
     reqs = db.get_requisicoes(status='pendente')
     return jsonify({'status': 'success', 'data': reqs})
@@ -1420,6 +1412,16 @@ def api_separar_fabrica(item_id):
                    f'Item #{item_id} separado para fabrica', 'estoque_interno', item_id)
     return jsonify({'status': 'success' if ok else 'error'})
 
+@app.route('/api/lotes/<int:ordem>/separando', methods=['POST'])
+@login_required
+@role_required('admin', 'gerente', 'almoxarifado')
+def api_marcar_separando(ordem):
+    ok = db.marcar_separacao_lote(ordem, 'separando', session['usuario_id'])
+    if ok:
+        db.add_log(session['usuario_id'], 'marcar_separando',
+                   f'OP #{ordem} marcada como SEPARANDO pelo almoxarifado', 'lotes', ordem)
+    return jsonify({'status': 'success' if ok else 'error'})
+
 @app.route('/api/lotes/<int:ordem>/separar', methods=['POST'])
 @login_required
 @role_required('admin', 'gerente', 'almoxarifado')
@@ -1462,10 +1464,9 @@ def api_recusar_requisicao(req_id):
     return jsonify({'status': 'success' if ok else 'error'})
 
 @app.route('/api/almoxarifado/separacao')
-@login_required
-@role_required('admin', 'gerente', 'almoxarifado')
 def api_almoxarifado_separacao():
-    """Endpoint otimizado para a TV do almoxarifado (separação)."""
+    """Endpoint para a TV e PC do almoxarifado (separacao).
+    TV acessa sem login, PC acessa com login — mesma API."""
     lotes = db.get_lotes_separacao_tv()
     pendentes  = sum(1 for l in lotes if l.get('separacao_status') == 'pendente')
     separados  = sum(1 for l in lotes if l.get('separacao_status') == 'separado')
