@@ -26,8 +26,8 @@
   <button onclick="switchTab('periodo')" id="btn-tab-periodo" class="tab-btn">
     <i class="fa-solid fa-calendar-days"></i> Producao por Periodo
   </button>
-  <button onclick="switchTab('serralheria')" id="btn-tab-serralheria" class="tab-btn">
-    <i class="fa-solid fa-gears"></i> Serralheria (Totem)
+  <button onclick="switchTab('totens')" id="btn-tab-totens" class="tab-btn">
+    <i class="fa-solid fa-tower-broadcast"></i> Totens
   </button>
 </div>
 
@@ -314,10 +314,54 @@
   </div>
 </div>
 
-{# ═══════════════ TAB 4: SERRALHERIA (TOTEM) ═══════════════ #}
-<div id="tab-serralheria" class="tab-panel hidden">
+{# ═══════════════ TAB 4: TOTENS DE PRODUCAO ═══════════════ #}
+<div id="tab-totens" class="tab-panel hidden">
 
-  {# Filtros serralheria #}
+  {# Links rapidos para totens #}
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+    <a href="http://192.168.1.14:5003" target="_blank" class="prodsys-card p-4 flex items-center gap-3 hover:shadow-lg hover:border-blue-300 transition-all group no-underline">
+      <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style="background:linear-gradient(135deg,#f97316,#ea580c)">
+        <i class="fa-solid fa-gears text-white text-lg"></i>
+      </div>
+      <div>
+        <div class="font-black text-gray-800 text-sm group-hover:text-blue-600">Serralheria</div>
+        <div class="text-[11px] text-gray-400">Porta 5003</div>
+      </div>
+      <i class="fa-solid fa-arrow-up-right-from-square text-gray-300 ml-auto text-xs group-hover:text-blue-400"></i>
+    </a>
+    <a href="http://192.168.1.14:5004" target="_blank" class="prodsys-card p-4 flex items-center gap-3 hover:shadow-lg hover:border-pink-300 transition-all group no-underline">
+      <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style="background:linear-gradient(135deg,#e040fb,#ab47bc)">
+        <i class="fa-solid fa-paint-roller text-white text-lg"></i>
+      </div>
+      <div>
+        <div class="font-black text-gray-800 text-sm group-hover:text-pink-600">Pintura</div>
+        <div class="text-[11px] text-gray-400">Porta 5004</div>
+      </div>
+      <i class="fa-solid fa-arrow-up-right-from-square text-gray-300 ml-auto text-xs group-hover:text-pink-400"></i>
+    </a>
+    <a href="http://192.168.1.14:5005" target="_blank" class="prodsys-card p-4 flex items-center gap-3 hover:shadow-lg hover:border-blue-300 transition-all group no-underline">
+      <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style="background:linear-gradient(135deg,#42a5f5,#1e88e5)">
+        <i class="fa-solid fa-screwdriver-wrench text-white text-lg"></i>
+      </div>
+      <div>
+        <div class="font-black text-gray-800 text-sm group-hover:text-blue-600">Montagem</div>
+        <div class="text-[11px] text-gray-400">Porta 5005</div>
+      </div>
+      <i class="fa-solid fa-arrow-up-right-from-square text-gray-300 ml-auto text-xs group-hover:text-blue-400"></i>
+    </a>
+    <a href="http://192.168.1.14:5006" target="_blank" class="prodsys-card p-4 flex items-center gap-3 hover:shadow-lg hover:border-green-300 transition-all group no-underline">
+      <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style="background:linear-gradient(135deg,#66bb6a,#43a047)">
+        <i class="fa-solid fa-box-open text-white text-lg"></i>
+      </div>
+      <div>
+        <div class="font-black text-gray-800 text-sm group-hover:text-green-600">Embalagem</div>
+        <div class="text-[11px] text-gray-400">Porta 5006</div>
+      </div>
+      <i class="fa-solid fa-arrow-up-right-from-square text-gray-300 ml-auto text-xs group-hover:text-green-400"></i>
+    </a>
+  </div>
+
+  {# Filtros #}
   <div class="prodsys-card p-4 mb-4">
     <div class="flex flex-wrap items-end gap-3">
       <div class="flex flex-col gap-1">
@@ -369,7 +413,7 @@
         </table>
       </div>
       {% else %}
-      <div class="text-center py-6 text-gray-400 text-sm">Sem dados de serralheria</div>
+      <div class="text-center py-6 text-gray-400 text-sm">Sem dados de producao</div>
       {% endif %}
     </div>
 

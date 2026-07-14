@@ -746,6 +746,7 @@ def api_iniciar():
             'CORTE': 'CORTE', 'DOBRA': 'DOBRA', 'SOLDA': 'SOLDA',
             'ACABAMENTO': 'ACABAMENTO', 'MONTAGEM': 'MONTAGEM',
             'FUNILARIA': 'FUNILARIA', 'PINTURA': 'PINTURA',
+            'EMBALAGEM': 'EMBALAGEM',
         }
         dept = setor_para_dept.get(setor, setor)
 
@@ -894,6 +895,7 @@ def api_finalizar():
             'CORTE': 'CORTE', 'DOBRA': 'DOBRA', 'SOLDA': 'SOLDA',
             'ACABAMENTO': 'ACABAMENTO', 'MONTAGEM': 'MONTAGEM',
             'FUNILARIA': 'FUNILARIA', 'PINTURA': 'PINTURA',
+            'EMBALAGEM': 'EMBALAGEM',
         }
 
         if pecas and setor:
