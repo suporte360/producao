@@ -91,7 +91,7 @@
     /* ── PAINÉIS ── */
     .main-grid {
       flex:1; display:grid;
-      grid-template-columns: 1.5fr 1fr;
+      grid-template-columns: 1fr 1.5fr;
       gap:10px; padding:0 16px 8px;
       overflow:hidden;
       position: relative; z-index: 2;
@@ -267,27 +267,13 @@
 <!-- PAINÉIS -->
 <div class="main-grid">
 
-  <!-- PAINEL 1: ESTOQUE (do SQLite sincronizado do ERP) -->
-  <div class="panel panel-estoque">
-    <div class="panel-header">
-      <span><i class="fa-solid fa-boxes-stacked" style="margin-right:6px"></i>Estoque do Almoxarifado</span>
-      <span class="cnt-badge" id="cntEstoque">0</span>
-    </div>
-    <div class="panel-body" id="painelEstoque">
-      <div class="empty-panel">
-        <i class="fa-solid fa-rotate fa-spin"></i>
-        <span>Carregando estoque...</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- PAINEL 2: Requisições pendentes -->
+  <!-- PAINEL 1: Requisições dos Setores -->
   <div class="panel panel-req">
     <div class="panel-header">
       <span><i class="fa-solid fa-bell" style="margin-right:6px"></i>Requisicoes dos Setores</span>
       <span class="cnt-badge" id="cntReqs">0</span>
     </div>
-    <div class="panel-body">
+    <div class="panel-body" id="painelReqs">
       <table>
         <thead>
           <tr>
@@ -304,6 +290,20 @@
           </td></tr>
         </tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- PAINEL 2: ESTOQUE (do SQLite sincronizado do ERP) -->
+  <div class="panel panel-estoque">
+    <div class="panel-header">
+      <span><i class="fa-solid fa-boxes-stacked" style="margin-right:6px"></i>Estoque do Almoxarifado</span>
+      <span class="cnt-badge" id="cntEstoque">0</span>
+    </div>
+    <div class="panel-body" id="painelEstoque">
+      <div class="empty-panel">
+        <i class="fa-solid fa-rotate fa-spin"></i>
+        <span>Carregando estoque...</span>
+      </div>
     </div>
   </div>
 
