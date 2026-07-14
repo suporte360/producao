@@ -1030,6 +1030,41 @@ def api_relatorio_serralheria_periodo():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/relatorios/tempo_producao', methods=['GET'])
+@login_required
+@role_required('admin', 'gerente', 'pcp', 'diretor')
+def api_relatorio_tempo_producao():
+    """API: tempo medio de fabricacao por peca+setor."""
+    try:
+        rows = db.get_tempo_medio_producao()
+        # Converte Row para dict e formata tempos
+        dados = []
+        for r in rows:
+            d = dict(r)
+            med = float(d.get('tempo_medio_min', 0) or 0)
+            d['tempo_medio_fmt'] = _formatar_minutos(med)
+            d['tempo_min_fmt'] = _formatar_minutos(float(d.get('tempo_min_min', 0) or 0))
+            d['tempo_max_fmt'] = _formatar_minutos(float(d.get('tempo_max_min', 0) or 0))
+            dados.append(d)
+        # Ordena por tempo medio decrescente
+        dados.sort(key=lambda x: float(x.get('tempo_medio_min', 0) or 0), reverse=True)
+        return jsonify({'dados': dados, 'total': len(dados)})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+def _formatar_minutos(minutos):
+    """Formata minutos para string legivel: '1h 23min' ou '45min'."""
+    m = float(minutos)
+    if m <= 0:
+        return '—'
+    h = int(m // 60)
+    mi = int(round(m % 60))
+    if h > 0 and mi > 0:
+        return str(h) + 'h ' + str(mi) + 'min'
+    if h > 0:
+        return str(h) + 'h'
+    return str(mi) + 'min'
+
 # =============================================
 # DIRETOR / GERENTE VIEWS
 # Diretor — Relatórios, Logs, Métricas (somente leitura)

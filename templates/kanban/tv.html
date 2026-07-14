@@ -742,10 +742,11 @@ function startAutoScroll() {
         // Verifica se precisa de scroll (com margem de erro)
         if (col.scrollHeight <= col.clientHeight + 4) return;
 
-        var speed = 0.4; // pixels por tick (~13px/s)
+        var speed = 0.4; // pixels por tick
         var direction = 1;
         var pauseTicks = 0;
         var pauseMax = 100; // pausa de ~3s no topo/fundo
+        var accum = 0; // acumulador fracionario (scrollTop e inteiro em alguns navegadores)
 
         var intervalId = setInterval(function() {
           // Pausa se mouse sobre a coluna
@@ -753,22 +754,29 @@ function startAutoScroll() {
 
           if (pauseTicks > 0) { pauseTicks--; return; }
 
-          col.scrollTop += speed * direction;
+          // Acumula e so aplica quando chega a 1px (evita truncamento)
+          accum += speed * direction;
+          if (Math.abs(accum) >= 1) {
+            col.scrollTop += Math.round(accum);
+            accum = 0;
+          }
 
           if (col.scrollTop + col.clientHeight >= col.scrollHeight - 1) {
             direction = -1;
             pauseTicks = pauseMax;
+            accum = 0;
           }
           if (col.scrollTop <= 0) {
             direction = 1;
             pauseTicks = pauseMax;
+            accum = 0;
           }
         }, 30);
 
         _scrollIntervals.push(intervalId);
       })(cols[i], i);
     }
-  }, 500); // 500ms de delay para o layout
+  }, 1000); // 1s de delay para o layout calcular
 }
 
 loadData();
