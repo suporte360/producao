@@ -1527,6 +1527,81 @@ def api_almoxarifado_estoque():
     produtos.sort(key=lambda x: (ordem.get(x['status'], 3), x['saldo']))
     return jsonify({'status': 'success', 'stats': stats, 'produtos': produtos})
 
+@app.route('/api/almoxarifado/separacao-materiais')
+def api_separacao_materiais():
+    """TV do almoxarifado: OPs liberadas com lista de componentes para separar.
+    Busca materiais do ERP (reqordem) e cruza com estoque local."""
+    lotes = db.get_lotes_separacao_tv()
+    if not lotes:
+        return jsonify({'status': 'success', 'lotes': [], 'stats': {
+            'total': 0, 'pendentes': 0, 'separando': 0, 'separados': 0, 'urgentes': 0
+        }})
+
+    # Stats básicos
+    stats = {
+        'total': len(lotes),
+        'pendentes': sum(1 for l in lotes if l.get('separacao_status') == 'pendente'),
+        'separando': sum(1 for l in lotes if l.get('separacao_status') == 'separando'),
+        'separados': sum(1 for l in lotes if l.get('separacao_status') == 'separado'),
+        'urgentes': sum(1 for l in lotes if (l.get('prioridade') or '').lower() in ('urgente', 'alta'))
+    }
+
+    # Busca materiais do ERP para todas as OPs de uma vez
+    ordens = [l['ordem'] for l in lotes]
+    materiais_erp = []
+    try:
+        pg = DatabasePostgreSQL()
+        materiais_erp = pg.get_requisicoes_multiplas_ordens(ordens)
+    except Exception as e:
+        print("[SEP MATS] Erro ERP:", e)
+
+    # Exclui peças fabricadas em outras OFs
+    try:
+        codigos_fabricados = db.get_codigos_produtos_ofs_ativas()
+    except Exception:
+        codigos_fabricados = set()
+
+    # Agrupa materiais por OP
+    mats_por_of = {}
+    for m in materiais_erp:
+        of_num = m.get('ordem')
+        if of_num not in mats_por_of:
+            mats_por_of[of_num] = []
+        mats_por_of[of_num].append(m)
+
+    # Monta resultado
+    resultado = []
+    for lote in lotes:
+        mats = mats_por_of.get(lote['ordem'], [])
+        mats_filtrados = []
+        for m in mats:
+            cod = str(m.get('produto') or '')
+            if cod in codigos_fabricados:
+                continue
+            mats_filtrados.append({
+                'codigo': cod,
+                'descricao': (m.get('descricao') or '')[:50],
+                'unidade': m.get('unidade') or 'UN',
+                'qtd_necessaria': float(m.get('quantidade') or 0)
+            })
+        resultado.append({
+            'ordem': lote['ordem'],
+            'lote_codigo': lote.get('lote_codigo'),
+            'descricao_produto': lote.get('descricao_produto'),
+            'qtde_ordem': lote.get('qtde_ordem'),
+            'prioridade': lote.get('prioridade'),
+            'data_previsao_erp': lote.get('data_previsao_erp'),
+            'departamento_atual': lote.get('departamento_atual'),
+            'separacao_status': lote.get('separacao_status'),
+            'dias_atraso': lote.get('dias_atraso'),
+            'operacoes_concluidas': lote.get('operacoes_concluidas'),
+            'total_operacoes': lote.get('total_operacoes'),
+            'total_componentes': len(mats_filtrados),
+            'componentes': mats_filtrados
+        })
+
+    return jsonify({'status': 'success', 'lotes': resultado, 'stats': stats})
+
 @app.route('/api/almoxarifado/novas_liberacoes')
 @login_required
 def api_novas_liberacoes():
