@@ -1486,6 +1486,47 @@ def api_almoxarifado_separacao():
         }
     })
 
+@app.route('/api/almoxarifado/estoque')
+def api_almoxarifado_estoque():
+    """Estoque do almoxarifado — lê SQLite sincronizado do ERP."""
+    import sqlite3 as sqlite3_mod
+    SQLITE_PATH = "/opt/painel_estoque/estoque.db"
+    stats = {'CRITICO': 0, 'BAIXO': 0, 'OK': 0}
+    produtos = []
+    try:
+        conn = sqlite3_mod.connect(SQLITE_PATH)
+        conn.row_factory = sqlite3_mod.Row
+        cur = conn.cursor()
+        cur.execute("SELECT TRIM(codigo) as codigo, descricao, saldo_atual, estoque_minimo FROM produtos")
+        rows = cur.fetchall()
+        for r in rows:
+            saldo = float(r['saldo_atual'] or 0)
+            minimo = float(r['estoque_minimo'] or 0)
+            if minimo <= 0:
+                minimo = 1.0
+            limite = minimo * 1.25
+            if saldo <= minimo:
+                status = 'CRITICO'
+            elif saldo <= limite:
+                status = 'BAIXO'
+            else:
+                status = 'OK'
+            stats[status] += 1
+            produtos.append({
+                'codigo': r['codigo'],
+                'descricao': (r['descricao'] or '')[:45],
+                'saldo': int(saldo),
+                'minimo': int(minimo),
+                'status': status
+            })
+        conn.close()
+    except Exception as e:
+        print("[ESTOQUE TV] Erro ao ler SQLite:", e)
+    # Ordena: CRITICO primeiro, depois BAIXO, depois OK
+    ordem = {'CRITICO': 0, 'BAIXO': 1, 'OK': 2}
+    produtos.sort(key=lambda x: (ordem.get(x['status'], 3), x['saldo']))
+    return jsonify({'status': 'success', 'stats': stats, 'produtos': produtos})
+
 @app.route('/api/almoxarifado/novas_liberacoes')
 @login_required
 def api_novas_liberacoes():
