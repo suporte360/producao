@@ -558,16 +558,11 @@ function calcProgressoTempo(card) {
 function buildCard(card) {
   var prio = (card.prioridade || 'media').toLowerCase();
 
-  /* Operador + timer */
+  /* Operador nome (nao mostra timer sem operador) */
   var operador = (card.operador_nome || '').trim();
   var timerHtml = '';
-  var dtInicio = card.data_inicio_fmt || card.data_inicio || null;
-  if (card.etapa === 'em_producao') {
-    if (operador) {
-      timerHtml = '<span class="kc-timer" style="color:#4ade80" data-inicio="' + dtInicio + '"><i class="fa-solid fa-user" style="font-size:.5rem;margin-right:3px"></i>' + operador + '</span>';
-    } else if (dtInicio) {
- timerHtml = '<span class="kc-timer" style="color:#4ade80" data-inicio="' + dtInicio + '">' + tempoDecorrido(dtInicio) + '</span>';
-    }
+  if (card.etapa === 'em_producao' && operador) {
+    timerHtml = '<span class="kc-timer" style="color:#4ade80"><i class="fa-solid fa-user" style="font-size:.5rem;margin-right:3px"></i>' + operador + '</span>';
   }
   var pausaBadge = card.etapa === 'pausado'
     ? '<span style="display:inline-flex;align-items:center;gap:3px;font-size:.5rem;font-weight:800;padding:1px 6px;border-radius:9999px;background:rgba(245,158,11,.2);color:#f59e0b"><i class="fa-solid fa-pause" style="font-size:.45rem"></i>PAUSADO</span>'
@@ -582,13 +577,19 @@ function buildCard(card) {
     ? '<div class="kc-op2"><i class="fa-solid fa-screwdriver-wrench" style="font-size:.55rem;margin-right:3px"></i>' + card.descricao_operacao.substring(0, 38) + '</div>' : '';
   var qtd = card.qtde_ordem ? '<span style="font-size:.6rem;color:var(--muted)">' + Math.round(card.qtde_ordem) + 'pc</span>' : '';
 
-  /* Progresso baseado em tempo */
+  /* Progresso baseado em tempo (so mostra se tiver historico ou operacoes) */
   var prog = calcProgressoTempo(card);
-  var progColor = prog >= 75 ? '#4ade80' : (prog >= 40 ? '#fbbf24' : '#f87171');
-  var progLabel = prog >= 100 ? 'OK' : prog + '%';
-  var progBar = card.etapa !== 'concluido'
-    ? '<div style="display:flex;align-items:center;gap:4px;margin-top:4px"><div style="flex:1;height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden"><div style="height:100%;width:' + prog + '%;background:' + progColor + ';border-radius:2px;transition:width .5s"></div></div><span style="font-size:.55rem;color:' + progColor + ';font-weight:700">' + progLabel + '</span></div>'
-    : '';
+  var temHistorico = (card.data_inicio_fmt || card.data_inicio) ? true : false;
+  var peca = (card.cod_peca || '').trim();
+  var setor = (card.departamento || '').trim().toUpperCase();
+  var chave = peca + '|' + setor;
+  var temTempoEstimado = _temposMedios[chave] > 0;
+  var progBar = '';
+  if (card.etapa === 'em_producao' && (temTempoEstimado || prog > 10)) {
+    var progColor = prog >= 75 ? '#4ade80' : (prog >= 40 ? '#fbbf24' : '#f87171');
+    var progLabel = prog >= 100 ? 'OK' : prog + '%';
+    progBar = '<div style="display:flex;align-items:center;gap:4px;margin-top:4px"><div style="flex:1;height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden"><div style="height:100%;width:' + prog + '%;background:' + progColor + ';border-radius:2px;transition:width .5s"></div></div><span style="font-size:.55rem;color:' + progColor + ';font-weight:700">' + progLabel + '</span></div>';
+  }
   return '<div class="k-card p-' + prio + '">'
     + '<div class="kc-op">OP #' + card.lote_ordem + (card.lote_codigo ? ' &middot; ' + card.lote_codigo : '') + '</div>'
     + '<div class="kc-prod">' + prod + '</div>'
@@ -729,40 +730,35 @@ function loadData() {
 var _scrollIntervals = [];
 
 function startAutoScroll() {
-  // Limpa scrolls anteriores
-  _scrollIntervals.forEach(function(id) { clearInterval(id); });
+  // Limpa scrolls anteriores (intervals + timeouts)
+  _scrollIntervals.forEach(function(id) { clearInterval(id); clearTimeout(id); });
   _scrollIntervals = [];
 
-  var cols = document.querySelectorAll('.setor-col-body');
-  for (var i = 0; i < cols.length; i++) {
-    (function(col) {
-      // Pausa 3s antes de começar
-      var waitTimer = setTimeout(function() {
-        // Verifica se precisa de scroll
-        if (col.scrollHeight <= col.clientHeight + 2) return;
+  // Espera o browser calcular o layout antes de medir scrollHeight
+  setTimeout(function() {
+    var cols = document.querySelectorAll('.setor-col-body');
+    for (var i = 0; i < cols.length; i++) {
+      (function(col, idx) {
+        // Verifica se precisa de scroll (com margem de erro)
+        if (col.scrollHeight <= col.clientHeight + 4) return;
 
-        var speed = 0.5; // pixels por tick
-        var direction = 1; // 1 = baixo, -1 = cima
+        var speed = 0.4; // pixels por tick (~13px/s)
+        var direction = 1;
         var pauseTicks = 0;
-        var pauseMax = 120; // pausa de ~2s no topo/fundo
+        var pauseMax = 100; // pausa de ~3s no topo/fundo
 
         var intervalId = setInterval(function() {
           // Pausa se mouse sobre a coluna
-          if (col.matches(':hover')) return;
+          try { if (col.matches(':hover')) return; } catch(e) {}
 
-          if (pauseTicks > 0) {
-            pauseTicks--;
-            return;
-          }
+          if (pauseTicks > 0) { pauseTicks--; return; }
 
           col.scrollTop += speed * direction;
 
-          // Chegou no fundo?
           if (col.scrollTop + col.clientHeight >= col.scrollHeight - 1) {
             direction = -1;
             pauseTicks = pauseMax;
           }
-          // Chegou no topo?
           if (col.scrollTop <= 0) {
             direction = 1;
             pauseTicks = pauseMax;
@@ -770,16 +766,13 @@ function startAutoScroll() {
         }, 30);
 
         _scrollIntervals.push(intervalId);
-      }, 3000 + (i * 500)); // escalona inicio entre colunas
-
-      _scrollIntervals.push(waitTimer);
-    })(cols[i]);
-  }
+      })(cols[i], i);
+    }
+  }, 500); // 500ms de delay para o layout
 }
 
 loadData();
 setInterval(loadData, 30000);
-setInterval(updateTimers, 1000);
 setTimeout(function() { location.reload(); }, 1800000);
 </script>
 </body>
