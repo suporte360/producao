@@ -1522,8 +1522,10 @@ def api_almoxarifado_estoque():
         conn.close()
     except Exception as e:
         print("[ESTOQUE TV] Erro ao ler SQLite:", e)
-    # Ordena: CRITICO primeiro, depois BAIXO, depois OK
-    ordem = {'CRITICO': 0, 'BAIXO': 1, 'OK': 2}
+    # Mostra apenas CRITICO e BAIXO no almoxarifado
+    produtos = [p for p in produtos if p['status'] in ('CRITICO', 'BAIXO')]
+    # Ordena: CRITICO primeiro, depois BAIXO
+    ordem = {'CRITICO': 0, 'BAIXO': 1}
     produtos.sort(key=lambda x: (ordem.get(x['status'], 3), x['saldo']))
     return jsonify({'status': 'success', 'stats': stats, 'produtos': produtos})
 
