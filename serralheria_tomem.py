@@ -41,8 +41,8 @@ _produto_cache = {}
 # Set of lote_codigo ativos (loaded from MariaDB, no ERP needed)
 _lotes_ativos = set()
 
-# Setores que aparecem no totem da serralheria
-SETORES_SERRALHERIA = ('CORTE', 'DOBRA', 'SOLDA', 'ACABAMENTO')
+# Setores que aparecem no totem da serralheria (nomes reais do ERP)
+SETORES_SERRALHERIA = ('SERRALHERIA', 'CORTE', 'DOBRA', 'SOLDA', 'ACABAMENTO', 'FUNILARIA', 'TAPECARIA')
 
 # Mapeamento de setores ERP -> Sistema Local (mesmo do app.py)
 MAPEAMENTO_SETORES = {
