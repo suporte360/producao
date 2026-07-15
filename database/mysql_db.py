@@ -1184,9 +1184,10 @@ class DatabaseMySQL:
     def get_lotes_liberados_pendentes(self):
         """OFs liberadas aguardando separacao."""
         return self.query("""
-            SELECT ordem, lote_descricao, descricao_produto, qtde_ordem AS quantidade,
-                   prioridade, departamento_atual AS departamento, data_previsao_erp AS data_previsao
-            FROM lotes
+            SELECT ordem, lote_codigo, descricao_produto, qtde_ordem AS quantidade,
+                   prioridade, departamento_atual AS departamento, data_previsao_erp AS data_previsao,
+                   separacao_status
+            FROM lotes_producao
             WHERE status = 'liberado'
             AND separacao_status IN ('pendente', 'separando')
             ORDER BY
