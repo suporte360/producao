@@ -22,6 +22,7 @@ import re
 import json
 import logging
 import time
+import threading
 from decimal import Decimal
 from flask import Flask, jsonify, request, render_template
 import pymysql
@@ -1010,9 +1011,26 @@ def api_refresh_lotes():
     return jsonify({'status': 'ok', 'lotes_count': len(_lotes_ativos)})
 
 
+# ── Auto-refresh em background ────────────────────────────────────
+
+_LOTES_REFRESH_INTERVAL = 30  # segundos
+
+def _background_refresh_loop():
+    """Loop que atualiza o cache de lotes ativos periodicamente."""
+    while True:
+        time.sleep(_LOTES_REFRESH_INTERVAL)
+        try:
+            _refresh_lotes_ativos()
+        except Exception as e:
+            print('[WARN] Background refresh falhou: %s' % e)
+
+
 # ── Main ─────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
     init_db()
-    print('[TOTEM] %s Totem rodando em http://0.0.0.0:%d' % (SETOR, PORT))
+    # Inicia thread de background para atualizar lotes automaticamente
+    t = threading.Thread(target=_background_refresh_loop, daemon=True)
+    t.start()
+    print('[TOTEM] %s Totem rodando em http://0.0.0.0:%d (auto-refresh lotes a cada %ds)' % (SETOR, PORT, _LOTES_REFRESH_INTERVAL))
     app.run(host='0.0.0.0', port=PORT, debug=False, threaded=True)
