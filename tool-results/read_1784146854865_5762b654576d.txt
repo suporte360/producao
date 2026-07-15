@@ -1,0 +1,685 @@
+     1→{% extends "base.html" %}
+     2→{% block title %}Almoxarifado — Separação{% endblock %}
+     3→{% block header_title %}
+     4→  <span class="flex items-center gap-2">
+     5→    <i class="fa-solid fa-warehouse text-cyan-500"></i>
+     6→    <span class="hidden sm:inline">Almoxarifado</span>
+     7→  </span>
+     8→{% endblock %}
+     9→
+    10→{% block content %}
+    11→
+    12→{# ═══════════════ KPIs ═══════════════ #}
+    13→<div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-5">
+    14→  <div class="kpi-card">
+    15→    <div class="kpi-icon" style="background:#cffafe;color:#0891b2"><i class="fa-solid fa-boxes-stacked"></i></div>
+    16→    <div>
+    17→      <div class="kpi-num text-cyan-600" id="kpiPend">0</div>
+    18→      <div class="kpi-lbl">Pendentes</div>
+    19→    </div>
+    20→  </div>
+    21→  <div class="kpi-card">
+    22→    <div class="kpi-icon" style="background:#e0f2fe;color:#0284c7"><i class="fa-solid fa-arrows-spin"></i></div>
+    23→    <div>
+    24→      <div class="kpi-num text-sky-600" id="kpiSep">0</div>
+    25→      <div class="kpi-lbl">Separando</div>
+    26→    </div>
+    27→  </div>
+    28→  <div class="kpi-card">
+    29→    <div class="kpi-icon" style="background:#dcfce7;color:#15803d"><i class="fa-solid fa-check-double"></i></div>
+    30→    <div>
+    31→      <div class="kpi-num text-green-600" id="kpiSepOk">0</div>
+    32→      <div class="kpi-lbl">Separados</div>
+    33→    </div>
+    34→  </div>
+    35→  <div class="kpi-card">
+    36→    <div class="kpi-icon" style="background:#f3e8ff;color:#7c3aed"><i class="fa-solid fa-bell"></i></div>
+    37→    <div>
+    38→      <div class="kpi-num text-purple-600">{{ requisicoes|length }}</div>
+    39→      <div class="kpi-lbl">Requisições</div>
+    40→    </div>
+    41→  </div>
+    42→  <div class="kpi-card">
+    43→    <div class="kpi-icon" style="background:#fee2e2;color:#b91c1c"><i class="fa-solid fa-triangle-exclamation"></i></div>
+    44→    <div>
+    45→      <div class="kpi-num text-red-600" id="kpiMatSemEstoque">0</div>
+    46→      <div class="kpi-lbl">Sem Estoque</div>
+    47→    </div>
+    48→  </div>
+    49→</div>
+    50→
+    51→{# ═══════════════ SEPARACAO DE OPs ═══════════════ #}
+    52→<section class="mb-5">
+    53→  <h2 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+    54→    <span class="inline-block w-2.5 h-2.5 rounded-full bg-cyan-500"></span>
+    55→    Separação de OPs
+    56→    <span class="ml-1 text-[10px] text-gray-400 font-normal normal-case">(pendente → separando → separado → entregue)</span>
+    57→  </h2>
+    58→  <div id="listaSeparacaoOPs" class="prodsys-card overflow-hidden">
+    59→    <div class="p-4 text-center">
+    60→      <i class="fa-solid fa-rotate fa-spin text-gray-300 text-lg"></i>
+    61→    </div>
+    62→  </div>
+    63→</section>
+    64→
+    65→{# ═══════════════ MATERIAIS P/ SEPARAR (das OFs liberadas) ═══════════════ #}
+    66→<section class="mb-5" id="secaoMateriaisOF">
+    67→  <h2 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+    68→    <span class="inline-block w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+    69→    Materiais p/ Separar
+    70→    <span class="ml-1 bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full text-[10px]" id="kpiMateriaisBadge">0</span>
+    71→    <span class="ml-1 text-[10px] text-gray-400 font-normal normal-case">(materiais brutos das OFs liberadas)</span>
+    72→  </h2>
+    73→  <div id="listaMateriaisOF">
+    74→    <div class="prodsys-card p-4 text-center">
+    75→      <i class="fa-solid fa-rotate fa-spin text-gray-300 text-lg"></i>
+    76→    </div>
+    77→  </div>
+    78→</section>
+    79→
+    80→{# ═══════════════ REQUISIÇÕES PENDENTES ═══════════════ #}
+    81→{% if requisicoes %}
+    82→<section class="mb-5">
+    83→  <h2 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+    84→    <span class="inline-block w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+    85→    Requisições dos Setores — Pendentes
+    86→    <span class="ml-1 bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full text-[10px]">{{ requisicoes|length }}</span>
+    87→  </h2>
+    88→
+    89→  <div class="prodsys-card overflow-hidden">
+    90→    <div class="overflow-x-auto">
+    91→      <table class="w-full text-sm">
+    92→        <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+    93→          <tr>
+    94→            <th class="px-4 py-3 text-left">Req</th>
+    95→            <th class="px-4 py-3 text-left">Material</th>
+    96→            <th class="px-4 py-3 text-center">Qtd</th>
+    97→            <th class="px-4 py-3 text-center">Setor Solicitante</th>
+    98→            <th class="px-4 py-3 text-center">Prioridade</th>
+    99→            <th class="px-4 py-3 text-center">Ações</th>
+   100→          </tr>
+   101→        </thead>
+   102→        <tbody class="divide-y divide-gray-50">
+   103→          {% for r in requisicoes %}
+   104→          <tr class="hover:bg-purple-50/30">
+   105→            <td class="px-4 py-3">
+   106→              <div class="font-bold text-gray-800">#{{ r.id }}</div>
+   107→              <div class="text-[11px] text-gray-400">OP #{{ r.lote_ordem }}</div>
+   108→            </td>
+   109→            <td class="px-4 py-3">
+   110→              <div class="font-medium text-gray-700">{{ r.material_descricao or '—' }}</div>
+   111→              {% if r.descricao_produto %}<div class="text-[11px] text-gray-400 truncate max-w-[200px]">{{ r.descricao_produto }}</div>{% endif %}
+   112→            </td>
+   113→            <td class="px-4 py-3 text-center font-bold">{{ r.quantidade }} <span class="text-[10px] text-gray-400">{{ r.unidade_medida or 'UN' }}</span></td>
+   114→            <td class="px-4 py-3 text-center">
+   115→              {% if r.departamento_solicitante %}
+   116→              <span class="chip-dept dept-{{ r.departamento_solicitante }}">{{ r.departamento_solicitante }}</span>
+   117→              {% else %}<span class="text-gray-300">—</span>{% endif %}
+   118→            </td>
+   119→            <td class="px-4 py-3 text-center">
+   120→              {% if r.prioridade_lote %}<span class="badge-priority {{ r.prioridade_lote|lower }}">{{ r.prioridade_lote|upper }}</span>{% endif %}
+   121→            </td>
+   122→            <td class="px-4 py-3">
+   123→              <div class="flex items-center justify-center gap-1.5">
+   124→                <button onclick="entregarRequisicao({{ r.id }})" title="Entregar"
+   125→                  class="btn-touch btn-start text-xs px-3 py-2" style="min-height:36px">
+   126→                  <i class="fa-solid fa-check"></i>Entregar
+   127→                </button>
+   128→                <button onclick="recusarRequisicao({{ r.id }})" title="Recusar"
+   129→                  class="btn-touch btn-danger text-xs px-3 py-2" style="min-height:36px">
+   130→                  <i class="fa-solid fa-xmark"></i>
+   131→                </button>
+   132→              </div>
+   133→            </td>
+   134→          </tr>
+   135→          {% endfor %}
+   136→        </tbody>
+   137→      </table>
+   138→    </div>
+   139→  </div>
+   140→</section>
+   141→{% endif %}
+   142→
+   143→{# ═══════════════ MATERIAL NA FABRICA (resumo) ═══════════════ #}
+   144→<section class="mb-5" id="secaoEstoque">
+   145→  <div class="flex items-center justify-between mb-3">
+   146→    <h2 class="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+   147→      <span class="inline-block w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+   148→      Material na Fabrica
+   149→      <span id="kpiPrecisaSep" class="ml-1 bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full hidden">0 precisam separar</span>
+   150→    </h2>
+   151→    <a href="{{ url_for('estoque_interno') }}" class="text-xs text-blue-600 hover:underline font-bold">
+   152→      Gerenciar <i class="fa-solid fa-arrow-right"></i>
+   153→    </a>
+   154→  </div>
+   155→  <div id="listaEstoqueResumo" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+   156→    <div class="prodsys-card p-4 text-center col-span-full">
+   157→      <i class="fa-solid fa-rotate fa-spin text-gray-300 text-lg"></i>
+   158→    </div>
+   159→  </div>
+   160→</section>
+   161→
+   162→{# ═══════════════ MODAL SEPARAR COMPONENTES ═══════════════ #}
+   163→<div id="modalSepararComp" class="prodsys-modal-backdrop hidden">
+   164→  <div class="prodsys-modal" style="max-width:560px;max-height:80vh;display:flex;flex-direction:column">
+   165→    <div class="flex items-center gap-3 mb-4">
+   166→      <div class="w-12 h-12 rounded-xl bg-cyan-100 flex items-center justify-center flex-shrink-0">
+   167→        <i class="fa-solid fa-screwdriver-wrench text-cyan-600 text-xl"></i>
+   168→      </div>
+   169→      <div>
+   170→        <h3 class="text-base">Separar Componentes</h3>
+   171→        <p class="mt-0.5 text-xs text-gray-500" id="sepCompSubtitle">Selecione os componentes que serão separados agora</p>
+   172→      </div>
+   173→      <button onclick="fecharModalSepararComp()" class="ml-auto text-gray-400 hover:text-gray-600 text-xl"><i class="fa-solid fa-xmark"></i></button>
+   174→    </div>
+   175→    <div id="sepCompLista" class="flex-1 overflow-y-auto space-y-1.5 mb-4 min-h-0" style="max-height:50vh">
+   176→      <div class="p-4 text-center text-gray-400 text-sm"><i class="fa-solid fa-rotate fa-spin mr-1"></i>Carregando componentes...</div>
+   177→    </div>
+   178→    <div class="flex items-center justify-between border-t pt-3">
+   179→      <div class="text-xs text-gray-400"><span id="sepCompCount">0</span> selecionado(s)</div>
+   180→      <div class="flex gap-2">
+   181→        <button onclick="fecharModalSepararComp()" class="btn-touch btn-cancel text-xs px-4 py-2" style="min-height:36px">
+   182→          <i class="fa-solid fa-xmark"></i>Cancelar
+   183→        </button>
+   184→        <button onclick="confirmarSepararComponentes()" id="btnConfirmarSepComp" class="btn-touch btn-start text-xs px-4 py-2" style="min-height:36px" disabled>
+   185→          <i class="fa-solid fa-check"></i>Separar Selecionados
+   186→        </button>
+   187→      </div>
+   188→    </div>
+   189→  </div>
+   190→</div>
+   191→
+   192→{# ═══════════════ MODAL FINALIZAR SEPARAÇÃO (PRONTO) ═══════════════ #}
+   193→<div id="modalFinalizar" class="prodsys-modal-backdrop hidden">
+   194→  <div class="prodsys-modal" style="max-width:560px;max-height:80vh;display:flex;flex-direction:column">
+   195→    <div class="flex items-center gap-3 mb-4">
+   196→      <div class="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+   197→        <i class="fa-solid fa-check-double text-amber-600 text-xl"></i>
+   198→      </div>
+   199→      <div>
+   200→        <h3 class="text-base">Finalizar Separação</h3>
+   201→        <p class="mt-0.5 text-xs text-gray-500" id="finSubtitle">Selecione os componentes que já foram separados</p>
+   202→      </div>
+   203→      <button onclick="fecharModalFinalizar()" class="ml-auto text-gray-400 hover:text-gray-600 text-xl"><i class="fa-solid fa-xmark"></i></button>
+   204→    </div>
+   205→    <div id="finLista" class="flex-1 overflow-y-auto space-y-1.5 mb-4 min-h-0" style="max-height:50vh">
+   206→      <div class="p-4 text-center text-gray-400 text-sm"><i class="fa-solid fa-rotate fa-spin mr-1"></i>Carregando componentes...</div>
+   207→    </div>
+   208→    <div class="flex items-center justify-between border-t pt-3">
+   209→      <div class="text-xs text-gray-400"><span id="finCount">0</span> selecionado(s)</div>
+   210→      <div class="flex gap-2">
+   211→        <button onclick="fecharModalFinalizar()" class="btn-touch btn-cancel text-xs px-4 py-2" style="min-height:36px">
+   212→          <i class="fa-solid fa-xmark"></i>Cancelar
+   213→        </button>
+   214→        <button onclick="confirmarFinalizar()" id="btnConfirmarFin" class="btn-touch text-xs px-4 py-2" style="min-height:36px;background:#b45309;color:white" disabled>
+   215→          <i class="fa-solid fa-check-double"></i>Finalizar Selecionados
+   216→        </button>
+   217→      </div>
+   218→    </div>
+   219→  </div>
+   220→</div>
+   221→
+   222→{# ═══════════════ MODAL ENTREGAR REQUISIÇÃO ═══════════════ #}
+   223→<div id="modalEntregarReq" class="prodsys-modal-backdrop hidden">
+   224→  <div class="prodsys-modal">
+   225→    <div class="flex items-center gap-3 mb-4">
+   226→      <div class="w-14 h-14 rounded-2xl bg-green-100 flex items-center justify-center flex-shrink-0">
+   227→        <i class="fa-solid fa-check text-green-600 text-2xl"></i>
+   228→      </div>
+   229→      <div>
+   230→        <h3>Entregar Requisição?</h3>
+   231→        <p class="mt-0.5" id="entregarMsg">Confirme a entrega do material ao setor solicitante.</p>
+   232→      </div>
+   233→    </div>
+   234→    <div class="flex gap-3">
+   235→      <button onclick="fecharModal('modalEntregarReq')" class="btn-touch btn-cancel flex-1">
+   236→        <i class="fa-solid fa-xmark"></i>Cancelar
+   237→      </button>
+   238→      <button onclick="confirmarEntregarReq()" class="btn-touch btn-start flex-1">
+   239→        <i class="fa-solid fa-check"></i>CONFIRMAR
+   240→      </button>
+   241→    </div>
+   242→  </div>
+   243→</div>
+   244→
+   245→{# ═══════════════ MODAL RECUSAR REQUISIÇÃO ═══════════════ #}
+   246→<div id="modalRecusarReq" class="prodsys-modal-backdrop hidden">
+   247→  <div class="prodsys-modal">
+   248→    <div class="flex items-center gap-3 mb-4">
+   249→      <div class="w-14 h-14 rounded-2xl bg-red-100 flex items-center justify-center flex-shrink-0">
+   250→        <i class="fa-solid fa-xmark text-red-600 text-2xl"></i>
+   251→      </div>
+   252→      <div>
+   253→        <h3>Recusar Requisição?</h3>
+   254→        <p class="mt-0.5">O setor solicitante será notificado.</p>
+   255→      </div>
+   256→    </div>
+   257→    <div class="flex gap-3">
+   258→      <button onclick="fecharModal('modalRecusarReq')" class="btn-touch btn-cancel flex-1">
+   259→        <i class="fa-solid fa-xmark"></i>Manter
+   260→      </button>
+   261→      <button onclick="confirmarRecusarReq()" class="btn-touch btn-danger flex-1">
+   262→        <i class="fa-solid fa-ban"></i>RECUSAR
+   263→      </button>
+   264→    </div>
+   265→  </div>
+   266→</div>
+   267→
+   268→<!-- Toast -->
+   269→<div id="toast" class="prodsys-toast hidden"></div>
+   270→
+   271→{% endblock %}
+   272→
+   273→{% block scripts %}
+   274→<script>
+   275→let reqAtual = null;
+   276→
+   277→function fecharModal(id) { document.getElementById(id).classList.add('hidden'); }
+   278→
+   279→function showToast(msg, tipo='success') {
+   280→  const t = document.getElementById('toast');
+   281→  t.className = 'prodsys-toast ' + tipo;
+   282→  t.innerHTML = `<i class="fa-solid ${tipo==='success'?'fa-check-circle':'fa-exclamation-circle'}"></i> ${msg}`;
+   283→  t.classList.remove('hidden');
+   284→  setTimeout(()=>t.classList.add('hidden'), 3500);
+   285→}
+   286→
+   287→{# ─── Requisições ─── #}
+   288→function entregarRequisicao(id) {
+   289→  reqAtual = id;
+   290→  document.getElementById('entregarMsg').textContent = `Confirmar entrega da requisição #${id}?`;
+   291→  document.getElementById('modalEntregarReq').classList.remove('hidden');
+   292→}
+   293→function confirmarEntregarReq() {
+   294→  document.getElementById('modalEntregarReq').classList.add('hidden');
+   295→  fetch(`/api/requisicoes/${reqAtual}/entregar`, {
+   296→    method: 'POST',
+   297→    headers: {'Content-Type':'application/json'}
+   298→  }).then(r => r.json())
+   299→    .then(d => {
+   300→      if (d.status === 'success') { showToast(`Requisição #${reqAtual} entregue!`); setTimeout(()=>location.reload(), 900); }
+   301→      else showToast('Erro ao entregar', 'error');
+   302→    }).catch(()=>showToast('Erro de conexão','error'));
+   303→}
+   304→function recusarRequisicao(id) {
+   305→  reqAtual = id;
+   306→  document.getElementById('modalRecusarReq').classList.remove('hidden');
+   307→}
+   308→function confirmarRecusarReq() {
+   309→  document.getElementById('modalRecusarReq').classList.add('hidden');
+   310→  fetch(`/api/requisicoes/${reqAtual}/recusar`, {
+   311→    method: 'POST',
+   312→    headers: {'Content-Type':'application/json'}
+   313→  }).then(r => r.json())
+   314→    .then(d => {
+   315→      if (d.status === 'success') { showToast(`Requisição #${reqAtual} recusada.`); setTimeout(()=>location.reload(), 900); }
+   316→      else showToast('Erro ao recusar', 'error');
+   317→    }).catch(()=>showToast('Erro de conexão','error'));
+   318→}
+   319→
+   320→['modalEntregarReq','modalRecusarReq'].forEach(id => {
+   321→  const el = document.getElementById(id);
+   322→  if (el) el.addEventListener('click', function(e) {
+   323→    if (e.target === this) this.classList.add('hidden');
+   324→  });
+   325→});
+   326→
+   327→// ════════════════ RESUMO MATERIAL NA FABRICA ════════════════
+   328→function carregarResumoEstoque() {
+   329→  fetch('/api/estoque?filtro=baixo&tipo=fabrica').then(r => r.json()).then(d => {
+   330→    if (d.status !== 'success') return;
+   331→    const itens = d.itens || [];
+   332→    const badge = document.getElementById('kpiPrecisaSep');
+   333→    if (itens.length > 0) {
+   334→      badge.textContent = itens.length + ' precisam separar';
+   335→      badge.classList.remove('hidden');
+   336→    } else {
+   337→      badge.classList.add('hidden');
+   338→    }
+   339→    const el = document.getElementById('listaEstoqueResumo');
+   340→    if (!itens.length) {
+   341→      el.innerHTML = '<div class="prodsys-card p-4 text-center col-span-full text-sm text-green-600"><i class="fa-solid fa-circle-check mr-1"></i>Todos os materiais estao OK</div>';
+   342→      return;
+   343→    }
+   344→    el.innerHTML = itens.slice(0, 6).map(item => {
+   345→      const qtd = parseFloat(item.qtd_atual) || 0;
+   346→      const qtdIni = parseFloat(item.qtd_inicial) || 0;
+   347→      const sem = qtd <= 0;
+   348→      const desc = (item.descricao||'—').replace(/'/g,"\\'");
+   349→      const un = item.unidade || 'UN';
+   350→      const pct = qtdIni > 0 ? Math.round((qtd / qtdIni) * 100) : 0;
+   351→      return '<div class="prodsys-card border-l-4 ' + (sem ? 'border-red-500 bg-red-50/30' : 'border-amber-400 bg-amber-50/30') + ' px-3 py-2 flex items-center justify-between gap-2">' +
+   352→        '<div class="min-w-0"><div class="font-bold text-sm text-gray-800 truncate">' + (item.descricao||'—') + '</div>' +
+   353→        '<div class="text-[11px] text-gray-400">' + item.codigo + ' · ' + un + '</div></div>' +
+   354→        '<div class="text-right flex-shrink-0"><div class="font-black text-lg ' + (sem?'text-red-600':'text-amber-600') + '">' + qtd.toFixed(1) + '</div>' +
+   355→        '<div class="text-[10px] text-gray-400">de ' + qtdIni.toFixed(1) + (pct > 0 ? ' (' + pct + '%)' : '') + '</div></div></div>';
+   356→    }).join('');
+   357→  });
+   358→}
+   359→
+   360→document.addEventListener('DOMContentLoaded', () => {
+   361→  carregarResumoEstoque();
+   362→  carregarMateriaisOF();
+   363→  carregarSeparacaoOPs();
+   364→});
+   365→
+   366→// ════════════════ SEPARACAO DE OPs (PC) com POPUP de componentes ════════════════
+   367→var sepCompOrdemAtual = null;
+   368→
+   369→function carregarSeparacaoOPs() {
+   370→  fetch('/api/almoxarifado/separacao').then(function(r) { return r.json(); }).then(function(d) {
+   371→    var lotes = d.lotes || [];
+   372→    var stats = d.stats || {};
+   373→    document.getElementById('kpiPend').textContent = stats.pendentes || 0;
+   374→    document.getElementById('kpiSep').textContent = stats.separando || 0;
+   375→    document.getElementById('kpiSepOk').textContent = stats.separados || 0;
+   376→    var el = document.getElementById('listaSeparacaoOPs');
+   377→    if (!lotes.length) {
+   378→      el.innerHTML = '<div class="p-6 text-center text-gray-400 text-sm"><i class="fa-solid fa-circle-check text-green-400 mr-1"></i>Nenhuma OP aguardando separação</div>';
+   379→      return;
+   380→    }
+   381→    var html = '<div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-slate-50 text-slate-500 text-[10px] uppercase tracking-wider border-b border-gray-100"><tr>' +
+   382→      '<th class="px-3 py-2.5 text-left">OP</th><th class="px-3 py-2.5 text-left">Produto</th><th class="px-3 py-2.5 text-center">Qtd</th><th class="px-3 py-2.5 text-center">Prioridade</th><th class="px-3 py-2.5 text-center">Status</th><th class="px-3 py-2.5 text-center">Atraso</th><th class="px-3 py-2.5 text-right">Ações</th></tr></thead><tbody class="divide-y divide-gray-50">';
+   383→    for (var i = 0; i < lotes.length; i++) {
+   384→      var l = lotes[i];
+   385→      var sep = l.separacao_status || 'pendente';
+   386→      var prio = (l.prioridade || 'media').toLowerCase();
+   387→      var atraso = l.dias_atraso || 0;
+   388→      var rowBg = '';
+   389→      if (sep === 'separado') rowBg = 'bg-amber-50/60';       /* AMARELO para separado */
+   390→      else if (sep === 'separando') rowBg = 'bg-sky-50/40';
+   391→      else if (prio === 'urgente') rowBg = 'bg-red-50/30';
+   392→      else if (atraso > 0) rowBg = 'bg-orange-50/30';
+   393→      /* Cores diferentes para cada status */
+   394→      var statusBadge = {
+   395→        'pendente': '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-orange-700 bg-orange-100 px-2 py-0.5 rounded-full border border-orange-200"><i class="fa-solid fa-clock"></i>Pendente</span>',
+   396→        'separando': '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-sky-700 bg-sky-100 px-2 py-0.5 rounded-full border border-sky-200"><i class="fa-solid fa-arrows-spin"></i>Separando</span>',
+   397→        'separado': '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-200 px-2 py-0.5 rounded-full border border-amber-400"><i class="fa-solid fa-check"></i>Separado</span>',
+   398→        'entregue': '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full"><i class="fa-solid fa-truck"></i>Entregue</span>'
+   399→      };
+   400→      var acoes = '';
+   401→      if (sep === 'pendente') {
+   402→        acoes = '<button onclick="abrirModalSepararComp(' + l.ordem + ')" class="btn-touch btn-start text-[10px] px-2.5 py-1.5" style="min-height:30px"><i class="fa-solid fa-box-open"></i>Separar</button>';
+   403→      } else if (sep === 'separando') {
+   404→        acoes = '<button onclick="abrirModalSepararComp(' + l.ordem + ')" class="btn-touch text-[10px] px-2.5 py-1.5" style="min-height:30px;background:#0284c7;color:white"><i class="fa-solid fa-plus"></i>Mais</button>' +
+   405→                '<button onclick="abrirModalFinalizar(' + l.ordem + ')" class="btn-touch text-[10px] px-2.5 py-1.5" style="min-height:30px;background:#b45309;color:white"><i class="fa-solid fa-check"></i>Pronto</button>';
+   406→      } else if (sep === 'separado') {
+   407→        acoes = '<button onclick="mudarSeparacao(' + l.ordem + ',\'entregue\')" class="btn-touch text-[10px] px-2.5 py-1.5" style="min-height:30px;background:#15803d"><i class="fa-solid fa-truck"></i>Entregar</button>';
+   408→      } else {
+   409→        acoes = '<span class="text-[10px] text-gray-400"><i class="fa-solid fa-check-double"></i> Concluída</span>';
+   410→      }
+   411→      html += '<tr class="hover:bg-gray-50 ' + rowBg + '">' +
+   412→        '<td class="px-3 py-2.5 font-bold text-blue-700">#' + l.ordem + (l.lote_codigo ? '<br><span class="text-[10px] text-gray-400">' + l.lote_codigo + '</span>' : '') + '</td>' +
+   413→        '<td class="px-3 py-2.5 text-gray-700 max-w-[220px] truncate" title="' + (l.descricao_produto || '') + '">' + (l.descricao_produto || '—') + '</td>' +
+   414→        '<td class="px-3 py-2.5 text-center font-bold">' + Math.round(l.qtde_ordem || 0) + ' pc</td>' +
+   415→        '<td class="px-3 py-2.5 text-center">' + (l.prioridade ? '<span class="badge-priority ' + prio + '">' + l.prioridade.toUpperCase() + '</span>' : '—') + '</td>' +
+   416→        '<td class="px-3 py-2.5 text-center">' + (statusBadge[sep] || statusBadge['pendente']) + '</td>' +
+   417→        '<td class="px-3 py-2.5 text-center">' + (atraso > 0 ? '<span class="text-red-600 font-bold">' + atraso + 'd</span>' : '<span class="text-gray-300">—</span>') + '</td>' +
+   418→        '<td class="px-3 py-2.5 text-right">' + acoes + '</td></tr>';
+   419→    }
+   420→    html += '</tbody></table></div>';
+   421→    el.innerHTML = html;
+   422→  }).catch(function() {
+   423→    document.getElementById('listaSeparacaoOPs').innerHTML = '<div class="p-4 text-center text-sm text-red-400">Erro ao carregar OPs</div>';
+   424→  });
+   425→}
+   426→
+   427→/* ── Popup de separação por componente ── */
+   428→function abrirModalSepararComp(ordem) {
+   429→  sepCompOrdemAtual = ordem;
+   430→  document.getElementById('sepCompSubtitle').textContent = 'OP #' + ordem + ' — Selecione os componentes';
+   431→  document.getElementById('sepCompLista').innerHTML = '<div class="p-4 text-center text-gray-400 text-sm"><i class="fa-solid fa-rotate fa-spin mr-1"></i>Carregando componentes...</div>';
+   432→  document.getElementById('sepCompCount').textContent = '0';
+   433→  document.getElementById('btnConfirmarSepComp').disabled = true;
+   434→  document.getElementById('modalSepararComp').classList.remove('hidden');
+   435→
+   436→  fetch('/api/lotes/' + ordem + '/componentes-separacao').then(function(r) { return r.json(); }).then(function(d) {
+   437→    if (d.status !== 'success') {
+   438→      document.getElementById('sepCompLista').innerHTML = '<div class="p-4 text-center text-red-400 text-sm">Erro: ' + (d.msg || '') + '</div>';
+   439→      return;
+   440→    }
+   441→    var comps = d.componentes || [];
+   442→    if (!comps.length) {
+   443→      document.getElementById('sepCompLista').innerHTML = '<div class="p-4 text-center text-gray-400 text-sm"><i class="fa-solid fa-info-circle mr-1"></i>Sem componentes brutos para esta OP</div>';
+   444→      return;
+   445→    }
+   446→    var html = '';
+   447→    for (var i = 0; i < comps.length; i++) {
+   448→      var c = comps[i];
+   449→      var sep = c.separacao_status === 'separado';
+   450→      var bgCls = sep ? 'bg-amber-50 border-amber-300' : 'bg-white border-gray-200 hover:border-cyan-300 hover:bg-cyan-50/30';
+   451→      var chk = sep ? 'checked disabled' : '';
+   452→      var badge = sep
+   453→        ? '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-200 px-1.5 py-0.5 rounded-full ml-2"><i class="fa-solid fa-check"></i>Separado</span>'
+   454→        : '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded-full ml-2">Pendente</span>';
+   455→      html += '<label class="flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors ' + bgCls + '">' +
+   456→        '<input type="checkbox" class="sep-comp-chk w-4 h-4 rounded accent-cyan-600 flex-shrink-0" data-codigo="' + c.codigo.replace(/"/g, '&quot;') + '" ' + chk + ' onchange="atualizarSepCompCount()">' +
+   457→        '<div class="min-w-0 flex-1">' +
+   458→          '<div class="flex items-center"><span class="text-xs font-mono font-bold text-blue-700">' + c.codigo + '</span>' + badge + '</div>' +
+   459→          '<div class="text-xs text-gray-600 truncate">' + (c.descricao || '—') + '</div>' +
+   460→          '<div class="text-[10px] text-gray-400">Qtd: ' + c.qtd_necessaria + ' ' + c.unidade + '</div>' +
+   461→        '</div></label>';
+   462→    }
+   463→    document.getElementById('sepCompLista').innerHTML = html;
+   464→    atualizarSepCompCount();
+   465→  }).catch(function() {
+   466→    document.getElementById('sepCompLista').innerHTML = '<div class="p-4 text-center text-red-400 text-sm">Erro de conexão</div>';
+   467→  });
+   468→}
+   469→
+   470→function fecharModalSepararComp() {
+   471→  document.getElementById('modalSepararComp').classList.add('hidden');
+   472→  sepCompOrdemAtual = null;
+   473→}
+   474→
+   475→/* ── Popup de FINALIZAR separação (botão Pronto) ── */
+   476→var finOrdemAtual = null;
+   477→
+   478→function abrirModalFinalizar(ordem) {
+   479→  finOrdemAtual = ordem;
+   480→  document.getElementById('finSubtitle').textContent = 'OP #' + ordem + ' — Confirme os componentes separados';
+   481→  document.getElementById('finLista').innerHTML = '<div class="p-4 text-center text-gray-400 text-sm"><i class="fa-solid fa-rotate fa-spin mr-1"></i>Carregando componentes...</div>';
+   482→  document.getElementById('finCount').textContent = '0';
+   483→  document.getElementById('btnConfirmarFin').disabled = true;
+   484→  document.getElementById('modalFinalizar').classList.remove('hidden');
+   485→
+   486→  fetch('/api/lotes/' + ordem + '/componentes-separacao').then(function(r) { return r.json(); }).then(function(d) {
+   487→    if (d.status !== 'success') {
+   488→      document.getElementById('finLista').innerHTML = '<div class="p-4 text-center text-red-400 text-sm">Erro: ' + (d.msg || '') + '</div>';
+   489→      return;
+   490→    }
+   491→    var comps = d.componentes || [];
+   492→    if (!comps.length) {
+   493→      document.getElementById('finLista').innerHTML = '<div class="p-4 text-center text-gray-400 text-sm"><i class="fa-solid fa-info-circle mr-1"></i>Sem componentes brutos para esta OP</div>';
+   494→      return;
+   495→    }
+   496→    var html = '';
+   497→    var checkedCount = 0;
+   498→    for (var i = 0; i < comps.length; i++) {
+   499→      var c = comps[i];
+   500→      var sep = c.separacao_status === 'separado';
+   501→      /* No modal finalizar: separados vem pré-marcados, pendentes desmarcados */
+   502→      var chk = sep ? 'checked' : '';
+   503→      if (sep) checkedCount++;
+   504→      var bgCls = sep ? 'bg-amber-50 border-amber-300' : 'bg-white border-gray-200 hover:border-amber-300 hover:bg-amber-50/30';
+   505→      var badge = sep
+   506→        ? '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-200 px-1.5 py-0.5 rounded-full ml-2"><i class="fa-solid fa-check"></i>Separado</span>'
+   507→        : '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full ml-2">Ainda nao</span>';
+   508→      html += '<label class="flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors ' + bgCls + '">' +
+   509→        '<input type="checkbox" class="fin-comp-chk w-4 h-4 rounded accent-amber-600 flex-shrink-0" data-codigo="' + c.codigo.replace(/"/g, '&quot;') + '" ' + chk + ' onchange="atualizarFinCount()">' +
+   510→        '<div class="min-w-0 flex-1">' +
+   511→          '<div class="flex items-center"><span class="text-xs font-mono font-bold text-blue-700">' + c.codigo + '</span>' + badge + '</div>' +
+   512→          '<div class="text-xs text-gray-600 truncate">' + (c.descricao || '—') + '</div>' +
+   513→          '<div class="text-[10px] text-gray-400">Qtd: ' + c.qtd_necessaria + ' ' + c.unidade + '</div>' +
+   514→        '</div></label>';
+   515→    }
+   516→    document.getElementById('finLista').innerHTML = html;
+   517→    atualizarFinCount();
+   518→  }).catch(function() {
+   519→    document.getElementById('finLista').innerHTML = '<div class="p-4 text-center text-red-400 text-sm">Erro de conexão</div>';
+   520→  });
+   521→}
+   522→
+   523→function fecharModalFinalizar() {
+   524→  document.getElementById('modalFinalizar').classList.add('hidden');
+   525→  finOrdemAtual = null;
+   526→}
+   527→
+   528→function atualizarFinCount() {
+   529→  var checks = document.querySelectorAll('.fin-comp-chk:checked');
+   530→  document.getElementById('finCount').textContent = checks.length;
+   531→  document.getElementById('btnConfirmarFin').disabled = checks.length === 0;
+   532→}
+   533→
+   534→function confirmarFinalizar() {
+   535→  if (!finOrdemAtual) return;
+   536→  var checks = document.querySelectorAll('.fin-comp-chk:checked');
+   537→  var codigos = [];
+   538→  for (var i = 0; i < checks.length; i++) {
+   539→    codigos.push(checks[i].getAttribute('data-codigo'));
+   540→  }
+   541→  if (!codigos.length) return;
+   542→
+   543→  document.getElementById('btnConfirmarFin').disabled = true;
+   544→  document.getElementById('btnConfirmarFin').innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>Finalizando...';
+   545→
+   546→  fetch('/api/lotes/' + finOrdemAtual + '/finalizar-separacao', {
+   547→    method: 'POST',
+   548→    headers: {'Content-Type': 'application/json'},
+   549→    body: JSON.stringify({codigos: codigos})
+   550→  }).then(function(r) { return r.json(); }).then(function(d) {
+   551→    if (d.status === 'success') {
+   552→      if (d.todos_separados) {
+   553→        showToast('OP #' + finOrdemAtual + ' finalizada como SEPARADO!');
+   554→      } else {
+   555→        showToast('OP #' + finOrdemAtual + ': ' + d.separados + '/' + d.total + ' separados. Ainda faltam itens.');
+   556→      }
+   557→      fecharModalFinalizar();
+   558→      carregarSeparacaoOPs();
+   559→    } else {
+   560→      showToast('Erro: ' + (d.msg || ''), 'error');
+   561→      document.getElementById('btnConfirmarFin').disabled = false;
+   562→      document.getElementById('btnConfirmarFin').innerHTML = '<i class="fa-solid fa-check-double"></i>Finalizar Selecionados';
+   563→    }
+   564→  }).catch(function() {
+   565→    showToast('Erro de conexão', 'error');
+   566→    document.getElementById('btnConfirmarFin').disabled = false;
+   567→    document.getElementById('btnConfirmarFin').innerHTML = '<i class="fa-solid fa-check-double"></i>Finalizar Selecionados';
+   568→  });
+   569→}
+   570→
+   571→/* Fechar modal finalizar ao clicar no backdrop */
+   572→document.addEventListener('click', function(e) {
+   573→  if (e.target.id === 'modalFinalizar') fecharModalFinalizar();
+   574→});
+   575→
+   576→function atualizarSepCompCount() {
+   577→  var checks = document.querySelectorAll('.sep-comp-chk:not(:disabled):checked');
+   578→  document.getElementById('sepCompCount').textContent = checks.length;
+   579→  document.getElementById('btnConfirmarSepComp').disabled = checks.length === 0;
+   580→}
+   581→
+   582→function confirmarSepararComponentes() {
+   583→  if (!sepCompOrdemAtual) return;
+   584→  var checks = document.querySelectorAll('.sep-comp-chk:not(:disabled):checked');
+   585→  var codigos = [];
+   586→  for (var i = 0; i < checks.length; i++) {
+   587→    codigos.push(checks[i].getAttribute('data-codigo'));
+   588→  }
+   589→  if (!codigos.length) return;
+   590→
+   591→  document.getElementById('btnConfirmarSepComp').disabled = true;
+   592→  document.getElementById('btnConfirmarSepComp').innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>Separando...';
+   593→
+   594→  fetch('/api/lotes/' + sepCompOrdemAtual + '/separar-componentes', {
+   595→    method: 'POST',
+   596→    headers: {'Content-Type': 'application/json'},
+   597→    body: JSON.stringify({codigos: codigos})
+   598→  }).then(function(r) { return r.json(); }).then(function(d) {
+   599→    if (d.status === 'success') {
+   600→      showToast(codigos.length + ' componente(s) separado(s)!');
+   601→      fecharModalSepararComp();
+   602→      carregarSeparacaoOPs();
+   603→    } else {
+   604→      showToast('Erro: ' + (d.msg || ''), 'error');
+   605→      document.getElementById('btnConfirmarSepComp').disabled = false;
+   606→      document.getElementById('btnConfirmarSepComp').innerHTML = '<i class="fa-solid fa-check"></i>Separar Selecionados';
+   607→    }
+   608→  }).catch(function() {
+   609→    showToast('Erro de conexão', 'error');
+   610→    document.getElementById('btnConfirmarSepComp').disabled = false;
+   611→    document.getElementById('btnConfirmarSepComp').innerHTML = '<i class="fa-solid fa-check"></i>Separar Selecionados';
+   612→  });
+   613→}
+   614→
+   615→/* Fechar modal ao clicar no backdrop */
+   616→document.addEventListener('click', function(e) {
+   617→  if (e.target.id === 'modalSepararComp') fecharModalSepararComp();
+   618→});
+   619→
+   620→function mudarSeparacao(ordem, novoStatus) {
+   621→  var statusLabel = {separando:'SEPARANDO', separado:'SEPARADO', entregue:'ENTREGUE'};
+   622→  if (!confirm('Marcar OP #' + ordem + ' como ' + (statusLabel[novoStatus] || novoStatus) + '?')) return;
+   623→  fetch('/api/lotes/' + ordem + '/' + novoStatus, {method:'POST', headers:{'Content-Type':'application/json'}})
+   624→    .then(function(r) { return r.json(); })
+   625→    .then(function(d) {
+   626→      if (d.status === 'success') {
+   627→        showToast('OP #' + ordem + ' → ' + (statusLabel[novoStatus] || novoStatus) + '!');
+   628→        carregarSeparacaoOPs();
+   629→      } else {
+   630→        showToast('Erro ao atualizar', 'error');
+   631→      }
+   632→    })
+   633→    .catch(function() { showToast('Erro de conexão', 'error'); });
+   634→}
+   635→
+   636→// ════════════════ MATERIAIS DAS OFs ════════════════
+   637→function carregarMateriaisOF() {
+   638→  fetch('/api/almoxarifado/materiais-pendentes').then(r => r.json()).then(d => {
+   639→    if (d.status !== 'success') return;
+   640→    const ofs = d.ofs || [];
+   641→    const el = document.getElementById('listaMateriaisOF');
+   642→
+   643→    // Atualiza KPIs
+   644→    let totalMats = 0;
+   645→    let semEstoque = 0;
+   646→    ofs.forEach(of => {
+   647→      totalMats += of.materiais.length;
+   648→      of.materiais.forEach(m => { if (!m.tem_no_estoque) semEstoque++; });
+   649→    });
+   650→    document.getElementById('kpiMateriaisPend').textContent = totalMats;
+   651→    document.getElementById('kpiMatSemEstoque').textContent = semEstoque;
+   652→    document.getElementById('kpiMateriaisBadge').textContent = totalMats;
+   653→
+   654→    if (!ofs.length) {
+   655→      el.innerHTML = '<div class="prodsys-card p-4 text-center text-sm text-gray-400"><i class="fa-solid fa-circle-check text-green-400 mr-1"></i>Nenhuma OF liberada pendente de materiais brutos.</div>';
+   656→      return;
+   657→    }
+   658→    el.innerHTML = ofs.map(of => {
+   659→      const prioridadeCor = {urgente:'border-red-500',alta:'border-orange-400',media:'border-yellow-400'};
+   660→      const borda = prioridadeCor[of.prioridade] || 'border-indigo-300';
+   661→      const matsHtml = of.materiais.map(m => {
+   662→        const ok = m.tem_no_estoque;
+   663→        const statusIcon = ok
+   664→          ? '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded-full"><i class="fa-solid fa-check"></i>' + m.qtd_disponivel.toFixed(2) + ' ' + m.unidade + '</span>'
+   665→          : '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full"><i class="fa-solid fa-minus"></i>sem estoque</span>';
+   666→        return '<div class="flex items-center justify-between gap-2 py-1.5 border-b border-gray-50 last:border-0">' +
+   667→          '<div class="min-w-0 flex-1"><div class="text-xs font-medium text-gray-700 truncate" title="' + (m.descricao||'').replace(/"/g,'&quot;') + '">' + (m.descricao || m.codigo) + '</div>' +
+   668→          '<div class="text-[10px] text-gray-400">' + m.codigo + ' · precisa: ' + m.qtd_necessaria.toFixed(4) + ' ' + m.unidade + '</div></div>' +
+   669→          statusIcon + '</div>';
+   670→      }).join('');
+   671→      return '<div class="prodsys-card border-l-4 ' + borda + ' overflow-hidden mb-3">' +
+   672→        '<div class="px-4 py-2.5 bg-gray-50/50 flex items-center justify-between">' +
+   673→          '<div class="min-w-0 flex-1"><div class="flex items-center gap-2"><span class="text-xs font-bold text-blue-700">OF #' + of.ordem + '</span>' +
+   674→          (of.prioridade ? '<span class="badge-priority ' + of.prioridade + '">' + of.prioridade.toUpperCase() + '</span>' : '') +
+   675→          '</div><div class="text-sm font-black text-gray-800 truncate">' + (of.produto || '—') + '</div></div>' +
+   676→          '<div class="text-xs text-gray-400 flex-shrink-0">' + (of.materiais.length) + ' materiais</div></div>' +
+   677→        '<div class="px-4">' + matsHtml + '</div></div>';
+   678→    }).join('');
+   679→  }).catch(() => {
+   680→    document.getElementById('listaMateriaisOF').innerHTML = '<div class="prodsys-card p-4 text-center text-sm text-red-400">Erro ao carregar materiais.</div>';
+   681→  });
+   682→}
+   683→</script>
+   684→{% endblock %}
+   685→

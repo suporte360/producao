@@ -1318,561 +1318,641 @@
   1318→    db.atualizar_estoque(item_id, dados)
   1319→    return jsonify({'status': 'success'})
   1320→
-  1321→@app.route('/api/estoque/movimentacao', methods=['GET'])
+  1321→@app.route('/api/estoque/<int:item_id>/toggle-usuario', methods=['POST'])
   1322→@login_required
-  1323→@role_required('admin', 'gerente', 'almoxarifado', 'diretor')
-  1324→def api_estoque_movimentacao():
-  1325→    movs = db.get_movimentacao_estoque(limite=100)
-  1326→    return jsonify({'status': 'success', 'movimentacoes': movs})
-  1327→
-  1328→@app.route('/api/erp/produto/<codigo>', methods=['GET'])
-  1329→@login_required
-  1330→@role_required('admin', 'almoxarifado', 'pcp')
-  1331→def api_buscar_produto_erp(codigo):
-  1332→    """Busca produto no ERP pelo codigo para auto-preencher descricao."""
-  1333→    try:
-  1334→        pg = DatabasePostgreSQL()
-  1335→        produto = pg.buscar_produto_por_codigo(codigo)
-  1336→        if produto:
-  1337→            return jsonify({'status': 'success', 'produto': produto})
-  1338→        return jsonify({'status': 'not_found', 'message': 'Produto nao encontrado no ERP'})
-  1339→    except Exception as e:
-  1340→        return jsonify({'status': 'error', 'message': str(e)}), 500
-  1341→
-  1342→@app.route('/api/almoxarifado/materiais-pendentes')
-  1343→@login_required
-  1344→@role_required('admin', 'gerente', 'almoxarifado')
-  1345→def api_materiais_pendentes():
-  1346→    """Materiais necessarios para OFs liberadas, filtrando peças fabricadas (so materiais brutos)."""
-  1347→    lotes = db.get_lotes_liberados_pendentes()
-  1348→    if not lotes:
-  1349→        return jsonify({'status': 'success', 'ofs': []})
-  1350→    ordens = [l['ordem'] for l in lotes]
-  1351→    try:
-  1352→        pg = DatabasePostgreSQL()
-  1353→        materiais_erp = pg.get_requisicoes_multiplas_ordens(ordens)
-  1354→    except Exception:
-  1355→        materiais_erp = []
-  1356→
-  1357→    # Pega todos os codigo_produto das OFs ativas para excluir peças fabricadas do BOM
-  1358→    codigos_fabricados = db.get_codigos_produtos_ofs_ativas()
-  1359→
-  1360→    mats_por_of = {}
-  1361→    for m in materiais_erp:
-  1362→        of_num = m.get('ordem')
-  1363→        if of_num not in mats_por_of:
-  1364→            mats_por_of[of_num] = []
-  1365→        mats_por_of[of_num].append(m)
-  1366→    todos_codigos = list(set(str(m.get('produto') or '') for m in materiais_erp if m.get('produto')))
-  1367→    estoque_map = {}
-  1368→    for cod in todos_codigos:
-  1369→        item = db.get_estoque_por_codigo(cod, tipo='almoxarifado')
-  1370→        estoque_map[cod] = item
-  1371→    resultado = []
-  1372→    for lote in lotes:
-  1373→        mats = mats_por_of.get(lote['ordem'], [])
-  1374→        mats_com = []
-  1375→        for m in mats:
-  1376→            cod = str(m.get('produto') or '')
-  1377→            # Pula peças que são fabricadas em outras OFs (ex: alça, suporte, etc.)
-  1378→            if cod in codigos_fabricados:
-  1379→                continue
-  1380→            est = estoque_map.get(cod)
-  1381→            mats_com.append({
-  1382→                'codigo': cod,
-  1383→                'descricao': m.get('descricao') or '',
-  1384→                'unidade': m.get('unidade') or 'UN',
-  1385→                'qtd_necessaria': float(m.get('quantidade') or 0),
-  1386→                'tem_no_estoque': est is not None and est['qtd_atual'] > 0,
-  1387→                'qtd_disponivel': float(est['qtd_atual']) if est else 0
-  1388→            })
-  1389→        # So inclui a OF se tiver materiais brutos
-  1390→        if mats_com:
-  1391→            resultado.append({
-  1392→                'ordem': lote['ordem'],
-  1393→                'produto': lote.get('descricao_produto') or lote.get('lote_descricao') or '',
-  1394→                'quantidade': lote.get('quantidade'),
-  1395→                'prioridade': lote.get('prioridade'),
-  1396→                'departamento': lote.get('departamento'),
-  1397→                'materiais': mats_com
-  1398→            })
-  1399→    return jsonify({'status': 'success', 'ofs': resultado})
-  1400→
-  1401→@app.route('/api/estoque/<int:item_id>/separar-fabrica', methods=['POST'])
-  1402→@login_required
-  1403→@role_required('admin', 'almoxarifado')
-  1404→def api_separar_fabrica(item_id):
-  1405→    dados = request.json or {}
-  1406→    qtd = float(dados.get('qtd', 0))
-  1407→    if qtd <= 0:
-  1408→        return jsonify({'status': 'error', 'message': 'Quantidade invalida'}), 400
-  1409→    ok = db.mover_estoque_para_fabrica(item_id, qtd, session.get('usuario_id'))
-  1410→    if ok:
-  1411→        db.add_log(session.get('usuario_id'), 'separar_fabrica',
-  1412→                   f'Item #{item_id} separado para fabrica', 'estoque_interno', item_id)
-  1413→    return jsonify({'status': 'success' if ok else 'error'})
-  1414→
-  1415→@app.route('/api/lotes/<int:ordem>/separando', methods=['POST'])
-  1416→@login_required
-  1417→@role_required('admin', 'gerente', 'almoxarifado')
-  1418→def api_marcar_separando(ordem):
-  1419→    ok = db.marcar_separacao_lote(ordem, 'separando', session['usuario_id'])
-  1420→    if ok:
-  1421→        db.add_log(session['usuario_id'], 'marcar_separando',
-  1422→                   f'OP #{ordem} marcada como SEPARANDO pelo almoxarifado', 'lotes', ordem)
-  1423→    return jsonify({'status': 'success' if ok else 'error'})
-  1424→
-  1425→@app.route('/api/lotes/<int:ordem>/separar', methods=['POST'])
-  1426→@login_required
-  1427→@role_required('admin', 'gerente', 'almoxarifado')
-  1428→def api_marcar_separado(ordem):
-  1429→    ok = db.marcar_separacao_lote(ordem, 'separado', session['usuario_id'])
-  1430→    if ok:
-  1431→        db.add_log(session['usuario_id'], 'marcar_separado',
-  1432→                   f'OP #{ordem} marcada como SEPARADA pelo almoxarifado', 'lotes', ordem)
-  1433→    return jsonify({'status': 'success' if ok else 'error'})
-  1434→
-  1435→@app.route('/api/lotes/<int:ordem>/entregar', methods=['POST'])
-  1436→@login_required
-  1437→@role_required('admin', 'gerente', 'almoxarifado')
-  1438→def api_marcar_entregue(ordem):
-  1439→    ok = db.marcar_separacao_lote(ordem, 'entregue', session['usuario_id'])
-  1440→    if ok:
-  1441→        db.add_log(session['usuario_id'], 'marcar_entregue',
-  1442→                   f'OP #{ordem} marcada como ENTREGUE ao setor', 'lotes', ordem)
-  1443→    return jsonify({'status': 'success' if ok else 'error'})
-  1444→
-  1445→@app.route('/api/lotes/<int:ordem>/separar-componentes', methods=['POST'])
-  1446→@login_required
-  1447→@role_required('admin', 'gerente', 'almoxarifado')
-  1448→def api_separar_componentes(ordem):
-  1449→    """Marca componentes específicos como separados para uma OP."""
-  1450→    data = request.get_json(force=True) or {}
-  1451→    codigos = data.get('codigos', [])
-  1452→    if not codigos:
-  1453→        return jsonify({'status': 'error', 'msg': 'Nenhum componente selecionado'})
-  1454→    try:
-  1455→        db.criar_tabela_separacao_componentes()
-  1456→        ok = db.set_separacao_componentes(ordem, codigos, session.get('usuario_id'))
-  1457→        if ok:
-  1458→            db.add_log(session['usuario_id'], 'separar_componentes',
-  1459→                       f'{len(codigos)} componente(s) separado(s) na OP #{ordem}', 'lotes', ordem)
-  1460→            # Verifica se OP deve mudar para separando
-  1461→            db.marcar_separacao_lote(ordem, 'separando', session['usuario_id'])
-  1462→        return jsonify({'status': 'success' if ok else 'error'})
-  1463→    except Exception as e:
-  1464→        return jsonify({'status': 'error', 'msg': str(e)}), 500
-  1465→
-  1466→@app.route('/api/lotes/<int:ordem>/componentes-separacao')
-  1467→@login_required
-  1468→@role_required('admin', 'gerente', 'almoxarifado')
-  1469→def api_componentes_separacao(ordem):
-  1470→    """Retorna componentes de uma OP com status de separação individual."""
-  1471→    try:
-  1472→        db.criar_tabela_separacao_componentes()
-  1473→    except Exception:
-  1474→        pass
-  1475→    # Busca componentes do ERP
-  1476→    componentes = []
-  1477→    try:
-  1478→        pg = DatabasePostgreSQL()
-  1479→        mats = pg.get_requisicoes_multiplas_ordens([ordem])
-  1480→        try:
-  1481→            codigos_fabricados = db.get_codigos_produtos_ofs_ativas()
-  1482→        except Exception:
-  1483→            codigos_fabricados = set()
-  1484→        agrupados = {}
-  1485→        for m in mats:
-  1486→            cod = str(m.get('produto') or '')
-  1487→            if cod.upper().startswith('PC-') or cod.upper().startswith('PC '):
-  1488→                continue
-  1489→            if cod in codigos_fabricados:
-  1490→                continue
-  1491→            if cod not in agrupados:
-  1492→                agrupados[cod] = {
-  1493→                    'codigo': cod,
-  1494→                    'descricao': (m.get('descricao') or '')[:50],
-  1495→                    'unidade': m.get('unidade') or 'UN',
-  1496→                    'qtd_necessaria': 0.0
-  1497→                }
-  1498→            agrupados[cod]['qtd_necessaria'] += float(m.get('quantidade') or 0)
-  1499→        componentes = sorted(agrupados.values(), key=lambda x: x['codigo'])
-  1500→    except Exception as e:
-  1501→        return jsonify({'status': 'error', 'msg': str(e)}), 500
-  1502→
-  1503→    # Inicializa registros no banco se necessário
-  1504→    if componentes:
-  1505→        try:
-  1506→            db.init_separacao_componentes_op(ordem, componentes)
-  1507→        except Exception:
-  1508→            pass
-  1509→
-  1510→    # Busca status de separação
-  1511→    sep_status = {}
-  1512→    try:
-  1513→        rows = db.get_separacao_componentes(ordem)
-  1514→        for r in rows:
-  1515→            sep_status[str(r['codigo'])] = r['status']
-  1516→    except Exception:
-  1517→        pass
-  1518→
-  1519→    for c in componentes:
-  1520→        c['separacao_status'] = sep_status.get(c['codigo'], 'pendente')
-  1521→
-  1522→    return jsonify({'status': 'success', 'componentes': componentes})
-  1523→
-  1524→@app.route('/api/requisicoes/<int:req_id>/entregar', methods=['POST'])
-  1525→@login_required
-  1526→@role_required('admin', 'gerente', 'almoxarifado')
-  1527→def api_entregar_requisicao(req_id):
-  1528→    ok = db.atualizar_status_requisicao(req_id, 'entregue', session['usuario_id'])
-  1529→    if ok:
-  1530→        db.add_log(session['usuario_id'], 'entregar_requisicao',
-  1531→                   f'Requisição #{req_id} entregue', 'requisicoes_materiais', req_id)
-  1532→    return jsonify({'status': 'success' if ok else 'error'})
-  1533→
-  1534→@app.route('/api/requisicoes/<int:req_id>/recusar', methods=['POST'])
-  1535→@login_required
-  1536→@role_required('admin', 'gerente', 'almoxarifado')
-  1537→def api_recusar_requisicao(req_id):
-  1538→    motivo = (request.json or {}).get('motivo', 'Recusado pelo almoxarifado')
-  1539→    ok = db.atualizar_status_requisicao(req_id, 'recusado', session['usuario_id'])
-  1540→    if ok:
-  1541→        db.add_log(session['usuario_id'], 'recusar_requisicao',
-  1542→                   f'Requisição #{req_id} recusada: {motivo}', 'requisicoes_materiais', req_id)
-  1543→    return jsonify({'status': 'success' if ok else 'error'})
-  1544→
-  1545→@app.route('/api/almoxarifado/separacao')
-  1546→def api_almoxarifado_separacao():
-  1547→    """Endpoint para a TV e PC do almoxarifado (separacao).
-  1548→    TV acessa sem login, PC acessa com login — mesma API."""
-  1549→    lotes = db.get_lotes_separacao_tv()
-  1550→    pendentes  = sum(1 for l in lotes if l.get('separacao_status') == 'pendente')
-  1551→    separados  = sum(1 for l in lotes if l.get('separacao_status') == 'separado')
-  1552→    separando  = sum(1 for l in lotes if l.get('separacao_status') == 'separando')
-  1553→    urgentes   = sum(1 for l in lotes if (l.get('prioridade') or '').lower() in ('urgente','alta'))
-  1554→    atrasados  = sum(1 for l in lotes if (l.get('dias_atraso') or 0) > 0)
-  1555→    return jsonify({
-  1556→        'status': 'success',
-  1557→        'lotes': lotes,
-  1558→        'stats': {
-  1559→            'total': len(lotes),
-  1560→            'pendentes': pendentes,
-  1561→            'separando': separando,
-  1562→            'separados': separados,
-  1563→            'urgentes': urgentes,
-  1564→            'atrasados': atrasados
-  1565→        }
-  1566→    })
-  1567→
-  1568→@app.route('/api/almoxarifado/estoque')
-  1569→def api_almoxarifado_estoque():
-  1570→    """Estoque do almoxarifado — lê SQLite sincronizado do ERP."""
-  1571→    import sqlite3 as sqlite3_mod
-  1572→    SQLITE_PATH = "/opt/painel_estoque/estoque.db"
-  1573→    stats = {'CRITICO': 0, 'BAIXO': 0, 'OK': 0}
-  1574→    produtos = []
-  1575→    try:
-  1576→        conn = sqlite3_mod.connect(SQLITE_PATH)
-  1577→        conn.row_factory = sqlite3_mod.Row
-  1578→        cur = conn.cursor()
-  1579→        cur.execute("SELECT TRIM(codigo) as codigo, descricao, saldo_atual, estoque_minimo FROM produtos")
-  1580→        rows = cur.fetchall()
-  1581→        for r in rows:
-  1582→            saldo = float(r['saldo_atual'] or 0)
-  1583→            minimo = float(r['estoque_minimo'] or 0)
-  1584→            if minimo <= 0:
-  1585→                minimo = 1.0
-  1586→            limite = minimo * 1.25
-  1587→            if saldo <= minimo:
-  1588→                status = 'CRITICO'
-  1589→            elif saldo <= limite:
-  1590→                status = 'BAIXO'
-  1591→            else:
-  1592→                status = 'OK'
-  1593→            stats[status] += 1
-  1594→            produtos.append({
-  1595→                'codigo': r['codigo'],
-  1596→                'descricao': (r['descricao'] or '')[:45],
-  1597→                'saldo': int(saldo),
-  1598→                'minimo': int(minimo),
-  1599→                'status': status
-  1600→            })
-  1601→        conn.close()
-  1602→    except Exception as e:
-  1603→        print("[ESTOQUE TV] Erro ao ler SQLite:", e)
-  1604→    # Mostra apenas CRITICO e BAIXO no almoxarifado
-  1605→    produtos = [p for p in produtos if p['status'] in ('CRITICO', 'BAIXO')]
-  1606→    # Ordena: CRITICO primeiro, depois BAIXO
-  1607→    ordem = {'CRITICO': 0, 'BAIXO': 1}
-  1608→    produtos.sort(key=lambda x: (ordem.get(x['status'], 3), x['saldo']))
-  1609→    return jsonify({'status': 'success', 'stats': stats, 'produtos': produtos})
-  1610→
-  1611→@app.route('/api/almoxarifado/separacao-materiais')
-  1612→def api_separacao_materiais():
-  1613→    """TV do almoxarifado: OPs liberadas com lista de componentes para separar.
-  1614→    Agrupa por lote_codigo, mostra OFs horizontais, oculta OFs ja separadas."""
-  1615→    lotes = db.get_lotes_separacao_tv()
-  1616→    if not lotes:
-  1617→        return jsonify({'status': 'success', 'lotes': [], 'stats': {
-  1618→            'total': 0, 'pendentes': 0, 'separando': 0, 'separados': 0, 'urgentes': 0
-  1619→        }})
-  1620→
-  1621→    # Exclui pecas fabricadas em outras OFs
-  1622→    try:
-  1623→        codigos_fabricados = db.get_codigos_produtos_ofs_ativas()
-  1624→    except Exception:
-  1625→        codigos_fabricados = set()
-  1626→
-  1627→    # Agrupa OPs por lote_codigo (preserva ordem de prioridade)
-  1628→    from collections import OrderedDict
-  1629→    lote_map = OrderedDict()
-  1630→    for l in lotes:
-  1631→        lc = l.get('lote_codigo') or ''
-  1632→        if lc not in lote_map:
-  1633→            lote_map[lc] = {
-  1634→                'lote_codigo': lc,
-  1635→                'descricao_produto': l.get('descricao_produto'),
-  1636→                'qtde_ordem': l.get('qtde_ordem'),
-  1637→                'prioridade': l.get('prioridade'),
-  1638→                'data_previsao_erp': l.get('data_previsao_erp'),
-  1639→                'departamento_atual': l.get('departamento_atual'),
-  1640→                'ordens': []
-  1641→            }
-  1642→        lote_map[lc]['ordens'].append({
-  1643→            'ordem': l['ordem'],
-  1644→            'separacao_status': l.get('separacao_status', 'pendente'),
-  1645→            'dias_atraso': l.get('dias_atraso', 0),
-  1646→            'prioridade': l.get('prioridade', 'media'),
-  1647→        })
-  1648→
-  1649→    # Busca TODAS as OFs do lote no ERP e materiais
-  1650→    pg = None
-  1651→    try:
-  1652→        pg = DatabasePostgreSQL()
-  1653→    except Exception as e:
-  1654→        print('[SEP MATS] Erro conectar ERP:', e)
-  1655→
-  1656→    resultado = []
-  1657→    stats = {'total': 0, 'pendentes': 0, 'separando': 0, 'separados': 0, 'urgentes': 0}
-  1658→
-  1659→    for lc, info in lote_map.items():
-  1660→        ordens_info = info['ordens']
-  1661→
-  1662→        # Separa OFs pendentes/separando das ja separadas
-  1663→        ofs_pendentes = [o for o in ordens_info if o['separacao_status'] != 'separado']
-  1664→        ofs_separadas = [o for o in ordens_info if o['separacao_status'] == 'separado']
-  1665→
-  1666→        # Se todas as OFs do lote ja foram separadas, nao mostra na TV
-  1667→        if not ofs_pendentes:
-  1668→            continue
-  1669→
-  1670→        # Pega OFs do ERP para buscar materiais (so das OFs pendentes/separando)
-  1671→        ordens_pendentes_nums = [int(o['ordem']) for o in ofs_pendentes]
-  1672→        materiais_erp = []
-  1673→        if pg and ordens_pendentes_nums:
-  1674→            try:
-  1675→                materiais_erp = pg.get_requisicoes_multiplas_ordens(ordens_pendentes_nums)
-  1676→            except Exception as e:
-  1677→                print('[SEP MATS] Erro materiais ERP lote %s: %s' % (lc, e))
-  1678→
-  1679→        # Agrupa materiais repetidos somando quantidades
-  1680→        agrupados = {}
-  1681→        for m in materiais_erp:
-  1682→            cod = str(m.get('produto') or '')
-  1683→            if cod.upper().startswith('PC-') or cod.upper().startswith('PC '):
-  1684→                continue
-  1685→            if cod in codigos_fabricados:
-  1686→                continue
-  1687→            if cod not in agrupados:
-  1688→                agrupados[cod] = {
-  1689→                    'codigo': cod,
-  1690→                    'descricao': (m.get('descricao') or '')[:50],
-  1691→                    'unidade': m.get('unidade') or 'UN',
-  1692→                    'qtd_necessaria': 0.0
-  1693→                }
-  1694→            agrupados[cod]['qtd_necessaria'] += float(m.get('quantidade') or 0)
-  1695→        comps = sorted(agrupados.values(), key=lambda x: x['codigo'])
-  1696→
-  1697→        # Status do lote = pior status entre OFs pendentes
-  1698→        statuses = [o['separacao_status'] for o in ofs_pendentes]
-  1699→        lote_sep_status = 'pendente'
-  1700→        if 'separando' in statuses:
-  1701→            lote_sep_status = 'separando'
-  1702→
-  1703→        # Pior prioridade / atraso
-  1704→        prio = info['prioridade']
-  1705→        max_atraso = max((o.get('dias_atraso') or 0) for o in ofs_pendentes)
-  1706→        for o in ofs_pendentes:
-  1707→            p = (o.get('prioridade') or 'media').lower()
-  1708→            if p == 'urgente':
-  1709→                prio = 'urgente'
-  1710→                break
-  1711→            elif p == 'alta' and prio != 'urgente':
-  1712→                prio = 'alta'
-  1713→
-  1714→        resultado.append({
-  1715→            'lote_codigo': lc,
-  1716→            'descricao_produto': info['descricao_produto'],
-  1717→            'qtde_ordem': info['qtde_ordem'],
-  1718→            'prioridade': prio,
-  1719→            'data_previsao_erp': info['data_previsao_erp'],
-  1720→            'departamento_atual': info['departamento_atual'],
-  1721→            'separacao_status': lote_sep_status,
-  1722→            'dias_atraso': max_atraso,
-  1723→            'total_componentes': len(comps),
-  1724→            'componentes': comps,
-  1725→            'ordens_do_lote': sorted(ordens_info, key=lambda x: x['ordem']),
-  1726→            'ordens_pendentes_count': len(ofs_pendentes),
-  1727→            'ordens_separadas_count': len(ofs_separadas),
-  1728→        })
-  1729→
-  1730→        # Stats
-  1731→        stats['total'] += 1
-  1732→        if lote_sep_status == 'pendente':
-  1733→            stats['pendentes'] += 1
-  1734→        elif lote_sep_status == 'separando':
-  1735→            stats['separando'] += 1
-  1736→        if prio in ('urgente', 'alta'):
-  1737→            stats['urgentes'] += 1
-  1738→        stats['separados'] += len(ofs_separadas)
-  1739→
-  1740→    return jsonify({'status': 'success', 'lotes': resultado, 'stats': stats})
-  1741→
-  1742→@app.route('/api/almoxarifado/novas_liberacoes')
-  1743→@login_required
-  1744→def api_novas_liberacoes():
-  1745→    """Para alerta sonoro na TV — checa novas OPs liberadas."""
-  1746→    ultima = request.args.get('ultima')  # ISO datetime
-  1747→    lotes = db.get_novas_liberacoes(ultima_data=ultima if ultima else None)
-  1748→    return jsonify({'status': 'success', 'lotes': lotes, 'count': len(lotes)})
-  1749→
-  1750→@app.route('/api/kanban/cards')
-  1751→@login_required
-  1752→def api_kanban_cards():
-  1753→    role  = session.get('usuario_role')
-  1754→    depto = session.get('usuario_departamento', '')
-  1755→    departamento_filtro = None if role in ('admin', 'gerente', 'pcp', 'diretor') else depto
-  1756→    cards = db.get_kanban_cards(departamento=departamento_filtro)
-  1757→    # Resolve nome real das pecas via PostgreSQL
-  1758→    for c in cards:
-  1759→        cod = c.get('cod_peca') or ''
-  1760→        c['nome_peca'] = _get_nome_produto(cod) if cod else ''
-  1761→        c['sob_medida'] = _is_sob_medida(cod) or _is_sob_medida(c.get('lote_codigo'))
-  1762→    # Tempo medio de fabricacao por peca+setor (para progresso por tempo)
-  1763→    tempos = {}
-  1764→    try:
-  1765→        rows = db.get_tempo_medio_producao()
-  1766→        for r in rows:
-  1767→            p = str(r.get('produto', '')).strip()
-  1768→            s = str(r.get('setor', '')).strip().upper()
-  1769→            if p and s:
-  1770→                tempos[p + '|' + s] = float(r.get('tempo_medio_min', 0) or 0)
-  1771→    except Exception:
-  1772→        pass
-  1773→    # Verifica ERP para alerta no TV
-  1774→    pg_ok = False
-  1775→    try:
-  1776→        pg = DatabasePostgreSQL()
-  1777→        pg.query_one("SELECT 1")
-  1778→        pg_ok = True
-  1779→    except Exception:
-  1780→        pass
-  1781→    return jsonify({'status': 'success', 'cards': cards, 'tempos': tempos, 'pg_ok': pg_ok})
-  1782→
-  1783→@app.route('/api/kanban/status')
-  1784→@login_required
-  1785→def api_kanban_status():
-  1786→    role  = session.get('usuario_role')
-  1787→    depto = session.get('usuario_departamento', '')
-  1788→    departamento_filtro = None if role in ('admin', 'gerente', 'pcp', 'diretor') else depto
-  1789→    stats = db.get_kanban_stats(departamento=departamento_filtro)
-  1790→    concluidos_hoje = db.get_kanban_concluidos_hoje(departamento=departamento_filtro)
-  1791→    em_atraso = db.get_lotes_em_atraso(departamento=departamento_filtro)
-  1792→    # Verifica ERP para alerta no TV
-  1793→    pg_ok = False
-  1794→    try:
-  1795→        pg = DatabasePostgreSQL()
-  1796→        pg.query_one("SELECT 1")
-  1797→        pg_ok = True
-  1798→    except Exception:
-  1799→        pass
-  1800→    return jsonify({'status': 'success', 'stats': stats, 'concluidos_hoje': concluidos_hoje, 'em_atraso': em_atraso, 'pg_ok': pg_ok})
-  1801→
-  1802→@app.route('/api/almoxarifado/tv')
-  1803→@login_required
-  1804→def api_almoxarifado_tv():
-  1805→    stats = db.get_estatisticas_gerais()
-  1806→    return jsonify({'status': 'success', 'stats': stats})
-  1807→
-  1808→@app.route('/api/kanban/mover', methods=['POST'])
-  1809→@login_required
-  1810→def api_kanban_mover():
-  1811→    data     = request.json or {}
-  1812→    card_id  = data.get('card_id')
-  1813→    nova_etapa = data.get('etapa')
-  1814→    if not card_id or not nova_etapa:
-  1815→        return jsonify({'status': 'error', 'message': 'card_id e etapa são obrigatórios'}), 400
-  1816→    db.move_kanban_card(card_id, nova_etapa, session.get('usuario_id'))
-  1817→    return jsonify({'status': 'success'})
+  1323→@role_required('admin', 'almoxarifado')
+  1324→def api_estoque_toggle_usuario(item_id):
+  1325→    """Ativa/desativa controle por usuario em um item de estoque."""
+  1326→    dados = request.json or {}
+  1327→    ativo = dados.get('ativo', False)
+  1328→    db.toggle_controlado_por_usuario(item_id, ativo)
+  1329→    return jsonify({'status': 'success'})
+  1330→
+  1331→@app.route('/api/usuarios', methods=['GET'])
+  1332→@login_required
+  1333→def api_listar_usuarios():
+  1334→    """Retorna lista de usuarios ativos para dropdowns."""
+  1335→    usuarios = db.listar_usuarios()
+  1336→    return jsonify({'status': 'success', 'usuarios': usuarios})
+  1337→
+  1338→@app.route('/api/estoque/movimentacao', methods=['GET'])
+  1339→@login_required
+  1340→@role_required('admin', 'gerente', 'almoxarifado', 'diretor')
+  1341→def api_estoque_movimentacao():
+  1342→    movs = db.get_movimentacao_estoque(limite=100)
+  1343→    return jsonify({'status': 'success', 'movimentacoes': movs})
+  1344→
+  1345→@app.route('/api/erp/produto/<codigo>', methods=['GET'])
+  1346→@login_required
+  1347→@role_required('admin', 'almoxarifado', 'pcp')
+  1348→def api_buscar_produto_erp(codigo):
+  1349→    """Busca produto no ERP pelo codigo para auto-preencher descricao."""
+  1350→    try:
+  1351→        pg = DatabasePostgreSQL()
+  1352→        produto = pg.buscar_produto_por_codigo(codigo)
+  1353→        if produto:
+  1354→            return jsonify({'status': 'success', 'produto': produto})
+  1355→        return jsonify({'status': 'not_found', 'message': 'Produto nao encontrado no ERP'})
+  1356→    except Exception as e:
+  1357→        return jsonify({'status': 'error', 'message': str(e)}), 500
+  1358→
+  1359→@app.route('/api/almoxarifado/materiais-pendentes')
+  1360→@login_required
+  1361→@role_required('admin', 'gerente', 'almoxarifado')
+  1362→def api_materiais_pendentes():
+  1363→    """Materiais necessarios para OFs liberadas, filtrando peças fabricadas (so materiais brutos)."""
+  1364→    lotes = db.get_lotes_liberados_pendentes()
+  1365→    if not lotes:
+  1366→        return jsonify({'status': 'success', 'ofs': []})
+  1367→    ordens = [l['ordem'] for l in lotes]
+  1368→    try:
+  1369→        pg = DatabasePostgreSQL()
+  1370→        materiais_erp = pg.get_requisicoes_multiplas_ordens(ordens)
+  1371→    except Exception:
+  1372→        materiais_erp = []
+  1373→
+  1374→    # Pega todos os codigo_produto das OFs ativas para excluir peças fabricadas do BOM
+  1375→    codigos_fabricados = db.get_codigos_produtos_ofs_ativas()
+  1376→
+  1377→    mats_por_of = {}
+  1378→    for m in materiais_erp:
+  1379→        of_num = m.get('ordem')
+  1380→        if of_num not in mats_por_of:
+  1381→            mats_por_of[of_num] = []
+  1382→        mats_por_of[of_num].append(m)
+  1383→    todos_codigos = list(set(str(m.get('produto') or '') for m in materiais_erp if m.get('produto')))
+  1384→    estoque_map = {}
+  1385→    for cod in todos_codigos:
+  1386→        item = db.get_estoque_por_codigo(cod, tipo='almoxarifado')
+  1387→        estoque_map[cod] = item
+  1388→    resultado = []
+  1389→    for lote in lotes:
+  1390→        mats = mats_por_of.get(lote['ordem'], [])
+  1391→        mats_com = []
+  1392→        for m in mats:
+  1393→            cod = str(m.get('produto') or '')
+  1394→            # Pula peças que são fabricadas em outras OFs (ex: alça, suporte, etc.)
+  1395→            if cod in codigos_fabricados:
+  1396→                continue
+  1397→            est = estoque_map.get(cod)
+  1398→            mats_com.append({
+  1399→                'codigo': cod,
+  1400→                'descricao': m.get('descricao') or '',
+  1401→                'unidade': m.get('unidade') or 'UN',
+  1402→                'qtd_necessaria': float(m.get('quantidade') or 0),
+  1403→                'tem_no_estoque': est is not None and est['qtd_atual'] > 0,
+  1404→                'qtd_disponivel': float(est['qtd_atual']) if est else 0
+  1405→            })
+  1406→        # So inclui a OF se tiver materiais brutos
+  1407→        if mats_com:
+  1408→            resultado.append({
+  1409→                'ordem': lote['ordem'],
+  1410→                'produto': lote.get('descricao_produto') or lote.get('lote_descricao') or '',
+  1411→                'quantidade': lote.get('quantidade'),
+  1412→                'prioridade': lote.get('prioridade'),
+  1413→                'departamento': lote.get('departamento'),
+  1414→                'materiais': mats_com
+  1415→            })
+  1416→    return jsonify({'status': 'success', 'ofs': resultado})
+  1417→
+  1418→@app.route('/api/estoque/<int:item_id>/separar-fabrica', methods=['POST'])
+  1419→@login_required
+  1420→@role_required('admin', 'almoxarifado')
+  1421→def api_separar_fabrica(item_id):
+  1422→    dados = request.json or {}
+  1423→    qtd = float(dados.get('qtd', 0))
+  1424→    operador_id = dados.get('operador_id')
+  1425→    if operador_id:
+  1426→        operador_id = int(operador_id)
+  1427→    else:
+  1428→        operador_id = None
+  1429→    if qtd <= 0:
+  1430→        return jsonify({'status': 'error', 'message': 'Quantidade invalida'}), 400
+  1431→    ok = db.mover_estoque_para_fabrica(item_id, qtd, session.get('usuario_id'), operador_id=operador_id)
+  1432→    if ok:
+  1433→        db.add_log(session.get('usuario_id'), 'separar_fabrica',
+  1434→                   f'Item #{item_id} separado para fabrica' + (f' (operador #{operador_id})' if operador_id else ''), 'estoque_interno', item_id)
+  1435→    return jsonify({'status': 'success' if ok else 'error'})
+  1436→
+  1437→@app.route('/api/lotes/<int:ordem>/separando', methods=['POST'])
+  1438→@login_required
+  1439→@role_required('admin', 'gerente', 'almoxarifado')
+  1440→def api_marcar_separando(ordem):
+  1441→    ok = db.marcar_separacao_lote(ordem, 'separando', session['usuario_id'])
+  1442→    if ok:
+  1443→        db.add_log(session['usuario_id'], 'marcar_separando',
+  1444→                   f'OP #{ordem} marcada como SEPARANDO pelo almoxarifado', 'lotes', ordem)
+  1445→    return jsonify({'status': 'success' if ok else 'error'})
+  1446→
+  1447→@app.route('/api/lotes/<int:ordem>/separar', methods=['POST'])
+  1448→@login_required
+  1449→@role_required('admin', 'gerente', 'almoxarifado')
+  1450→def api_marcar_separado(ordem):
+  1451→    ok = db.marcar_separacao_lote(ordem, 'separado', session['usuario_id'])
+  1452→    if ok:
+  1453→        db.add_log(session['usuario_id'], 'marcar_separado',
+  1454→                   f'OP #{ordem} marcada como SEPARADA pelo almoxarifado', 'lotes', ordem)
+  1455→    return jsonify({'status': 'success' if ok else 'error'})
+  1456→
+  1457→@app.route('/api/lotes/<int:ordem>/entregar', methods=['POST'])
+  1458→@login_required
+  1459→@role_required('admin', 'gerente', 'almoxarifado')
+  1460→def api_marcar_entregue(ordem):
+  1461→    ok = db.marcar_separacao_lote(ordem, 'entregue', session['usuario_id'])
+  1462→    if ok:
+  1463→        db.add_log(session['usuario_id'], 'marcar_entregue',
+  1464→                   f'OP #{ordem} marcada como ENTREGUE ao setor', 'lotes', ordem)
+  1465→    return jsonify({'status': 'success' if ok else 'error'})
+  1466→
+  1467→@app.route('/api/lotes/<int:ordem>/separar-componentes', methods=['POST'])
+  1468→@login_required
+  1469→@role_required('admin', 'gerente', 'almoxarifado')
+  1470→def api_separar_componentes(ordem):
+  1471→    """Marca componentes específicos como separados para uma OP."""
+  1472→    data = request.get_json(force=True) or {}
+  1473→    codigos = data.get('codigos', [])
+  1474→    if not codigos:
+  1475→        return jsonify({'status': 'error', 'msg': 'Nenhum componente selecionado'})
+  1476→    try:
+  1477→        db.criar_tabela_separacao_componentes()
+  1478→        ok = db.set_separacao_componentes(ordem, codigos, session.get('usuario_id'))
+  1479→        if ok:
+  1480→            db.add_log(session['usuario_id'], 'separar_componentes',
+  1481→                       f'{len(codigos)} componente(s) separado(s) na OP #{ordem}', 'lotes', ordem)
+  1482→            # Verifica se OP deve mudar para separando
+  1483→            db.marcar_separacao_lote(ordem, 'separando', session['usuario_id'])
+  1484→        return jsonify({'status': 'success' if ok else 'error'})
+  1485→    except Exception as e:
+  1486→        return jsonify({'status': 'error', 'msg': str(e)}), 500
+  1487→
+  1488→@app.route('/api/lotes/<int:ordem>/finalizar-separacao', methods=['POST'])
+  1489→@login_required
+  1490→@role_required('admin', 'gerente', 'almoxarifado')
+  1491→def api_finalizar_separacao(ordem):
+  1492→    """Finaliza separacao de uma OP: marca componentes selecionados como separados.
+  1493→    So muda para 'separado' se TODOS os componentes estiverem separados."""
+  1494→    data = request.get_json(force=True) or {}
+  1495→    codigos = data.get('codigos', [])
+  1496→    try:
+  1497→        db.criar_tabela_separacao_componentes()
+  1498→        # Marca os componentes selecionados como separados
+  1499→        if codigos:
+  1500→            db.set_separacao_componentes(ordem, codigos, session.get('usuario_id'))
+  1501→        # Verifica se TODOS os componentes ja estao separados
+  1502→        todos = db.get_separacao_componentes(ordem)
+  1503→        total = len(todos)
+  1504→        separados = sum(1 for c in todos if c['status'] == 'separado')
+  1505→        if total > 0 and separados >= total:
+  1506→            # Todos separados -> muda para separado
+  1507→            ok = db.marcar_separacao_lote(ordem, 'separado', session['usuario_id'])
+  1508→            db.add_log(session['usuario_id'], 'finalizar_separacao',
+  1509→                       'OP #%s finalizada como SEPARADO (todos %d componentes)' % (ordem, total), 'lotes', ordem)
+  1510→        else:
+  1511→            # Ainda faltam componentes -> mantem como separando
+  1512→            ok = True
+  1513→            db.marcar_separacao_lote(ordem, 'separando', session['usuario_id'])
+  1514→            db.add_log(session['usuario_id'], 'finalizar_separacao_parcial',
+  1515→                       'OP #%s: %d/%d componentes separados' % (ordem, separados, total), 'lotes', ordem)
+  1516→        return jsonify({'status': 'success' if ok else 'error', 'todos_separados': total > 0 and separados >= total, 'separados': separados, 'total': total})
+  1517→    except Exception as e:
+  1518→        return jsonify({'status': 'error', 'msg': str(e)}), 500
+  1519→
+  1520→@app.route('/api/lotes/<int:ordem>/separado', methods=['POST'])
+  1521→@app.route('/api/lotes/<int:ordem>/entregue', methods=['POST'])
+  1522→@app.route('/api/lotes/<int:ordem>/pendente', methods=['POST'])
+  1523→@app.route('/api/lotes/<int:ordem>/separando', methods=['POST'])
+  1524→@login_required
+  1525→@role_required('admin', 'gerente', 'almoxarifado')
+  1526→def api_mudar_separacao(ordem):
+  1527→    """Muda o status de separacao de uma OP."""
+  1528→    novo_status = request.path.split('/')[-1]
+  1529→    validos = ('pendente', 'separando', 'separado', 'entregue')
+  1530→    if novo_status not in validos:
+  1531→        return jsonify({'status': 'error', 'msg': 'Status invalido'}), 400
+  1532→    try:
+  1533→        db.marcar_separacao_lote(ordem, novo_status, session.get('usuario_id'))
+  1534→        db.add_log(session['usuario_id'], 'mudar_separacao',
+  1535→                   'OP #%s → %s' % (ordem, novo_status), 'lotes', ordem)
+  1536→        return jsonify({'status': 'success'})
+  1537→    except Exception as e:
+  1538→        return jsonify({'status': 'error', 'msg': str(e)}), 500
+  1539→
+  1540→@app.route('/api/lotes/<int:ordem>/componentes-separacao')
+  1541→@login_required
+  1542→@role_required('admin', 'gerente', 'almoxarifado')
+  1543→def api_componentes_separacao(ordem):
+  1544→    """Retorna componentes de uma OP com status de separação individual."""
+  1545→    try:
+  1546→        db.criar_tabela_separacao_componentes()
+  1547→    except Exception:
+  1548→        pass
+  1549→    # Busca componentes do ERP
+  1550→    componentes = []
+  1551→    try:
+  1552→        pg = DatabasePostgreSQL()
+  1553→        mats = pg.get_requisicoes_multiplas_ordens([ordem])
+  1554→        try:
+  1555→            codigos_fabricados = db.get_codigos_produtos_ofs_ativas()
+  1556→        except Exception:
+  1557→            codigos_fabricados = set()
+  1558→        agrupados = {}
+  1559→        for m in mats:
+  1560→            cod = str(m.get('produto') or '')
+  1561→            if cod.upper().startswith('PC-') or cod.upper().startswith('PC '):
+  1562→                continue
+  1563→            if cod in codigos_fabricados:
+  1564→                continue
+  1565→            if cod not in agrupados:
+  1566→                agrupados[cod] = {
+  1567→                    'codigo': cod,
+  1568→                    'descricao': (m.get('descricao') or '')[:50],
+  1569→                    'unidade': m.get('unidade') or 'UN',
+  1570→                    'qtd_necessaria': 0.0
+  1571→                }
+  1572→            agrupados[cod]['qtd_necessaria'] += float(m.get('quantidade') or 0)
+  1573→        componentes = sorted(agrupados.values(), key=lambda x: x['codigo'])
+  1574→    except Exception as e:
+  1575→        return jsonify({'status': 'error', 'msg': str(e)}), 500
+  1576→
+  1577→    # Inicializa registros no banco se necessário
+  1578→    if componentes:
+  1579→        try:
+  1580→            db.init_separacao_componentes_op(ordem, componentes)
+  1581→        except Exception:
+  1582→            pass
+  1583→
+  1584→    # Busca status de separação
+  1585→    sep_status = {}
+  1586→    try:
+  1587→        rows = db.get_separacao_componentes(ordem)
+  1588→        for r in rows:
+  1589→            sep_status[str(r['codigo'])] = r['status']
+  1590→    except Exception:
+  1591→        pass
+  1592→
+  1593→    for c in componentes:
+  1594→        c['separacao_status'] = sep_status.get(c['codigo'], 'pendente')
+  1595→
+  1596→    return jsonify({'status': 'success', 'componentes': componentes})
+  1597→
+  1598→@app.route('/api/requisicoes/<int:req_id>/entregar', methods=['POST'])
+  1599→@login_required
+  1600→@role_required('admin', 'gerente', 'almoxarifado')
+  1601→def api_entregar_requisicao(req_id):
+  1602→    ok = db.atualizar_status_requisicao(req_id, 'entregue', session['usuario_id'])
+  1603→    if ok:
+  1604→        db.add_log(session['usuario_id'], 'entregar_requisicao',
+  1605→                   f'Requisição #{req_id} entregue', 'requisicoes_materiais', req_id)
+  1606→    return jsonify({'status': 'success' if ok else 'error'})
+  1607→
+  1608→@app.route('/api/requisicoes/<int:req_id>/recusar', methods=['POST'])
+  1609→@login_required
+  1610→@role_required('admin', 'gerente', 'almoxarifado')
+  1611→def api_recusar_requisicao(req_id):
+  1612→    motivo = (request.json or {}).get('motivo', 'Recusado pelo almoxarifado')
+  1613→    ok = db.atualizar_status_requisicao(req_id, 'recusado', session['usuario_id'])
+  1614→    if ok:
+  1615→        db.add_log(session['usuario_id'], 'recusar_requisicao',
+  1616→                   f'Requisição #{req_id} recusada: {motivo}', 'requisicoes_materiais', req_id)
+  1617→    return jsonify({'status': 'success' if ok else 'error'})
+  1618→
+  1619→@app.route('/api/almoxarifado/separacao')
+  1620→def api_almoxarifado_separacao():
+  1621→    """Endpoint para a TV e PC do almoxarifado (separacao).
+  1622→    TV acessa sem login, PC acessa com login — mesma API."""
+  1623→    lotes = db.get_lotes_separacao_tv()
+  1624→    pendentes  = sum(1 for l in lotes if l.get('separacao_status') == 'pendente')
+  1625→    separados  = sum(1 for l in lotes if l.get('separacao_status') == 'separado')
+  1626→    separando  = sum(1 for l in lotes if l.get('separacao_status') == 'separando')
+  1627→    urgentes   = sum(1 for l in lotes if (l.get('prioridade') or '').lower() in ('urgente','alta'))
+  1628→    atrasados  = sum(1 for l in lotes if (l.get('dias_atraso') or 0) > 0)
+  1629→    return jsonify({
+  1630→        'status': 'success',
+  1631→        'lotes': lotes,
+  1632→        'stats': {
+  1633→            'total': len(lotes),
+  1634→            'pendentes': pendentes,
+  1635→            'separando': separando,
+  1636→            'separados': separados,
+  1637→            'urgentes': urgentes,
+  1638→            'atrasados': atrasados
+  1639→        }
+  1640→    })
+  1641→
+  1642→@app.route('/api/almoxarifado/estoque')
+  1643→def api_almoxarifado_estoque():
+  1644→    """Estoque do almoxarifado — lê SQLite sincronizado do ERP."""
+  1645→    import sqlite3 as sqlite3_mod
+  1646→    SQLITE_PATH = "/opt/painel_estoque/estoque.db"
+  1647→    stats = {'CRITICO': 0, 'BAIXO': 0, 'OK': 0}
+  1648→    produtos = []
+  1649→    try:
+  1650→        conn = sqlite3_mod.connect(SQLITE_PATH)
+  1651→        conn.row_factory = sqlite3_mod.Row
+  1652→        cur = conn.cursor()
+  1653→        cur.execute("SELECT TRIM(codigo) as codigo, descricao, saldo_atual, estoque_minimo FROM produtos")
+  1654→        rows = cur.fetchall()
+  1655→        for r in rows:
+  1656→            saldo = float(r['saldo_atual'] or 0)
+  1657→            minimo = float(r['estoque_minimo'] or 0)
+  1658→            if minimo <= 0:
+  1659→                minimo = 1.0
+  1660→            limite = minimo * 1.25
+  1661→            if saldo <= minimo:
+  1662→                status = 'CRITICO'
+  1663→            elif saldo <= limite:
+  1664→                status = 'BAIXO'
+  1665→            else:
+  1666→                status = 'OK'
+  1667→            stats[status] += 1
+  1668→            produtos.append({
+  1669→                'codigo': r['codigo'],
+  1670→                'descricao': (r['descricao'] or '')[:45],
+  1671→                'saldo': int(saldo),
+  1672→                'minimo': int(minimo),
+  1673→                'status': status
+  1674→            })
+  1675→        conn.close()
+  1676→    except Exception as e:
+  1677→        print("[ESTOQUE TV] Erro ao ler SQLite:", e)
+  1678→    # Mostra apenas CRITICO e BAIXO no almoxarifado
+  1679→    produtos = [p for p in produtos if p['status'] in ('CRITICO', 'BAIXO')]
+  1680→    # Ordena: CRITICO primeiro, depois BAIXO
+  1681→    ordem = {'CRITICO': 0, 'BAIXO': 1}
+  1682→    produtos.sort(key=lambda x: (ordem.get(x['status'], 3), x['saldo']))
+  1683→    return jsonify({'status': 'success', 'stats': stats, 'produtos': produtos})
+  1684→
+  1685→@app.route('/api/almoxarifado/separacao-materiais')
+  1686→def api_separacao_materiais():
+  1687→    """TV do almoxarifado: OPs liberadas com lista de componentes para separar.
+  1688→    Agrupa por lote_codigo, mostra TODAS as OFs (menos entregue).
+  1689→    Separando = cor normal, Separado = cor amarela piscando, Entregue = some."""
+  1690→    lotes = db.get_lotes_separacao_tv()
+  1691→    if not lotes:
+  1692→        return jsonify({'status': 'success', 'lotes': [], 'stats': {
+  1693→            'total': 0, 'pendentes': 0, 'separando': 0, 'separados': 0, 'urgentes': 0
+  1694→        }})
+  1695→
+  1696→    # Exclui pecas fabricadas em outras OFs
+  1697→    try:
+  1698→        codigos_fabricados = db.get_codigos_produtos_ofs_ativas()
+  1699→    except Exception:
+  1700→        codigos_fabricados = set()
+  1701→
+  1702→    # Agrupa OPs por lote_codigo (preserva ordem de prioridade)
+  1703→    from collections import OrderedDict
+  1704→    lote_map = OrderedDict()
+  1705→    for l in lotes:
+  1706→        lc = l.get('lote_codigo') or ''
+  1707→        if lc not in lote_map:
+  1708→            lote_map[lc] = {
+  1709→                'lote_codigo': lc,
+  1710→                'descricao_produto': l.get('descricao_produto'),
+  1711→                'qtde_ordem': l.get('qtde_ordem'),
+  1712→                'prioridade': l.get('prioridade'),
+  1713→                'data_previsao_erp': l.get('data_previsao_erp'),
+  1714→                'departamento_atual': l.get('departamento_atual'),
+  1715→                'ordens': []
+  1716→            }
+  1717→        lote_map[lc]['ordens'].append({
+  1718→            'ordem': l['ordem'],
+  1719→            'separacao_status': l.get('separacao_status', 'pendente'),
+  1720→            'dias_atraso': l.get('dias_atraso', 0),
+  1721→            'prioridade': l.get('prioridade', 'media'),
+  1722→        })
+  1723→
+  1724→    # Busca TODAS as OFs do lote no ERP e materiais
+  1725→    pg = None
+  1726→    try:
+  1727→        pg = DatabasePostgreSQL()
+  1728→    except Exception as e:
+  1729→        print('[SEP MATS] Erro conectar ERP:', e)
+  1730→
+  1731→    resultado = []
+  1732→    stats = {'total': 0, 'pendentes': 0, 'separando': 0, 'separados': 0, 'urgentes': 0}
+  1733→
+  1734→    for lc, info in lote_map.items():
+  1735→        ordens_info = info['ordens']
+  1736→
+  1737→        # Conta status das OFs
+  1738→        ofs_pendentes = [o for o in ordens_info if o['separacao_status'] in ('pendente', 'separando')]
+  1739→        ofs_separadas = [o for o in ordens_info if o['separacao_status'] == 'separado']
+  1740→
+  1741→        # Se TODAS as OFs do lote ja foram entregues, nao mostra (ja excluido pelo SQL)
+  1742→        # Se todas separadas mas nenhuma pendente, mostra apenas como informativo
+  1743→        if not ofs_pendentes and not ofs_separadas:
+  1744→            continue
+  1745→
+  1746→        # Pega OFs do ERP para buscar materiais (so das OFs pendentes/separando)
+  1747→        ordens_pendentes_nums = [int(o['ordem']) for o in ofs_pendentes]
+  1748→        materiais_erp = []
+  1749→        if pg and ordens_pendentes_nums:
+  1750→            try:
+  1751→                materiais_erp = pg.get_requisicoes_multiplas_ordens(ordens_pendentes_nums)
+  1752→            except Exception as e:
+  1753→                print('[SEP MATS] Erro materiais ERP lote %s: %s' % (lc, e))
+  1754→
+  1755→        # Agrupa materiais repetidos somando quantidades
+  1756→        agrupados = {}
+  1757→        for m in materiais_erp:
+  1758→            cod = str(m.get('produto') or '')
+  1759→            if cod.upper().startswith('PC-') or cod.upper().startswith('PC '):
+  1760→                continue
+  1761→            if cod in codigos_fabricados:
+  1762→                continue
+  1763→            if cod not in agrupados:
+  1764→                agrupados[cod] = {
+  1765→                    'codigo': cod,
+  1766→                    'descricao': (m.get('descricao') or '')[:50],
+  1767→                    'unidade': m.get('unidade') or 'UN',
+  1768→                    'qtd_necessaria': 0.0
+  1769→                }
+  1770→            agrupados[cod]['qtd_necessaria'] += float(m.get('quantidade') or 0)
+  1771→        comps = sorted(agrupados.values(), key=lambda x: x['codigo'])
+  1772→
+  1773→        # Status do lote: se tem OFs pendentes = separando/separando, se so separadas = separado
+  1774→        if ofs_pendentes:
+  1775→            statuses = [o['separacao_status'] for o in ofs_pendentes]
+  1776→            lote_sep_status = 'separando' if 'separando' in statuses else 'pendente'
+  1777→        else:
+  1778→            lote_sep_status = 'separado'
+  1779→
+  1780→        # Pior prioridade / atraso
+  1781→        prio = info['prioridade']
+  1782→        max_atraso = max((o.get('dias_atraso') or 0) for o in ordens_info)
+  1783→        for o in ofs_pendentes:
+  1784→            p = (o.get('prioridade') or 'media').lower()
+  1785→            if p == 'urgente':
+  1786→                prio = 'urgente'
+  1787→                break
+  1788→            elif p == 'alta' and prio != 'urgente':
+  1789→                prio = 'alta'
+  1790→
+  1791→        resultado.append({
+  1792→            'lote_codigo': lc,
+  1793→            'descricao_produto': info['descricao_produto'],
+  1794→            'qtde_ordem': info['qtde_ordem'],
+  1795→            'prioridade': prio,
+  1796→            'data_previsao_erp': info['data_previsao_erp'],
+  1797→            'departamento_atual': info['departamento_atual'],
+  1798→            'separacao_status': lote_sep_status,
+  1799→            'dias_atraso': max_atraso,
+  1800→            'total_componentes': len(comps),
+  1801→            'componentes': comps,
+  1802→            'ordens_do_lote': sorted(ordens_info, key=lambda x: x['ordem']),
+  1803→            'ordens_pendentes_count': len(ofs_pendentes),
+  1804→            'ordens_separadas_count': len(ofs_separadas),
+  1805→        })
+  1806→
+  1807→        # Stats
+  1808→        stats['total'] += 1
+  1809→        if lote_sep_status == 'pendente':
+  1810→            stats['pendentes'] += 1
+  1811→        elif lote_sep_status == 'separando':
+  1812→            stats['separando'] += 1
+  1813→        else:
+  1814→            stats['separados'] += 1
+  1815→        if prio in ('urgente', 'alta'):
+  1816→            stats['urgentes'] += 1
+  1817→        stats['separados'] += len(ofs_separadas)
   1818→
-  1819→@app.route('/api/operacoes/<int:operacao_id>/iniciar', methods=['POST'])
-  1820→@login_required
-  1821→def api_iniciar_operacao(operacao_id):
-  1822→    ok = db.iniciar_operacao(operacao_id, session['usuario_id'])
-  1823→    return jsonify({'status': 'success' if ok else 'error'})
-  1824→
-  1825→@app.route('/api/operacoes/<int:operacao_id>/pausar', methods=['POST'])
-  1826→@login_required
-  1827→def api_pausar_operacao(operacao_id):
-  1828→    motivo = (request.json or {}).get('motivo', 'Pausa')
-  1829→    ok = db.pausar_operacao(operacao_id, session['usuario_id'], motivo)
-  1830→    return jsonify({'status': 'success' if ok else 'error'})
-  1831→
-  1832→@app.route('/api/operacoes/<int:operacao_id>/retomar', methods=['POST'])
-  1833→@login_required
-  1834→def api_retomar_operacao(operacao_id):
-  1835→    ok = db.retomar_operacao(operacao_id, session['usuario_id'])
-  1836→    return jsonify({'status': 'success' if ok else 'error'})
-  1837→
-  1838→@app.route('/api/operacoes/<int:operacao_id>/finalizar', methods=['POST'])
-  1839→@login_required
-  1840→def api_finalizar_operacao(operacao_id):
-  1841→    data = request.json or {}
-  1842→    ok = db.finalizar_operacao(
-  1843→        operacao_id, session['usuario_id'],
-  1844→        qtde_produzida=data.get('qtde_produzida'),
-  1845→        qtde_refugada=data.get('qtde_refugada', 0),
-  1846→        observacoes=data.get('observacoes'),
-  1847→        tipo=data.get('tipo', 'total')
-  1848→    )
-  1849→    return jsonify({'status': 'success' if ok else 'error'})
-  1850→
-  1851→@app.route('/api/requisicoes', methods=['POST'])
-  1852→@login_required
-  1853→def api_criar_requisicao():
-  1854→    data = request.json or {}
-  1855→    data['usuario_id'] = session['usuario_id']
-  1856→    data['departamento'] = session.get('usuario_departamento')
-  1857→    req_id = db.criar_requisicao(data)
-  1858→    return jsonify({'status': 'success', 'id': req_id}), 201
-  1859→
-  1860→# =============================================
-  1861→# Tratamento de erros
-  1862→# =============================================
-  1863→
-  1864→@app.errorhandler(404)
-  1865→def not_found(e):
-  1866→    return render_template('error.html', codigo=404, mensagem='Página não encontrada'), 404
-  1867→
-  1868→@app.errorhandler(500)
-  1869→def server_error(e):
-  1870→    return render_template('error.html', codigo=500, mensagem='Erro interno do servidor'), 500
-  1871→
-  1872→# =============================================
-  1873→# Inicialização
-  1874→# =============================================
-  1875→
-  1876→if __name__ == '__main__':
-  1877→    app.run(host='0.0.0.0', port=5002, debug=Config.DEBUG)
-  1878→
+  1819→    return jsonify({'status': 'success', 'lotes': resultado, 'stats': stats})
+  1820→
+  1821→@app.route('/api/almoxarifado/novas_liberacoes')
+  1822→@login_required
+  1823→def api_novas_liberacoes():
+  1824→    """Para alerta sonoro na TV — checa novas OPs liberadas."""
+  1825→    ultima = request.args.get('ultima')  # ISO datetime
+  1826→    lotes = db.get_novas_liberacoes(ultima_data=ultima if ultima else None)
+  1827→    return jsonify({'status': 'success', 'lotes': lotes, 'count': len(lotes)})
+  1828→
+  1829→@app.route('/api/kanban/cards')
+  1830→@login_required
+  1831→def api_kanban_cards():
+  1832→    role  = session.get('usuario_role')
+  1833→    depto = session.get('usuario_departamento', '')
+  1834→    departamento_filtro = None if role in ('admin', 'gerente', 'pcp', 'diretor') else depto
+  1835→    cards = db.get_kanban_cards(departamento=departamento_filtro)
+  1836→    # Resolve nome real das pecas via PostgreSQL
+  1837→    for c in cards:
+  1838→        cod = c.get('cod_peca') or ''
+  1839→        c['nome_peca'] = _get_nome_produto(cod) if cod else ''
+  1840→        c['sob_medida'] = _is_sob_medida(cod) or _is_sob_medida(c.get('lote_codigo'))
+  1841→    # Tempo medio de fabricacao por peca+setor (para progresso por tempo)
+  1842→    tempos = {}
+  1843→    try:
+  1844→        rows = db.get_tempo_medio_producao()
+  1845→        for r in rows:
+  1846→            p = str(r.get('produto', '')).strip()
+  1847→            s = str(r.get('setor', '')).strip().upper()
+  1848→            if p and s:
+  1849→                tempos[p + '|' + s] = float(r.get('tempo_medio_min', 0) or 0)
+  1850→    except Exception:
+  1851→        pass
+  1852→    # Verifica ERP para alerta no TV
+  1853→    pg_ok = False
+  1854→    try:
+  1855→        pg = DatabasePostgreSQL()
+  1856→        pg.query_one("SELECT 1")
+  1857→        pg_ok = True
+  1858→    except Exception:
+  1859→        pass
+  1860→    return jsonify({'status': 'success', 'cards': cards, 'tempos': tempos, 'pg_ok': pg_ok})
+  1861→
+  1862→@app.route('/api/kanban/status')
+  1863→@login_required
+  1864→def api_kanban_status():
+  1865→    role  = session.get('usuario_role')
+  1866→    depto = session.get('usuario_departamento', '')
+  1867→    departamento_filtro = None if role in ('admin', 'gerente', 'pcp', 'diretor') else depto
+  1868→    stats = db.get_kanban_stats(departamento=departamento_filtro)
+  1869→    concluidos_hoje = db.get_kanban_concluidos_hoje(departamento=departamento_filtro)
+  1870→    em_atraso = db.get_lotes_em_atraso(departamento=departamento_filtro)
+  1871→    # Verifica ERP para alerta no TV
+  1872→    pg_ok = False
+  1873→    try:
+  1874→        pg = DatabasePostgreSQL()
+  1875→        pg.query_one("SELECT 1")
+  1876→        pg_ok = True
+  1877→    except Exception:
+  1878→        pass
+  1879→    return jsonify({'status': 'success', 'stats': stats, 'concluidos_hoje': concluidos_hoje, 'em_atraso': em_atraso, 'pg_ok': pg_ok})
+  1880→
+  1881→@app.route('/api/almoxarifado/tv')
+  1882→@login_required
+  1883→def api_almoxarifado_tv():
+  1884→    stats = db.get_estatisticas_gerais()
+  1885→    return jsonify({'status': 'success', 'stats': stats})
+  1886→
+  1887→@app.route('/api/kanban/mover', methods=['POST'])
+  1888→@login_required
+  1889→def api_kanban_mover():
+  1890→    data     = request.json or {}
+  1891→    card_id  = data.get('card_id')
+  1892→    nova_etapa = data.get('etapa')
+  1893→    if not card_id or not nova_etapa:
+  1894→        return jsonify({'status': 'error', 'message': 'card_id e etapa são obrigatórios'}), 400
+  1895→    db.move_kanban_card(card_id, nova_etapa, session.get('usuario_id'))
+  1896→    return jsonify({'status': 'success'})
+  1897→
+  1898→@app.route('/api/operacoes/<int:operacao_id>/iniciar', methods=['POST'])
+  1899→@login_required
+  1900→def api_iniciar_operacao(operacao_id):
+  1901→    ok = db.iniciar_operacao(operacao_id, session['usuario_id'])
+  1902→    return jsonify({'status': 'success' if ok else 'error'})
+  1903→
+  1904→@app.route('/api/operacoes/<int:operacao_id>/pausar', methods=['POST'])
+  1905→@login_required
+  1906→def api_pausar_operacao(operacao_id):
+  1907→    motivo = (request.json or {}).get('motivo', 'Pausa')
+  1908→    ok = db.pausar_operacao(operacao_id, session['usuario_id'], motivo)
+  1909→    return jsonify({'status': 'success' if ok else 'error'})
+  1910→
+  1911→@app.route('/api/operacoes/<int:operacao_id>/retomar', methods=['POST'])
+  1912→@login_required
+  1913→def api_retomar_operacao(operacao_id):
+  1914→    ok = db.retomar_operacao(operacao_id, session['usuario_id'])
+  1915→    return jsonify({'status': 'success' if ok else 'error'})
+  1916→
+  1917→@app.route('/api/operacoes/<int:operacao_id>/finalizar', methods=['POST'])
+  1918→@login_required
+  1919→def api_finalizar_operacao(operacao_id):
+  1920→    data = request.json or {}
+  1921→    ok = db.finalizar_operacao(
+  1922→        operacao_id, session['usuario_id'],
+  1923→        qtde_produzida=data.get('qtde_produzida'),
+  1924→        qtde_refugada=data.get('qtde_refugada', 0),
+  1925→        observacoes=data.get('observacoes'),
+  1926→        tipo=data.get('tipo', 'total')
+  1927→    )
+  1928→    return jsonify({'status': 'success' if ok else 'error'})
+  1929→
+  1930→@app.route('/api/requisicoes', methods=['POST'])
+  1931→@login_required
+  1932→def api_criar_requisicao():
+  1933→    data = request.json or {}
+  1934→    data['usuario_id'] = session['usuario_id']
+  1935→    data['departamento'] = session.get('usuario_departamento')
+  1936→    req_id = db.criar_requisicao(data)
+  1937→    return jsonify({'status': 'success', 'id': req_id}), 201
+  1938→
+  1939→# =============================================
+  1940→# Tratamento de erros
+  1941→# =============================================
+  1942→
+  1943→@app.errorhandler(404)
+  1944→def not_found(e):
+  1945→    return render_template('error.html', codigo=404, mensagem='Página não encontrada'), 404
+  1946→
+  1947→@app.errorhandler(500)
+  1948→def server_error(e):
+  1949→    return render_template('error.html', codigo=500, mensagem='Erro interno do servidor'), 500
+  1950→
+  1951→# =============================================
+  1952→# Inicialização
+  1953→# =============================================
+  1954→
+  1955→if __name__ == '__main__':
+  1956→    db.migrar_estoque_controlado_por_usuario()
+  1957→    app.run(host='0.0.0.0', port=5002, debug=Config.DEBUG)
+  1958→
