@@ -189,6 +189,36 @@
   </div>
 </div>
 
+{# ═══════════════ MODAL FINALIZAR SEPARAÇÃO (PRONTO) ═══════════════ #}
+<div id="modalFinalizar" class="prodsys-modal-backdrop hidden">
+  <div class="prodsys-modal" style="max-width:560px;max-height:80vh;display:flex;flex-direction:column">
+    <div class="flex items-center gap-3 mb-4">
+      <div class="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+        <i class="fa-solid fa-check-double text-amber-600 text-xl"></i>
+      </div>
+      <div>
+        <h3 class="text-base">Finalizar Separação</h3>
+        <p class="mt-0.5 text-xs text-gray-500" id="finSubtitle">Selecione os componentes que já foram separados</p>
+      </div>
+      <button onclick="fecharModalFinalizar()" class="ml-auto text-gray-400 hover:text-gray-600 text-xl"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div id="finLista" class="flex-1 overflow-y-auto space-y-1.5 mb-4 min-h-0" style="max-height:50vh">
+      <div class="p-4 text-center text-gray-400 text-sm"><i class="fa-solid fa-rotate fa-spin mr-1"></i>Carregando componentes...</div>
+    </div>
+    <div class="flex items-center justify-between border-t pt-3">
+      <div class="text-xs text-gray-400"><span id="finCount">0</span> selecionado(s)</div>
+      <div class="flex gap-2">
+        <button onclick="fecharModalFinalizar()" class="btn-touch btn-cancel text-xs px-4 py-2" style="min-height:36px">
+          <i class="fa-solid fa-xmark"></i>Cancelar
+        </button>
+        <button onclick="confirmarFinalizar()" id="btnConfirmarFin" class="btn-touch text-xs px-4 py-2" style="min-height:36px;background:#b45309;color:white" disabled>
+          <i class="fa-solid fa-check-double"></i>Finalizar Selecionados
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {# ═══════════════ MODAL ENTREGAR REQUISIÇÃO ═══════════════ #}
 <div id="modalEntregarReq" class="prodsys-modal-backdrop hidden">
   <div class="prodsys-modal">
@@ -244,7 +274,7 @@
 <script>
 let reqAtual = null;
 
-function fecharModal(id) { document.getElementById(id).classList.remove('hidden'); document.getElementById(id).classList.add('hidden'); }
+function fecharModal(id) { document.getElementById(id).classList.add('hidden'); }
 
 function showToast(msg, tipo='success') {
   const t = document.getElementById('toast');
@@ -372,7 +402,7 @@ function carregarSeparacaoOPs() {
         acoes = '<button onclick="abrirModalSepararComp(' + l.ordem + ')" class="btn-touch btn-start text-[10px] px-2.5 py-1.5" style="min-height:30px"><i class="fa-solid fa-box-open"></i>Separar</button>';
       } else if (sep === 'separando') {
         acoes = '<button onclick="abrirModalSepararComp(' + l.ordem + ')" class="btn-touch text-[10px] px-2.5 py-1.5" style="min-height:30px;background:#0284c7;color:white"><i class="fa-solid fa-plus"></i>Mais</button>' +
-                '<button onclick="mudarSeparacao(' + l.ordem + ',\'separado\')" class="btn-touch text-[10px] px-2.5 py-1.5" style="min-height:30px;background:#b45309;color:white"><i class="fa-solid fa-check"></i>Pronto</button>';
+                '<button onclick="abrirModalFinalizar(' + l.ordem + ')" class="btn-touch text-[10px] px-2.5 py-1.5" style="min-height:30px;background:#b45309;color:white"><i class="fa-solid fa-check"></i>Pronto</button>';
       } else if (sep === 'separado') {
         acoes = '<button onclick="mudarSeparacao(' + l.ordem + ',\'entregue\')" class="btn-touch text-[10px] px-2.5 py-1.5" style="min-height:30px;background:#15803d"><i class="fa-solid fa-truck"></i>Entregar</button>';
       } else {
@@ -441,6 +471,103 @@ function fecharModalSepararComp() {
   document.getElementById('modalSepararComp').classList.add('hidden');
   sepCompOrdemAtual = null;
 }
+
+/* ── Popup de FINALIZAR separação (botão Pronto) ── */
+var finOrdemAtual = null;
+
+function abrirModalFinalizar(ordem) {
+  finOrdemAtual = ordem;
+  document.getElementById('finSubtitle').textContent = 'OP #' + ordem + ' — Confirme os componentes separados';
+  document.getElementById('finLista').innerHTML = '<div class="p-4 text-center text-gray-400 text-sm"><i class="fa-solid fa-rotate fa-spin mr-1"></i>Carregando componentes...</div>';
+  document.getElementById('finCount').textContent = '0';
+  document.getElementById('btnConfirmarFin').disabled = true;
+  document.getElementById('modalFinalizar').classList.remove('hidden');
+
+  fetch('/api/lotes/' + ordem + '/componentes-separacao').then(function(r) { return r.json(); }).then(function(d) {
+    if (d.status !== 'success') {
+      document.getElementById('finLista').innerHTML = '<div class="p-4 text-center text-red-400 text-sm">Erro: ' + (d.msg || '') + '</div>';
+      return;
+    }
+    var comps = d.componentes || [];
+    if (!comps.length) {
+      document.getElementById('finLista').innerHTML = '<div class="p-4 text-center text-gray-400 text-sm"><i class="fa-solid fa-info-circle mr-1"></i>Sem componentes brutos para esta OP</div>';
+      return;
+    }
+    var html = '';
+    var checkedCount = 0;
+    for (var i = 0; i < comps.length; i++) {
+      var c = comps[i];
+      var sep = c.separacao_status === 'separado';
+      /* No modal finalizar: separados vem pré-marcados, pendentes desmarcados */
+      var chk = sep ? 'checked' : '';
+      if (sep) checkedCount++;
+      var bgCls = sep ? 'bg-amber-50 border-amber-300' : 'bg-white border-gray-200 hover:border-amber-300 hover:bg-amber-50/30';
+      var badge = sep
+        ? '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-200 px-1.5 py-0.5 rounded-full ml-2"><i class="fa-solid fa-check"></i>Separado</span>'
+        : '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full ml-2">Ainda nao</span>';
+      html += '<label class="flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors ' + bgCls + '">' +
+        '<input type="checkbox" class="fin-comp-chk w-4 h-4 rounded accent-amber-600 flex-shrink-0" data-codigo="' + c.codigo.replace(/"/g, '&quot;') + '" ' + chk + ' onchange="atualizarFinCount()">' +
+        '<div class="min-w-0 flex-1">' +
+          '<div class="flex items-center"><span class="text-xs font-mono font-bold text-blue-700">' + c.codigo + '</span>' + badge + '</div>' +
+          '<div class="text-xs text-gray-600 truncate">' + (c.descricao || '—') + '</div>' +
+          '<div class="text-[10px] text-gray-400">Qtd: ' + c.qtd_necessaria + ' ' + c.unidade + '</div>' +
+        '</div></label>';
+    }
+    document.getElementById('finLista').innerHTML = html;
+    atualizarFinCount();
+  }).catch(function() {
+    document.getElementById('finLista').innerHTML = '<div class="p-4 text-center text-red-400 text-sm">Erro de conexão</div>';
+  });
+}
+
+function fecharModalFinalizar() {
+  document.getElementById('modalFinalizar').classList.add('hidden');
+  finOrdemAtual = null;
+}
+
+function atualizarFinCount() {
+  var checks = document.querySelectorAll('.fin-comp-chk:checked');
+  document.getElementById('finCount').textContent = checks.length;
+  document.getElementById('btnConfirmarFin').disabled = checks.length === 0;
+}
+
+function confirmarFinalizar() {
+  if (!finOrdemAtual) return;
+  var checks = document.querySelectorAll('.fin-comp-chk:checked');
+  var codigos = [];
+  for (var i = 0; i < checks.length; i++) {
+    codigos.push(checks[i].getAttribute('data-codigo'));
+  }
+  if (!codigos.length) return;
+
+  document.getElementById('btnConfirmarFin').disabled = true;
+  document.getElementById('btnConfirmarFin').innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>Finalizando...';
+
+  fetch('/api/lotes/' + finOrdemAtual + '/finalizar-separacao', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({codigos: codigos})
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.status === 'success') {
+      showToast('OP #' + finOrdemAtual + ' finalizada como SEPARADO!');
+      fecharModalFinalizar();
+      carregarSeparacaoOPs();
+    } else {
+      showToast('Erro: ' + (d.msg || ''), 'error');
+      document.getElementById('btnConfirmarFin').disabled = false;
+      document.getElementById('btnConfirmarFin').innerHTML = '<i class="fa-solid fa-check-double"></i>Finalizar Selecionados';
+    }
+  }).catch(function() {
+    showToast('Erro de conexão', 'error');
+    document.getElementById('btnConfirmarFin').disabled = false;
+    document.getElementById('btnConfirmarFin').innerHTML = '<i class="fa-solid fa-check-double"></i>Finalizar Selecionados';
+  });
+}
+
+/* Fechar modal finalizar ao clicar no backdrop */
+document.addEventListener('click', function(e) {
+  if (e.target.id === 'modalFinalizar') fecharModalFinalizar();
+});
 
 function atualizarSepCompCount() {
   var checks = document.querySelectorAll('.sep-comp-chk:not(:disabled):checked');

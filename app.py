@@ -1463,6 +1463,27 @@ def api_separar_componentes(ordem):
     except Exception as e:
         return jsonify({'status': 'error', 'msg': str(e)}), 500
 
+@app.route('/api/lotes/<int:ordem>/finalizar-separacao', methods=['POST'])
+@login_required
+@role_required('admin', 'gerente', 'almoxarifado')
+def api_finalizar_separacao(ordem):
+    """Finaliza separacao de uma OP: marca componentes selecionados como separados E muda status da OP para separado."""
+    data = request.get_json(force=True) or {}
+    codigos = data.get('codigos', [])
+    try:
+        db.criar_tabela_separacao_componentes()
+        # Marca os componentes selecionados como separados
+        if codigos:
+            db.set_separacao_componentes(ordem, codigos, session.get('usuario_id'))
+        # Muda status da OP para separado
+        ok = db.marcar_separacao_lote(ordem, 'separado', session['usuario_id'])
+        if ok:
+            db.add_log(session['usuario_id'], 'finalizar_separacao',
+                       'OP #%s finalizada como SEPARADO (%d componente(s))' % (ordem, len(codigos)), 'lotes', ordem)
+        return jsonify({'status': 'success' if ok else 'error'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'msg': str(e)}), 500
+
 @app.route('/api/lotes/<int:ordem>/separado', methods=['POST'])
 @app.route('/api/lotes/<int:ordem>/entregue', methods=['POST'])
 @app.route('/api/lotes/<int:ordem>/pendente', methods=['POST'])
