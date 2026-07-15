@@ -1,0 +1,426 @@
+    80→   129→   129→   129→                  class="btn-touch btn-danger text-xs px-3 py-2" style="min-height:36px">
+    81→   130→   130→   130→                  <i class="fa-solid fa-xmark"></i>
+    82→   131→   131→   131→                </button>
+    83→   132→   132→   132→              </div>
+    84→   133→   133→   133→            </td>
+    85→   134→   134→   134→          </tr>
+    86→   135→   135→   135→          {% endfor %}
+    87→   136→   136→   136→        </tbody>
+    88→   137→   137→   137→      </table>
+    89→   138→   138→   138→    </div>
+    90→   139→   139→   139→  </div>
+    91→   140→   140→   140→</section>
+    92→   141→   141→   141→{% endif %}
+    93→   142→   142→   142→
+    94→   143→   143→   143→{# ═══════════════ MATERIAL NA FABRICA (resumo) ═══════════════ #}
+    95→   144→   144→   144→<section class="mb-5" id="secaoEstoque">
+    96→   145→   145→   145→  <div class="flex items-center justify-between mb-3">
+    97→   146→   146→   146→    <h2 class="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+    98→   147→   147→   147→      <span class="inline-block w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+    99→   148→   148→   148→      Material na Fabrica
+   100→   149→   149→   149→      <span id="kpiPrecisaSep" class="ml-1 bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full hidden">0 precisam separar</span>
+   101→   150→   150→   150→    </h2>
+   102→   151→   151→   151→    <a href="{{ url_for('estoque_interno') }}" class="text-xs text-blue-600 hover:underline font-bold">
+   103→   152→   152→   152→      Gerenciar <i class="fa-solid fa-arrow-right"></i>
+   104→   153→   153→   153→    </a>
+   105→   154→   154→   154→  </div>
+   106→   155→   155→   155→  <div id="listaEstoqueResumo" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+   107→   156→   156→   156→    <div class="prodsys-card p-4 text-center col-span-full">
+   108→   157→   157→   157→      <i class="fa-solid fa-rotate fa-spin text-gray-300 text-lg"></i>
+   109→   158→   158→   158→    </div>
+   110→   159→   159→   159→  </div>
+   111→   160→   160→   160→</section>
+   112→   161→   161→   161→
+   113→   162→   162→   162→{# ═══════════════ MODAL SEPARAR COMPONENTES ═══════════════ #}
+   114→   163→   163→   163→<div id="modalSepararComp" class="prodsys-modal-backdrop hidden">
+   115→   164→   164→   164→  <div class="prodsys-modal" style="max-width:560px;max-height:80vh;display:flex;flex-direction:column">
+   116→   165→   165→   165→    <div class="flex items-center gap-3 mb-4">
+   117→   166→   166→   166→      <div class="w-12 h-12 rounded-xl bg-cyan-100 flex items-center justify-center flex-shrink-0">
+   118→   167→   167→   167→        <i class="fa-solid fa-screwdriver-wrench text-cyan-600 text-xl"></i>
+   119→   168→   168→   168→      </div>
+   120→   169→   169→   169→      <div>
+   121→   170→   170→   170→        <h3 class="text-base">Separar Componentes</h3>
+   122→   171→   171→   171→        <p class="mt-0.5 text-xs text-gray-500" id="sepCompSubtitle">Selecione os componentes que serão separados agora</p>
+   123→   172→   172→   172→      </div>
+   124→   173→   173→   173→      <button onclick="fecharModalSepararComp()" class="ml-auto text-gray-400 hover:text-gray-600 text-xl"><i class="fa-solid fa-xmark"></i></button>
+   125→   174→   174→   174→    </div>
+   126→   175→   175→   175→    <div id="sepCompLista" class="flex-1 overflow-y-auto space-y-1.5 mb-4 min-h-0" style="max-height:50vh">
+   127→   176→   176→   176→      <div class="p-4 text-center text-gray-400 text-sm"><i class="fa-solid fa-rotate fa-spin mr-1"></i>Carregando componentes...</div>
+   128→   177→   177→   177→    </div>
+   129→   178→   178→   178→    <div class="flex items-center justify-between border-t pt-3">
+   130→   179→   179→   179→      <div class="text-xs text-gray-400"><span id="sepCompCount">0</span> selecionado(s)</div>
+   131→   180→   180→   180→      <div class="flex gap-2">
+   132→   181→   181→   181→        <button onclick="fecharModalSepararComp()" class="btn-touch btn-cancel text-xs px-4 py-2" style="min-height:36px">
+   133→   182→   182→   182→          <i class="fa-solid fa-xmark"></i>Cancelar
+   134→   183→   183→   183→        </button>
+   135→   184→   184→   184→        <button onclick="confirmarSepararComponentes()" id="btnConfirmarSepComp" class="btn-touch btn-start text-xs px-4 py-2" style="min-height:36px" disabled>
+   136→   185→   185→   185→          <i class="fa-solid fa-check"></i>Separar Selecionados
+   137→   186→   186→   186→        </button>
+   138→   187→   187→   187→      </div>
+   139→   188→   188→   188→    </div>
+   140→   189→   189→   189→  </div>
+   141→   190→   190→   190→</div>
+   142→   191→   191→   191→
+   143→   192→   192→   192→{# ═══════════════ MODAL ENTREGAR REQUISIÇÃO ═══════════════ #}
+   144→   193→   193→   193→<div id="modalEntregarReq" class="prodsys-modal-backdrop hidden">
+   145→   194→   194→   194→  <div class="prodsys-modal">
+   146→   195→   195→   195→    <div class="flex items-center gap-3 mb-4">
+   147→   196→   196→   196→      <div class="w-14 h-14 rounded-2xl bg-green-100 flex items-center justify-center flex-shrink-0">
+   148→   197→   197→   197→        <i class="fa-solid fa-check text-green-600 text-2xl"></i>
+   149→   198→   198→   198→      </div>
+   150→   199→   199→   199→      <div>
+   151→   200→   200→   200→        <h3>Entregar Requisição?</h3>
+   152→   201→   201→   201→        <p class="mt-0.5" id="entregarMsg">Confirme a entrega do material ao setor solicitante.</p>
+   153→   202→   202→   202→      </div>
+   154→   203→   203→   203→    </div>
+   155→   204→   204→   204→    <div class="flex gap-3">
+   156→   205→   205→   205→      <button onclick="fecharModal('modalEntregarReq')" class="btn-touch btn-cancel flex-1">
+   157→   206→   206→   206→        <i class="fa-solid fa-xmark"></i>Cancelar
+   158→   207→   207→   207→      </button>
+   159→   208→   208→   208→      <button onclick="confirmarEntregarReq()" class="btn-touch btn-start flex-1">
+   160→   209→   209→   209→        <i class="fa-solid fa-check"></i>CONFIRMAR
+   161→   210→   210→   210→      </button>
+   162→   211→   211→   211→    </div>
+   163→   212→   212→   212→  </div>
+   164→   213→   213→   213→</div>
+   165→   214→   214→   214→
+   166→   215→   215→   215→{# ═══════════════ MODAL RECUSAR REQUISIÇÃO ═══════════════ #}
+   167→   216→   216→   216→<div id="modalRecusarReq" class="prodsys-modal-backdrop hidden">
+   168→   217→   217→   217→  <div class="prodsys-modal">
+   169→   218→   218→   218→    <div class="flex items-center gap-3 mb-4">
+   170→   219→   219→   219→      <div class="w-14 h-14 rounded-2xl bg-red-100 flex items-center justify-center flex-shrink-0">
+   171→   220→   220→   220→        <i class="fa-solid fa-xmark text-red-600 text-2xl"></i>
+   172→   221→   221→   221→      </div>
+   173→   222→   222→   222→      <div>
+   174→   223→   223→   223→        <h3>Recusar Requisição?</h3>
+   175→   224→   224→   224→        <p class="mt-0.5">O setor solicitante será notificado.</p>
+   176→   225→   225→   225→      </div>
+   177→   226→   226→   226→    </div>
+   178→   227→   227→   227→    <div class="flex gap-3">
+   179→   228→   228→   228→      <button onclick="fecharModal('modalRecusarReq')" class="btn-touch btn-cancel flex-1">
+   180→   229→   229→   229→        <i class="fa-solid fa-xmark"></i>Manter
+   181→   230→   230→   230→      </button>
+   182→   231→   231→   231→      <button onclick="confirmarRecusarReq()" class="btn-touch btn-danger flex-1">
+   183→   232→   232→   232→        <i class="fa-solid fa-ban"></i>RECUSAR
+   184→   233→   233→   233→      </button>
+   185→   234→   234→   234→    </div>
+   186→   235→   235→   235→  </div>
+   187→   236→   236→   236→</div>
+   188→   237→   237→   237→
+   189→   238→   238→   238→<!-- Toast -->
+   190→   239→   239→   239→<div id="toast" class="prodsys-toast hidden"></div>
+   191→   240→   240→   240→
+   192→   241→   241→   241→{% endblock %}
+   193→   242→   242→   242→
+   194→   243→   243→   243→{% block scripts %}
+   195→   244→   244→   244→<script>
+   196→   245→   245→   245→let reqAtual = null;
+   197→   246→   246→   246→
+   198→   247→   247→   247→function fecharModal(id) { document.getElementById(id).classList.remove('hidden'); document.getElementById(id).classList.add('hidden'); }
+   199→   248→   248→   248→
+   200→   249→   249→   249→function showToast(msg, tipo='success') {
+   201→   250→   250→   250→  const t = document.getElementById('toast');
+   202→   251→   251→   251→  t.className = 'prodsys-toast ' + tipo;
+   203→   252→   252→   252→  t.innerHTML = `<i class="fa-solid ${tipo==='success'?'fa-check-circle':'fa-exclamation-circle'}"></i> ${msg}`;
+   204→   253→   253→   253→  t.classList.remove('hidden');
+   205→   254→   254→   254→  setTimeout(()=>t.classList.add('hidden'), 3500);
+   206→   255→   255→   255→}
+   207→   256→   256→   256→
+   208→   257→   257→   257→{# ─── Requisições ─── #}
+   209→   258→   258→   258→function entregarRequisicao(id) {
+   210→   259→   259→   259→  reqAtual = id;
+   211→   260→   260→   260→  document.getElementById('entregarMsg').textContent = `Confirmar entrega da requisição #${id}?`;
+   212→   261→   261→   261→  document.getElementById('modalEntregarReq').classList.remove('hidden');
+   213→   262→   262→   262→}
+   214→   263→   263→   263→function confirmarEntregarReq() {
+   215→   264→   264→   264→  document.getElementById('modalEntregarReq').classList.add('hidden');
+   216→   265→   265→   265→  fetch(`/api/requisicoes/${reqAtual}/entregar`, {
+   217→   266→   266→   266→    method: 'POST',
+   218→   267→   267→   267→    headers: {'Content-Type':'application/json'}
+   219→   268→   268→   268→  }).then(r => r.json())
+   220→   269→   269→   269→    .then(d => {
+   221→   270→   270→   270→      if (d.status === 'success') { showToast(`Requisição #${reqAtual} entregue!`); setTimeout(()=>location.reload(), 900); }
+   222→   271→   271→   271→      else showToast('Erro ao entregar', 'error');
+   223→   272→   272→   272→    }).catch(()=>showToast('Erro de conexão','error'));
+   224→   273→   273→   273→}
+   225→   274→   274→   274→function recusarRequisicao(id) {
+   226→   275→   275→   275→  reqAtual = id;
+   227→   276→   276→   276→  document.getElementById('modalRecusarReq').classList.remove('hidden');
+   228→   277→   277→   277→}
+   229→   278→   278→   278→function confirmarRecusarReq() {
+   230→   279→   279→   279→  document.getElementById('modalRecusarReq').classList.add('hidden');
+   231→   280→   280→   280→  fetch(`/api/requisicoes/${reqAtual}/recusar`, {
+   232→   281→   281→   281→    method: 'POST',
+   233→   282→   282→   282→    headers: {'Content-Type':'application/json'}
+   234→   283→   283→   283→  }).then(r => r.json())
+   235→   284→   284→   284→    .then(d => {
+   236→   285→   285→   285→      if (d.status === 'success') { showToast(`Requisição #${reqAtual} recusada.`); setTimeout(()=>location.reload(), 900); }
+   237→   286→   286→   286→      else showToast('Erro ao recusar', 'error');
+   238→   287→   287→   287→    }).catch(()=>showToast('Erro de conexão','error'));
+   239→   288→   288→   288→}
+   240→   289→   289→   289→
+   241→   290→   290→   290→['modalEntregarReq','modalRecusarReq'].forEach(id => {
+   242→   291→   291→   291→  const el = document.getElementById(id);
+   243→   292→   292→   292→  if (el) el.addEventListener('click', function(e) {
+   244→   293→   293→   293→    if (e.target === this) this.classList.add('hidden');
+   245→   294→   294→   294→  });
+   246→   295→   295→   295→});
+   247→   296→   296→   296→
+   248→   297→   297→   297→// ════════════════ RESUMO MATERIAL NA FABRICA ════════════════
+   249→   298→   298→   298→function carregarResumoEstoque() {
+   250→   299→   299→   299→  fetch('/api/estoque?filtro=baixo&tipo=fabrica').then(r => r.json()).then(d => {
+   251→   300→   300→   300→    if (d.status !== 'success') return;
+   252→   301→   301→   301→    const itens = d.itens || [];
+   253→   302→   302→   302→    const badge = document.getElementById('kpiPrecisaSep');
+   254→   303→   303→   303→    if (itens.length > 0) {
+   255→   304→   304→   304→      badge.textContent = itens.length + ' precisam separar';
+   256→   305→   305→   305→      badge.classList.remove('hidden');
+   257→   306→   306→   306→    } else {
+   258→   307→   307→   307→      badge.classList.add('hidden');
+   259→   308→   308→   308→    }
+   260→   309→   309→   309→    const el = document.getElementById('listaEstoqueResumo');
+   261→   310→   310→   310→    if (!itens.length) {
+   262→   311→   311→   311→      el.innerHTML = '<div class="prodsys-card p-4 text-center col-span-full text-sm text-green-600"><i class="fa-solid fa-circle-check mr-1"></i>Todos os materiais estao OK</div>';
+   263→   312→   312→   312→      return;
+   264→   313→   313→   313→    }
+   265→   314→   314→   314→    el.innerHTML = itens.slice(0, 6).map(item => {
+   266→   315→   315→   315→      const qtd = parseFloat(item.qtd_atual) || 0;
+   267→   316→   316→   316→      const qtdIni = parseFloat(item.qtd_inicial) || 0;
+   268→   317→   317→   317→      const sem = qtd <= 0;
+   269→   318→   318→   318→      const desc = (item.descricao||'—').replace(/'/g,"\\'");
+   270→   319→   319→   319→      const un = item.unidade || 'UN';
+   271→   320→   320→   320→      const pct = qtdIni > 0 ? Math.round((qtd / qtdIni) * 100) : 0;
+   272→   321→   321→   321→      return '<div class="prodsys-card border-l-4 ' + (sem ? 'border-red-500 bg-red-50/30' : 'border-amber-400 bg-amber-50/30') + ' px-3 py-2 flex items-center justify-between gap-2">' +
+   273→   322→   322→   322→        '<div class="min-w-0"><div class="font-bold text-sm text-gray-800 truncate">' + (item.descricao||'—') + '</div>' +
+   274→   323→   323→   323→        '<div class="text-[11px] text-gray-400">' + item.codigo + ' · ' + un + '</div></div>' +
+   275→   324→   324→   324→        '<div class="text-right flex-shrink-0"><div class="font-black text-lg ' + (sem?'text-red-600':'text-amber-600') + '">' + qtd.toFixed(1) + '</div>' +
+   276→   325→   325→   325→        '<div class="text-[10px] text-gray-400">de ' + qtdIni.toFixed(1) + (pct > 0 ? ' (' + pct + '%)' : '') + '</div></div></div>';
+   277→   326→   326→   326→    }).join('');
+   278→   327→   327→   327→  });
+   279→   328→   328→   328→}
+   280→   329→   329→   329→
+   281→   330→   330→   330→document.addEventListener('DOMContentLoaded', () => {
+   282→   331→   331→   331→  carregarResumoEstoque();
+   283→   332→   332→   332→  carregarMateriaisOF();
+   284→   333→   333→   333→  carregarSeparacaoOPs();
+   285→   334→   334→   334→});
+   286→   335→   335→   335→
+   287→   336→   336→   336→// ════════════════ SEPARACAO DE OPs (PC) com POPUP de componentes ════════════════
+   288→   337→   337→   337→var sepCompOrdemAtual = null;
+   289→   338→   338→   338→
+   290→   339→   339→   339→function carregarSeparacaoOPs() {
+   291→   340→   340→   340→  fetch('/api/almoxarifado/separacao').then(function(r) { return r.json(); }).then(function(d) {
+   292→   341→   341→   341→    var lotes = d.lotes || [];
+   293→   342→   342→   342→    var stats = d.stats || {};
+   294→   343→   343→   343→    document.getElementById('kpiPend').textContent = stats.pendentes || 0;
+   295→   344→   344→   344→    document.getElementById('kpiSep').textContent = stats.separando || 0;
+   296→   345→   345→   345→    document.getElementById('kpiSepOk').textContent = stats.separados || 0;
+   297→   346→   346→   346→    var el = document.getElementById('listaSeparacaoOPs');
+   298→   347→   347→   347→    if (!lotes.length) {
+   299→   348→   348→   348→      el.innerHTML = '<div class="p-6 text-center text-gray-400 text-sm"><i class="fa-solid fa-circle-check text-green-400 mr-1"></i>Nenhuma OP aguardando separação</div>';
+   300→   349→   349→   349→      return;
+   301→   350→   350→   350→    }
+   302→   351→   351→   351→    var html = '<div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-slate-50 text-slate-500 text-[10px] uppercase tracking-wider border-b border-gray-100"><tr>' +
+   303→   352→   352→   352→      '<th class="px-3 py-2.5 text-left">OP</th><th class="px-3 py-2.5 text-left">Produto</th><th class="px-3 py-2.5 text-center">Qtd</th><th class="px-3 py-2.5 text-center">Prioridade</th><th class="px-3 py-2.5 text-center">Status</th><th class="px-3 py-2.5 text-center">Atraso</th><th class="px-3 py-2.5 text-right">Ações</th></tr></thead><tbody class="divide-y divide-gray-50">';
+   304→   353→   353→   353→    for (var i = 0; i < lotes.length; i++) {
+   305→   354→   354→   354→      var l = lotes[i];
+   306→   355→   355→   355→      var sep = l.separacao_status || 'pendente';
+   307→   356→   356→   356→      var prio = (l.prioridade || 'media').toLowerCase();
+   308→   357→   357→   357→      var atraso = l.dias_atraso || 0;
+   309→   358→   358→   358→      var rowBg = '';
+   310→   359→   359→   359→      if (sep === 'separado') rowBg = 'bg-amber-50/60';       /* AMARELO para separado */
+   311→   360→   360→   360→      else if (sep === 'separando') rowBg = 'bg-sky-50/40';
+   312→   361→   361→   361→      else if (prio === 'urgente') rowBg = 'bg-red-50/30';
+   313→   362→   362→   362→      else if (atraso > 0) rowBg = 'bg-orange-50/30';
+   314→   363→   363→   363→      /* Cores diferentes para cada status */
+   315→   364→   364→   364→      var statusBadge = {
+   316→   365→   365→   365→        'pendente': '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-orange-700 bg-orange-100 px-2 py-0.5 rounded-full border border-orange-200"><i class="fa-solid fa-clock"></i>Pendente</span>',
+   317→   366→   366→   366→        'separando': '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-sky-700 bg-sky-100 px-2 py-0.5 rounded-full border border-sky-200"><i class="fa-solid fa-arrows-spin"></i>Separando</span>',
+   318→   367→   367→   367→        'separado': '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-200 px-2 py-0.5 rounded-full border border-amber-400"><i class="fa-solid fa-check"></i>Separado</span>',
+   319→   368→   368→   368→        'entregue': '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full"><i class="fa-solid fa-truck"></i>Entregue</span>'
+   320→   369→   369→   369→      };
+   321→   370→   370→   370→      var acoes = '';
+   322→   371→   371→   371→      if (sep === 'pendente') {
+   323→   372→   372→   372→        acoes = '<button onclick="abrirModalSepararComp(' + l.ordem + ')" class="btn-touch btn-start text-[10px] px-2.5 py-1.5" style="min-height:30px"><i class="fa-solid fa-box-open"></i>Separar</button>';
+   324→   373→   373→   373→      } else if (sep === 'separando') {
+   325→   374→   374→   374→        acoes = '<button onclick="abrirModalSepararComp(' + l.ordem + ')" class="btn-touch text-[10px] px-2.5 py-1.5" style="min-height:30px;background:#0284c7;color:white"><i class="fa-solid fa-plus"></i>Mais</button>' +
+   326→   375→   375→   375→                '<button onclick="mudarSeparacao(' + l.ordem + ',\'separado\')" class="btn-touch text-[10px] px-2.5 py-1.5" style="min-height:30px;background:#b45309;color:white"><i class="fa-solid fa-check"></i>Pronto</button>';
+   327→   376→   376→   376→      } else if (sep === 'separado') {
+   328→   377→   377→   377→        acoes = '<button onclick="mudarSeparacao(' + l.ordem + ',\'entregue\')" class="btn-touch text-[10px] px-2.5 py-1.5" style="min-height:30px;background:#15803d"><i class="fa-solid fa-truck"></i>Entregar</button>';
+   329→   378→   378→   378→      } else {
+   330→   379→   379→   379→        acoes = '<span class="text-[10px] text-gray-400"><i class="fa-solid fa-check-double"></i> Concluída</span>';
+   331→   380→   380→   380→      }
+   332→   381→   381→   381→      html += '<tr class="hover:bg-gray-50 ' + rowBg + '">' +
+   333→   382→   382→   382→        '<td class="px-3 py-2.5 font-bold text-blue-700">#' + l.ordem + (l.lote_codigo ? '<br><span class="text-[10px] text-gray-400">' + l.lote_codigo + '</span>' : '') + '</td>' +
+   334→   383→   383→   383→        '<td class="px-3 py-2.5 text-gray-700 max-w-[220px] truncate" title="' + (l.descricao_produto || '') + '">' + (l.descricao_produto || '—') + '</td>' +
+   335→   384→   384→   384→        '<td class="px-3 py-2.5 text-center font-bold">' + Math.round(l.qtde_ordem || 0) + ' pc</td>' +
+   336→   385→   385→   385→        '<td class="px-3 py-2.5 text-center">' + (l.prioridade ? '<span class="badge-priority ' + prio + '">' + l.prioridade.toUpperCase() + '</span>' : '—') + '</td>' +
+   337→   386→   386→   386→        '<td class="px-3 py-2.5 text-center">' + (statusBadge[sep] || statusBadge['pendente']) + '</td>' +
+   338→   387→   387→   387→        '<td class="px-3 py-2.5 text-center">' + (atraso > 0 ? '<span class="text-red-600 font-bold">' + atraso + 'd</span>' : '<span class="text-gray-300">—</span>') + '</td>' +
+   339→   388→   388→   388→        '<td class="px-3 py-2.5 text-right">' + acoes + '</td></tr>';
+   340→   389→   389→   389→    }
+   341→   390→   390→   390→    html += '</tbody></table></div>';
+   342→   391→   391→   391→    el.innerHTML = html;
+   343→   392→   392→   392→  }).catch(function() {
+   344→   393→   393→   393→    document.getElementById('listaSeparacaoOPs').innerHTML = '<div class="p-4 text-center text-sm text-red-400">Erro ao carregar OPs</div>';
+   345→   394→   394→   394→  });
+   346→   395→   395→   395→}
+   347→   396→   396→   396→
+   348→   397→   397→   397→/* ── Popup de separação por componente ── */
+   349→   398→   398→   398→function abrirModalSepararComp(ordem) {
+   350→   399→   399→   399→  sepCompOrdemAtual = ordem;
+   351→   400→   400→   400→  document.getElementById('sepCompSubtitle').textContent = 'OP #' + ordem + ' — Selecione os componentes';
+   352→   401→   401→   401→  document.getElementById('sepCompLista').innerHTML = '<div class="p-4 text-center text-gray-400 text-sm"><i class="fa-solid fa-rotate fa-spin mr-1"></i>Carregando componentes...</div>';
+   353→   402→   402→   402→  document.getElementById('sepCompCount').textContent = '0';
+   354→   403→   403→   403→  document.getElementById('btnConfirmarSepComp').disabled = true;
+   355→   404→   404→   404→  document.getElementById('modalSepararComp').classList.remove('hidden');
+   356→   405→   405→   405→
+   357→   406→   406→   406→  fetch('/api/lotes/' + ordem + '/componentes-separacao').then(function(r) { return r.json(); }).then(function(d) {
+   358→   407→   407→   407→    if (d.status !== 'success') {
+   359→   408→   408→   408→      document.getElementById('sepCompLista').innerHTML = '<div class="p-4 text-center text-red-400 text-sm">Erro: ' + (d.msg || '') + '</div>';
+   360→   409→   409→   409→      return;
+   361→   410→   410→   410→    }
+   362→   411→   411→   411→    var comps = d.componentes || [];
+   363→   412→   412→   412→    if (!comps.length) {
+   364→   413→   413→   413→      document.getElementById('sepCompLista').innerHTML = '<div class="p-4 text-center text-gray-400 text-sm"><i class="fa-solid fa-info-circle mr-1"></i>Sem componentes brutos para esta OP</div>';
+   365→   414→   414→   414→      return;
+   366→   415→   415→   415→    }
+   367→   416→   416→   416→    var html = '';
+   368→   417→   417→   417→    for (var i = 0; i < comps.length; i++) {
+   369→   418→   418→   418→      var c = comps[i];
+   370→   419→   419→   419→      var sep = c.separacao_status === 'separado';
+   371→   420→   420→   420→      var bgCls = sep ? 'bg-amber-50 border-amber-300' : 'bg-white border-gray-200 hover:border-cyan-300 hover:bg-cyan-50/30';
+   372→   421→   421→   421→      var chk = sep ? 'checked disabled' : '';
+   373→   422→   422→   422→      var badge = sep
+   374→   423→   423→   423→        ? '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-200 px-1.5 py-0.5 rounded-full ml-2"><i class="fa-solid fa-check"></i>Separado</span>'
+   375→   424→   424→   424→        : '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded-full ml-2">Pendente</span>';
+   376→   425→   425→   425→      html += '<label class="flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors ' + bgCls + '">' +
+   377→   426→   426→   426→        '<input type="checkbox" class="sep-comp-chk w-4 h-4 rounded accent-cyan-600 flex-shrink-0" data-codigo="' + c.codigo.replace(/"/g, '&quot;') + '" ' + chk + ' onchange="atualizarSepCompCount()">' +
+   378→   427→   427→   427→        '<div class="min-w-0 flex-1">' +
+   379→   428→   428→   428→          '<div class="flex items-center"><span class="text-xs font-mono font-bold text-blue-700">' + c.codigo + '</span>' + badge + '</div>' +
+   380→   429→   429→   429→          '<div class="text-xs text-gray-600 truncate">' + (c.descricao || '—') + '</div>' +
+   381→   430→   430→   430→          '<div class="text-[10px] text-gray-400">Qtd: ' + c.qtd_necessaria + ' ' + c.unidade + '</div>' +
+   382→   431→   431→   431→        '</div></label>';
+   383→   432→   432→   432→    }
+   384→   433→   433→   433→    document.getElementById('sepCompLista').innerHTML = html;
+   385→   434→   434→   434→    atualizarSepCompCount();
+   386→   435→   435→   435→  }).catch(function() {
+   387→   436→   436→   436→    document.getElementById('sepCompLista').innerHTML = '<div class="p-4 text-center text-red-400 text-sm">Erro de conexão</div>';
+   388→   437→   437→   437→  });
+   389→   438→   438→   438→}
+   390→   439→   439→   439→
+   391→   440→   440→   440→function fecharModalSepararComp() {
+   392→   441→   441→   441→  document.getElementById('modalSepararComp').classList.add('hidden');
+   393→   442→   442→   442→  sepCompOrdemAtual = null;
+   394→   443→   443→   443→}
+   395→   444→   444→   444→
+   396→   445→   445→   445→function atualizarSepCompCount() {
+   397→   446→   446→   446→  var checks = document.querySelectorAll('.sep-comp-chk:not(:disabled):checked');
+   398→   447→   447→   447→  document.getElementById('sepCompCount').textContent = checks.length;
+   399→   448→   448→   448→  document.getElementById('btnConfirmarSepComp').disabled = checks.length === 0;
+   400→   449→   449→   449→}
+   401→   450→   450→   450→
+   402→   451→   451→   451→function confirmarSepararComponentes() {
+   403→   452→   452→   452→  if (!sepCompOrdemAtual) return;
+   404→   453→   453→   453→  var checks = document.querySelectorAll('.sep-comp-chk:not(:disabled):checked');
+   405→   454→   454→   454→  var codigos = [];
+   406→   455→   455→   455→  for (var i = 0; i < checks.length; i++) {
+   407→   456→   456→   456→    codigos.push(checks[i].getAttribute('data-codigo'));
+   408→   457→   457→   457→  }
+   409→   458→   458→   458→  if (!codigos.length) return;
+   410→   459→   459→   459→
+   411→   460→   460→   460→  document.getElementById('btnConfirmarSepComp').disabled = true;
+   412→   461→   461→   461→  document.getElementById('btnConfirmarSepComp').innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>Separando...';
+   413→   462→   462→   462→
+   414→   463→   463→   463→  fetch('/api/lotes/' + sepCompOrdemAtual + '/separar-componentes', {
+   415→   464→   464→   464→    method: 'POST',
+   416→   465→   465→   465→    headers: {'Content-Type': 'application/json'},
+   417→   466→   466→   466→    body: JSON.stringify({codigos: codigos})
+   418→   467→   467→   467→  }).then(function(r) { return r.json(); }).then(function(d) {
+   419→   468→   468→   468→    if (d.status === 'success') {
+   420→   469→   469→   469→      showToast(codigos.length + ' componente(s) separado(s)!');
+   421→   470→   470→   470→      fecharModalSepararComp();
+   422→   471→   471→   471→      carregarSeparacaoOPs();
+   423→   472→   472→   472→    } else {
+   424→   473→   473→   473→      showToast('Erro: ' + (d.msg || ''), 'error');
+   425→   474→   474→   474→      document.getElementById('btnConfirmarSepComp').disabled = false;
+   426→   475→   475→   475→      document.getElementById('btnConfirmarSepComp').innerHTML = '<i class="fa-solid fa-check"></i>Separar Selecionados';
+   427→   476→   476→   476→    }
+   428→   477→   477→   477→  }).catch(function() {
+   429→   478→   478→   478→    showToast('Erro de conexão', 'error');
+   430→   479→   479→   479→    document.getElementById('btnConfirmarSepComp').disabled = false;
+   431→   480→   480→   480→    document.getElementById('btnConfirmarSepComp').innerHTML = '<i class="fa-solid fa-check"></i>Separar Selecionados';
+   432→   481→   481→   481→  });
+   433→   482→   482→   482→}
+   434→   483→   483→   483→
+   435→   484→   484→   484→/* Fechar modal ao clicar no backdrop */
+   436→   485→   485→   485→document.addEventListener('click', function(e) {
+   437→   486→   486→   486→  if (e.target.id === 'modalSepararComp') fecharModalSepararComp();
+   438→   487→   487→   487→});
+   439→   488→   488→   488→
+   440→   489→   489→   489→function mudarSeparacao(ordem, novoStatus) {
+   441→   490→   490→   490→  var statusLabel = {separando:'SEPARANDO', separado:'SEPARADO', entregue:'ENTREGUE'};
+   442→   491→   491→   491→  if (!confirm('Marcar OP #' + ordem + ' como ' + (statusLabel[novoStatus] || novoStatus) + '?')) return;
+   443→   492→   492→   492→  fetch('/api/lotes/' + ordem + '/' + novoStatus, {method:'POST', headers:{'Content-Type':'application/json'}})
+   444→   493→   493→   493→    .then(function(r) { return r.json(); })
+   445→   494→   494→   494→    .then(function(d) {
+   446→   495→   495→   495→      if (d.status === 'success') {
+   447→   496→   496→   496→        showToast('OP #' + ordem + ' → ' + (statusLabel[novoStatus] || novoStatus) + '!');
+   448→   497→   497→   497→        carregarSeparacaoOPs();
+   449→   498→   498→   498→      } else {
+   450→   499→   499→   499→        showToast('Erro ao atualizar', 'error');
+   451→   500→   500→   500→      }
+   452→   501→   501→   501→    })
+   453→   502→   502→   502→    .catch(function() { showToast('Erro de conexão', 'error'); });
+   454→   503→   503→   503→}
+   455→   504→   504→   504→
+   456→   505→   505→   505→// ════════════════ MATERIAIS DAS OFs ════════════════
+   457→   506→   506→   506→function carregarMateriaisOF() {
+   458→   507→   507→   507→  fetch('/api/almoxarifado/materiais-pendentes').then(r => r.json()).then(d => {
+   459→   508→   508→   508→    if (d.status !== 'success') return;
+   460→   509→   509→   509→    const ofs = d.ofs || [];
+   461→   510→   510→   510→    const el = document.getElementById('listaMateriaisOF');
+   462→   511→   511→   511→
+   463→   512→   512→   512→    // Atualiza KPIs
+   464→   513→   513→   513→    let totalMats = 0;
+   465→   514→   514→   514→    let semEstoque = 0;
+   466→   515→   515→   515→    ofs.forEach(of => {
+   467→   516→   516→   516→      totalMats += of.materiais.length;
+   468→   517→   517→   517→      of.materiais.forEach(m => { if (!m.tem_no_estoque) semEstoque++; });
+   469→   518→   518→   518→    });
+   470→   519→   519→   519→    document.getElementById('kpiMateriaisPend').textContent = totalMats;
+   471→   520→   520→   520→    document.getElementById('kpiMatSemEstoque').textContent = semEstoque;
+   472→   521→   521→   521→    document.getElementById('kpiMateriaisBadge').textContent = totalMats;
+   473→   522→   522→   522→
+   474→   523→   523→   523→    if (!ofs.length) {
+   475→   524→   524→   524→      el.innerHTML = '<div class="prodsys-card p-4 text-center text-sm text-gray-400"><i class="fa-solid fa-circle-check text-green-400 mr-1"></i>Nenhuma OF liberada pendente de materiais brutos.</div>';
+   476→   525→   525→   525→      return;
+   477→   526→   526→   526→    }
+   478→   527→   527→   527→    el.innerHTML = ofs.map(of => {
+   479→   528→   528→   528→      const prioridadeCor = {urgente:'border-red-500',alta:'border-orange-400',media:'border-yellow-400'};
+   480→   529→   529→   529→      const borda = prioridadeCor[of.prioridade] || 'border-indigo-300';
+   481→   530→   530→   530→      const matsHtml = of.materiais.map(m => {
+   482→   531→   531→   531→        const ok = m.tem_no_estoque;
+   483→   532→   532→   532→        const statusIcon = ok
+   484→   533→   533→   533→          ? '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded-full"><i class="fa-solid fa-check"></i>' + m.qtd_disponivel.toFixed(2) + ' ' + m.unidade + '</span>'
+   485→   534→   534→   534→          : '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full"><i class="fa-solid fa-minus"></i>sem estoque</span>';
+   486→   535→   535→   535→        return '<div class="flex items-center justify-between gap-2 py-1.5 border-b border-gray-50 last:border-0">' +
+   487→   536→   536→   536→          '<div class="min-w-0 flex-1"><div class="text-xs font-medium text-gray-700 truncate" title="' + (m.descricao||'').replace(/"/g,'&quot;') + '">' + (m.descricao || m.codigo) + '</div>' +
+   488→   537→   537→   537→          '<div class="text-[10px] text-gray-400">' + m.codigo + ' · precisa: ' + m.qtd_necessaria.toFixed(4) + ' ' + m.unidade + '</div></div>' +
+   489→   538→   538→   538→          statusIcon + '</div>';
+   490→   539→   539→   539→      }).join('');
+   491→   540→   540→   540→      return '<div class="prodsys-card border-l-4 ' + borda + ' overflow-hidden mb-3">' +
+   492→   541→   541→   541→        '<div class="px-4 py-2.5 bg-gray-50/50 flex items-center justify-between">' +
+   493→   542→   542→   542→          '<div class="min-w-0 flex-1"><div class="flex items-center gap-2"><span class="text-xs font-bold text-blue-700">OF #' + of.ordem + '</span>' +
+   494→   543→   543→   543→          (of.prioridade ? '<span class="badge-priority ' + of.prioridade + '">' + of.prioridade.toUpperCase() + '</span>' : '') +
+   495→   544→   544→   544→          '</div><div class="text-sm font-black text-gray-800 truncate">' + (of.produto || '—') + '</div></div>' +
+   496→   545→   545→   545→          '<div class="text-xs text-gray-400 flex-shrink-0">' + (of.materiais.length) + ' materiais</div></div>' +
+   497→   546→   546→   546→        '<div class="px-4">' + matsHtml + '</div></div>';
+   498→   547→   547→   547→    }).join('');
+   499→   548→   548→   548→  }).catch(() => {
+   500→   549→   549→   549→    document.getElementById('listaMateriaisOF').innerHTML = '<div class="prodsys-card p-4 text-center text-sm text-red-400">Erro ao carregar materiais.</div>';
+   501→   550→   550→   550→  });
+   502→   551→   551→   551→}
+   503→   552→   552→   552→</script>
+   504→   553→   553→   553→{% endblock %}
+   505→   554→   554→   554→

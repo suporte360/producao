@@ -1,0 +1,630 @@
+     1→<!DOCTYPE html>
+     2→<html lang="pt-BR">
+     3→<head>
+     4→  <meta charset="UTF-8">
+     5→  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     6→  <title>TV Almoxarifado — SALUTEM</title>
+     7→  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+     8→  <style>
+     9→    :root {
+    10→      --bg:     #050e0f;
+    11→      --bg2:    #091618;
+    12→      --bg3:    #0d1e20;
+    13→      --border: rgba(255,255,255,0.06);
+    14→      --text:   #dff6f5;
+    15→      --muted:  #4a7070;
+    16→      --teal:   #0d9488;
+    17→      --cyan:   #22d3ee;
+    18→      --green:  #22c55e;
+    19→      --amber:  #f59e0b;
+    20→      --red:    #ef4444;
+    21→      --purple: #a855f7;
+    22→    }
+    23→    * { box-sizing:border-box; margin:0; padding:0; }
+    24→    html, body { height: 100%; }
+    25→    body {
+    26→      background: var(--bg);
+    27→      color: var(--text);
+    28→      font-family: 'Segoe UI', system-ui, sans-serif;
+    29→      overflow: hidden;
+    30→      display: flex; flex-direction: column;
+    31→    }
+    32→    body::before {
+    33→      content: '';
+    34→      position: fixed; inset: 0;
+    35→      background:
+    36→        radial-gradient(circle at 20% 30%, rgba(13,148,136,0.08) 0, transparent 40%),
+    37→        radial-gradient(circle at 80% 70%, rgba(34,211,238,0.06) 0, transparent 40%);
+    38→      pointer-events: none; z-index: 0;
+    39→    }
+    40→
+    41→    /* ── HEADER ── */
+    42→    header {
+    43→      background: linear-gradient(90deg,#050f10 0%,#091e20 55%,#050f10 100%);
+    44→      border-bottom: 1px solid rgba(13,148,136,.35);
+    45→      padding: 0 24px; height: 64px;
+    46→      display: flex; align-items: center; justify-content: space-between;
+    47→      flex-shrink: 0; position: relative; z-index: 2;
+    48→    }
+    49→    .h-left { display:flex; align-items:center; gap:14px; }
+    50→    .h-logo {
+    51→      width:42px; height:42px; border-radius:10px;
+    52→      background: var(--teal);
+    53→      display:flex; align-items:center; justify-content:center; font-size:1.3rem;
+    54→      box-shadow: 0 0 20px rgba(13,148,136,0.4);
+    55→    }
+    56→    .h-title { font-size:1.3rem; font-weight:800; letter-spacing:.02em; }
+    57→    .h-title span { color:var(--cyan); }
+    58→    .h-sub { font-size:.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-top:1px; }
+    59→    .h-clock .time { font-size:1.9rem; font-weight:700; font-family:'Courier New',monospace; color:var(--cyan); line-height:1; text-align:right; text-shadow: 0 0 12px rgba(34,211,238,0.4); }
+    60→    .h-clock .date { font-size:.7rem; color:var(--muted); margin-top:2px; text-align:right; text-transform:capitalize; }
+    61→
+    62→    /* ── STATS ── */
+    63→    .stats-bar {
+    64→      display:grid; grid-template-columns:repeat(5,1fr);
+    65→      gap:8px; padding:10px 16px; flex-shrink:0;
+    66→      position: relative; z-index: 2;
+    67→    }
+    68→    .stat-card {
+    69→      background: var(--bg2); border:1px solid var(--border);
+    70→      border-radius:10px; padding:12px 16px;
+    71→      display:flex; align-items:center; gap:12px;
+    72→      transition: all .2s;
+    73→    }
+    74→    .stat-card.pulse-alert { animation: pulseCard 1.5s infinite; }
+    75→    @keyframes pulseCard {
+    76→      0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.5); border-color: rgba(239,68,68,0.5); }
+    77→      50% { box-shadow: 0 0 0 10px rgba(239,68,68,0); border-color: rgba(239,68,68,1); }
+    78→    }
+    79→    .stat-icon {
+    80→      width:40px; height:40px; border-radius:8px;
+    81→      display:flex; align-items:center; justify-content:center;
+    82→      font-size:1.1rem; flex-shrink:0;
+    83→    }
+    84→    .stat-num { font-size:1.8rem; font-weight:800; line-height:1; }
+    85→    .stat-lbl { font-size:.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-top:2px; }
+    86→
+    87→    /* ── PAINÉIS ── */
+    88→    .main-grid {
+    89→      flex:1; display:grid;
+    90→      grid-template-columns: 1fr 1fr;
+    91→      gap:10px; padding:0 16px 8px;
+    92→      overflow:hidden;
+    93→      position: relative; z-index: 2;
+    94→    }
+    95→    .panel {
+    96→      background: var(--bg2); border:1px solid var(--border);
+    97→      border-radius:12px; display:flex; flex-direction:column;
+    98→      overflow:hidden;
+    99→    }
+   100→    .panel-header {
+   101→      padding:10px 14px;
+   102→      font-size:.78rem; font-weight:800;
+   103→      text-transform:uppercase; letter-spacing:.07em;
+   104→      display:flex; justify-content:space-between; align-items:center;
+   105→      flex-shrink:0; border-bottom:1px solid var(--border);
+   106→    }
+   107→    .panel-body { flex:1; overflow-y:auto; }
+   108→    .panel-body::-webkit-scrollbar { width:4px; }
+   109→    .panel-body::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:3px; }
+   110→
+   111→    .panel-sep    { border-top:3px solid var(--teal); }
+   112→    .panel-estoque { border-top:3px solid var(--amber); }
+   113→    .panel-sep    .panel-header { color:var(--cyan); }
+   114→    .panel-estoque .panel-header { color:var(--amber); }
+   115→
+   116→    /* ── CARD DE LOTE (separação) ── */
+   117→    .op-card {
+   118→      padding: 12px 14px;
+   119→      border-bottom: 1px solid rgba(255,255,255,0.04);
+   120→      transition: background .2s;
+   121→    }
+   122→    .op-card:hover { background: rgba(255,255,255,0.02); }
+   123→    .op-card.urgente { background: rgba(239,68,68,0.08); border-left: 3px solid var(--red); }
+   124→    .op-card.atrasada { background: rgba(239,68,68,0.12); }
+   125→    .op-card.separando { background: rgba(34,211,238,0.06); border-left: 3px solid var(--cyan); }
+   126→    .op-card.separado { background: rgba(250,204,21,0.10); border-left: 3px solid #eab308; animation: pulseYellow 2s ease-in-out infinite; }
+   127→    .op-card.entregue  { background: rgba(255,255,255,0.02); border-left: 3px solid #475569; opacity: 0.5; }
+   128→    @keyframes pulseYellow {
+   129→      0%, 100% { background: rgba(250,204,21,0.10); }
+   130→      50%      { background: rgba(250,204,21,0.22); }
+   131→    }
+   132→
+   133→    .lote-header { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+   134→    .lote-id { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
+   135→    .lote-lp { font-size:1rem; font-weight:800; color:var(--cyan); }
+   136→    .lote-of-label { font-size:.6rem; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+   137→    .lote-ofs { display:flex; align-items:center; gap:0; flex-wrap:wrap; }
+   138→    .lote-of-item {
+   139→      font-size:.75rem; font-weight:700; color:#93c5fd;
+   140→      font-family:'Courier New',monospace;
+   141→      padding:2px 6px; border-radius:4px;
+   142→      background:rgba(96,165,250,.08);
+   143→      white-space:nowrap;
+   144→    }
+   145→    .lote-of-sep { color:#334155; font-size:.7rem; margin:0 1px; }
+   146→    .lote-of-item.separando { color:#67e8f9; background:rgba(34,211,238,.12); }
+   147→    .lote-of-item.separado  { color:#fbbf24; background:rgba(250,204,21,.18); }
+   148→    .lote-of-item.entregue   { color:#64748b; background:rgba(100,116,139,.10); text-decoration:line-through; }
+   149→    .lote-of-item.atraso { color:#fca5a5; background:rgba(239,68,68,.12); }
+   150→    .lote-of-item.urgente-of { color:#fca5a5; background:rgba(239,68,68,.18); border:1px solid rgba(239,68,68,.4); }
+   151→    .lote-badges { display:flex; flex-direction:column; gap:4px; align-items:flex-end; flex-shrink:0; }
+   152→    .lote-sep-info { font-size:.58rem; color:var(--muted); font-weight:600; }
+   153→
+   154→    .op-info { min-width: 0; }
+   155→    .op-prod { font-size:.85rem; font-weight:600; color:#e2e8f0; line-height:1.3; margin-top:6px; }
+   156→    .op-meta { display:flex; gap:8px; flex-wrap:wrap; margin-top:3px; align-items:center; }
+   157→    .op-qtd { font-size:.7rem; color:var(--muted); }
+   158→    .op-comp-count { font-size:.65rem; color:var(--cyan); font-weight:700; }
+   159→
+   160→    /* ── Lista de componentes dentro do card ── */
+   161→    .op-mats {
+   162→      margin-top:8px; padding-top:8px;
+   163→      border-top:1px dashed rgba(255,255,255,0.08);
+   164→    }
+   165→    .op-mats-title {
+   166→      font-size:.6rem; color:var(--amber); text-transform:uppercase;
+   167→      letter-spacing:.06em; font-weight:700; margin-bottom:5px;
+   168→    }
+   169→    .op-mat-row {
+   170→      display:flex; align-items:center; gap:8px;
+   171→      padding:2px 0; font-size:.72rem;
+   172→    }
+   173→    .op-mat-row .mat-cod {
+   174→      font-family:'Courier New',monospace; color:#60a5fa; font-size:.68rem;
+   175→      min-width:90px;
+   176→    }
+   177→    .op-mat-row .mat-desc { color:#cbd5e1; flex:1; }
+   178→    .op-mat-row .mat-qtd { color:#e2e8f0; font-weight:700; min-width:60px; text-align:right; }
+   179→    .op-mat-row .mat-und { color:var(--muted); font-size:.6rem; min-width:24px; }
+   180→    .op-dept { font-size:.6rem; padding:1px 7px; border-radius:7px; background:rgba(255,255,255,0.08); color:#94a3b8; font-weight:600; }
+   181→
+   182→    .op-status-badge {
+   183→      font-size:.55rem; font-weight:800; text-transform:uppercase;
+   184→      padding:3px 9px; border-radius:8px; letter-spacing:.05em; white-space:nowrap;
+   185→    }
+   186→    .op-status-badge.pendente   { background:#1e3a5f; color:#60a5fa; }
+   187→    .op-status-badge.separando  { background:#0e7490; color:#67e8f9; }
+   188→    .op-status-badge.separado   { background:#713f12; color:#fde68a; }
+   189→    .op-status-badge.entregue   { background:#1e293b; color:#64748b; }
+   190→
+   191→    .op-priority {
+   192→      font-size:.55rem; font-weight:800; text-transform:uppercase;
+   193→      padding:3px 8px; border-radius:8px; letter-spacing:.05em;
+   194→    }
+   195→    .op-priority.urgente { background:#7f1d1d; color:#fca5a5; }
+   196→    .op-priority.alta    { background:#7c2d12; color:#fdba74; }
+   197→    .op-priority.media   { background:#713f12; color:#fde68a; }
+   198→    .op-priority.baixa   { background:#14532d; color:#86efac; }
+   199→
+   200→    .op-progress { width: 70px; display:flex; flex-direction:column; align-items:flex-end; gap:3px; }
+   201→    .op-progress-bar { width:100%; height:6px; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden; }
+   202→    .op-progress-fill { height:100%; border-radius:3px; transition:width .5s; }
+   203→
+   204→    .cnt-badge {
+   205→      background:rgba(255,255,255,0.1); color:var(--text);
+   206→      font-size:.65rem; font-weight:700;
+   207→      padding:2px 9px; border-radius:10px;
+   208→    }
+   209→
+   210→    /* ── TABELA ESTOQUE ── */
+   211→    .tbl-estoque { width:100%; border-collapse:collapse; table-layout:fixed; }
+   212→    .tbl-estoque thead th {
+   213→      padding:9px 12px; font-size:.65rem;
+   214→      text-transform:uppercase; letter-spacing:.06em;
+   215→      color:var(--muted); background:rgba(255,255,255,0.02);
+   216→      border-bottom:1px solid var(--border);
+   217→      white-space:nowrap; position:sticky; top:0; z-index:2;
+   218→      text-align: left;
+   219→    }
+   220→    .tbl-estoque thead th:nth-child(3),
+   221→    .tbl-estoque thead th:nth-child(4) { text-align:right; }
+   222→    .tbl-estoque tbody td {
+   223→      padding:9px 12px; font-size:.82rem;
+   224→      border-bottom:1px solid rgba(255,255,255,0.03);
+   225→      vertical-align:middle;
+   226→    }
+   227→    .tbl-estoque tbody tr:hover td { background:rgba(255,255,255,0.02); }
+   228→
+   229→    .est-codigo { font-family:'Courier New',monospace; font-size:.78rem; color:#60a5fa; font-weight:600; }
+   230→    .est-desc { color:#e2e8f0; font-weight:500; }
+   231→    .est-saldo { font-weight:800; font-size:.95rem; }
+   232→    .est-min { color:var(--muted); font-size:.75rem; }
+   233→
+   234→    .est-row.CRITICO td { background:rgba(239,68,68,0.08); border-left:3px solid var(--red); }
+   235→    .est-row.BAIXO td   { background:rgba(245,158,11,0.06); border-left:3px solid var(--amber); }
+   236→    .est-row.OK td      { border-left:3px solid rgba(34,197,94,0.3); }
+   237→
+   238→    .est-status {
+   239→      font-size:.55rem; font-weight:800; text-transform:uppercase;
+   240→      padding:2px 8px; border-radius:6px; letter-spacing:.04em; white-space:nowrap;
+   241→    }
+   242→    .est-status.CRITICO { background:#7f1d1d; color:#fca5a5; }
+   243→    .est-status.BAIXO   { background:#713f12; color:#fde68a; }
+   244→    .est-status.OK      { background:#14532d; color:#86efac; }
+   245→
+   246→    /* ── FOOTER ── */
+   247→    footer {
+   248→      height:30px; background:#040b0c;
+   249→      border-top:1px solid rgba(13,148,136,.25);
+   250→      display:flex; align-items:center;
+   251→      padding:0 16px; gap:12px; flex-shrink:0;
+   252→      position: relative; z-index: 2;
+   253→    }
+   254→    .live-dot { display:flex; align-items:center; gap:5px; font-size:.6rem; font-weight:700; color:#22c55e; white-space:nowrap; }
+   255→    .dot { width:6px; height:6px; border-radius:50%; background:#22c55e; animation:pulseDot 1.4s infinite; }
+   256→    @keyframes pulseDot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.75)} }
+   257→    .ticker-msg { font-size:.65rem; color:#1e4040; }
+   258→
+   259→    .empty-panel {
+   260→      display:flex; flex-direction:column;
+   261→      align-items:center; justify-content:center;
+   262→      height:100%; color:#173030; gap:8px; font-size:.82rem;
+   263→    }
+   264→    .empty-panel i { font-size:2.2rem; }
+   265→  </style>
+   266→</head>
+   267→<body>
+   268→
+   269→<!-- HEADER -->
+   270→<header>
+   271→  <div class="h-left">
+   272→    <div class="h-logo"><i class="fa-solid fa-boxes-stacked"></i></div>
+   273→    <div>
+   274→      <div class="h-title">ALMOXARIFADO <span>Producao</span></div>
+   275→      <div class="h-sub">Separacao de Materiais e Estoque</div>
+   276→    </div>
+   277→  </div>
+   278→  <div class="h-clock">
+   279→    <div class="time" id="clock">00:00:00</div>
+   280→    <div class="date" id="dateStr">&#8212;</div>
+   281→  </div>
+   282→</header>
+   283→
+   284→<!-- STATS -->
+   285→<div class="stats-bar">
+   286→  <div class="stat-card" id="cardPend">
+   287→    <div class="stat-icon" style="background:rgba(6,182,212,.15);color:#22d3ee">
+   288→      <i class="fa-solid fa-clipboard-list"></i>
+   289→    </div>
+   290→    <div>
+   291→      <div class="stat-num" style="color:#22d3ee" id="sPend">0</div>
+   292→      <div class="stat-lbl">Pendentes</div>
+   293→    </div>
+   294→  </div>
+   295→  <div class="stat-card">
+   296→    <div class="stat-icon" style="background:rgba(34,211,238,.15);color:#67e8f9">
+   297→      <i class="fa-solid fa-arrows-spin"></i>
+   298→    </div>
+   299→    <div>
+   300→      <div class="stat-num" style="color:#67e8f9" id="sSep">0</div>
+   301→      <div class="stat-lbl">Separando</div>
+   302→    </div>
+   303→  </div>
+   304→  <div class="stat-card" id="cardUrg">
+   305→    <div class="stat-icon" style="background:rgba(239,68,68,.15);color:#f87171">
+   306→      <i class="fa-solid fa-triangle-exclamation"></i>
+   307→    </div>
+   308→    <div>
+   309→      <div class="stat-num" style="color:#f87171" id="sUrg">0</div>
+   310→      <div class="stat-lbl">Urgentes</div>
+   311→    </div>
+   312→  </div>
+   313→  <div class="stat-card" id="cardCritico">
+   314→    <div class="stat-icon" style="background:rgba(239,68,68,.15);color:#f87171">
+   315→      <i class="fa-solid fa-circle-exclamation"></i>
+   316→    </div>
+   317→    <div>
+   318→      <div class="stat-num" style="color:#f87171" id="sCritico">0</div>
+   319→      <div class="stat-lbl">Estoque Critico</div>
+   320→    </div>
+   321→  </div>
+   322→  <div class="stat-card" id="cardBaixo">
+   323→    <div class="stat-icon" style="background:rgba(245,158,11,.15);color:#fbbf24">
+   324→      <i class="fa-solid fa-triangle-exclamation"></i>
+   325→    </div>
+   326→    <div>
+   327→      <div class="stat-num" style="color:#fbbf24" id="sBaixo">0</div>
+   328→      <div class="stat-lbl">Estoque Alerta</div>
+   329→    </div>
+   330→  </div>
+   331→</div>
+   332→
+   333→<!-- PAINÉIS -->
+   334→<div class="main-grid">
+   335→
+   336→  <!-- ESQUERDA: OPs Liberadas — Separação -->
+   337→  <div class="panel panel-sep">
+   338→    <div class="panel-header">
+   339→      <span><i class="fa-solid fa-boxes-stacked" style="margin-right:6px"></i>OPs Liberadas — Separacao</span>
+   340→      <span class="cnt-badge" id="cntLotes">0</span>
+   341→    </div>
+   342→    <div class="panel-body" id="painelLotes">
+   343→      <div class="empty-panel">
+   344→        <i class="fa-solid fa-rotate fa-spin"></i>
+   345→        <span>Carregando...</span>
+   346→      </div>
+   347→    </div>
+   348→  </div>
+   349→
+   350→  <!-- DIREITA: Estoque do ERP -->
+   351→  <div class="panel panel-estoque">
+   352→    <div class="panel-header">
+   353→      <span><i class="fa-solid fa-warehouse" style="margin-right:6px"></i>Estoque do Almoxarifado</span>
+   354→      <span class="cnt-badge" id="cntEstoque">0</span>
+   355→    </div>
+   356→    <div class="panel-body" id="painelEstoque">
+   357→      <div class="empty-panel">
+   358→        <i class="fa-solid fa-rotate fa-spin"></i>
+   359→        <span>Carregando estoque...</span>
+   360→      </div>
+   361→    </div>
+   362→  </div>
+   363→
+   364→</div>
+   365→
+   366→<!-- FOOTER -->
+   367→<footer>
+   368→  <div class="live-dot"><div class="dot"></div> AO VIVO</div>
+   369→  <div class="ticker-msg" id="tickerMsg">Almoxarifado &#8212; Atualizacao automatica</div>
+   370→  <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+   371→    <span style="font-size:.55rem;color:var(--muted)">SYNC ERP</span>
+   372→    <div class="dot"></div>
+   373→  </div>
+   374→</footer>
+   375→
+   376→<script>
+   377→/* ─── Relógio ── */
+   378→function tick() {
+   379→  var n = new Date();
+   380→  document.getElementById('clock').textContent = n.toLocaleTimeString('pt-BR');
+   381→  document.getElementById('dateStr').textContent = n.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
+   382→}
+   383→setInterval(tick,1000); tick();
+   384→
+   385→/* ─── Helpers ── */
+   386→function fmtData(v) {
+   387→  if (!v) return '\u2014';
+   388→  try {
+   389→    var d = new Date(v + (v.indexOf('T') >= 0 ? '' : 'T00:00:00'));
+   390→    return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+   391→  } catch(e) { return v; }
+   392→}
+   393→
+   394→function badgePrio(p) {
+   395→  var pp = (p||'media').toLowerCase();
+   396→  return '<span class="op-priority ' + pp + '">' + (p||'MEDIA').toUpperCase() + '</span>';
+   397→}
+   398→
+   399→function badgeSep(s) {
+   400→  var labels = {pendente:'Pendente', separando:'Separando', separado:'Separado', entregue:'Entregue'};
+   401→  return '<span class="op-status-badge ' + (s||'pendente') + '">' + (labels[s]||'Pendente') + '</span>';
+   402→}
+   403→
+   404→function progBar(feitas, total) {
+   405→  if (!total) return '<span style="color:var(--muted);font-size:.65rem">\u2014</span>';
+   406→  var pct = Math.min(100, Math.round((feitas||0)/total*100));
+   407→  var cor = pct>=100?'#22c55e':pct>=50?'#f59e0b':'#3b82f6';
+   408→  return '<div class="op-progress"><div class="op-progress-bar"><div class="op-progress-fill" style="width:' + pct + '%;background:' + cor + '"></div></div><span style="font-size:.55rem;color:var(--muted)">' + pct + '%</span></div>';
+   409→}
+   410→
+   411→/* ─── Auto-scroll suave (fractional accumulator) ── */
+   412→var scrollCol = null;
+   413→var scrollAccum = 0;
+   414→var scrollSpeed = 0.4;
+   415→var scrollDir = 1;
+   416→
+   417→function autoScrollTick() {
+   418→  if (!scrollCol) return;
+   419→  var maxScroll = scrollCol.scrollHeight - scrollCol.clientHeight;
+   420→  if (maxScroll <= 0) return;
+   421→  scrollAccum += scrollSpeed * scrollDir;
+   422→  if (Math.abs(scrollAccum) >= 1) {
+   423→    scrollCol.scrollTop += Math.round(scrollAccum);
+   424→    scrollAccum = 0;
+   425→  }
+   426→  if (scrollCol.scrollTop >= maxScroll - 2) { scrollDir = -1; }
+   427→  else if (scrollCol.scrollTop <= 0) { scrollDir = 1; }
+   428→}
+   429→
+   430→/* ─── Render Lotes (cards agrupados com OFs horizontais) ── */
+   431→function renderLotes(lotes) {
+   432→  var panel = document.getElementById('painelLotes');
+   433→  document.getElementById('cntLotes').textContent = lotes.length;
+   434→  if (!lotes.length) {
+   435→    panel.innerHTML = '<div class="empty-panel"><i class="fa-solid fa-circle-check" style="color:#14532d"></i><span>Nenhuma OP aguardando separacao</span></div>';
+   436→    return;
+   437→  }
+   438→  var html = '';
+   439→  for (var i = 0; i < lotes.length; i++) {
+   440→    var l = lotes[i];
+   441→    var sepStatus = l.separacao_status || 'pendente';
+   442→    var prio = (l.prioridade||'media').toLowerCase();
+   443→    var urgente = prio === 'urgente' || prio === 'alta';
+   444→    var atrasada = (l.dias_atraso||0) > 0;
+   445→    var cls = 'op-card';
+   446→    if (urgente) cls += ' urgente';
+   447→    if (atrasada) cls += ' atrasada';
+   448→    if (sepStatus === 'separando') cls += ' separando';
+   449→    else if (sepStatus === 'separado') cls += ' separado';
+   450→    else if (sepStatus === 'entregue') cls += ' entregue';
+   451→
+   452→    /* OFs horizontais - mostra todas, com cor por status */
+   453→    var ofs = l.ordens_do_lote || [];
+   454→    var ofsHtml = '';
+   455→    var sepCount = 0;
+   456→    var entCount = 0;
+   457→    for (var k = 0; k < ofs.length; k++) {
+   458→      var o = ofs[k];
+   459→      if (o.separacao_status === 'separado') { sepCount++; }
+   460→      if (o.separacao_status === 'entregue') { entCount++; }
+   461→      if (ofsHtml) ofsHtml += '<span class="lote-of-sep">-</span>';
+   462→      var ofCls = 'lote-of-item';
+   463→      var ofPrio = (o.prioridade||'media').toLowerCase();
+   464→      var ofAtraso = (o.dias_atraso||0) > 0;
+   465→      if (ofPrio === 'urgente') ofCls += ' urgente-of';
+   466→      else if (ofAtraso) ofCls += ' atraso';
+   467→      if (o.separacao_status === 'separando') ofCls += ' separando';
+   468→      else if (o.separacao_status === 'separado') ofCls += ' separado';
+   469→      else if (o.separacao_status === 'entregue') ofCls += ' entregue';
+   470→      ofsHtml += '<span class="' + ofCls + '">#' + o.ordem + '</span>';
+   471→    }
+   472→    var sepInfo = '';
+   473→    if (sepCount > 0) {
+   474→      sepInfo = '<span class="lote-sep-info" style="color:#fbbf24">' + sepCount + ' OF' + (sepCount > 1 ? 's' : '') + ' separada' + (sepCount > 1 ? 's' : '') + '</span>';
+   475→    }
+   476→    if (entCount > 0) {
+   477→      sepInfo += '<span class="lote-sep-info" style="color:#64748b">' + entCount + ' entregue' + (entCount > 1 ? 's' : '') + '</span>';
+   478→    }
+   479→
+   480→    /* componentes */
+   481→    var matsHtml = '';
+   482→    var comps = l.componentes || [];
+   483→    var totalComps = l.total_componentes || comps.length;
+   484→    if (comps.length > 0) {
+   485→      matsHtml = '<div class="op-mats"><div class="op-mats-title"><i class="fa-solid fa-screwdriver-wrench" style="margin-right:4px"></i>' + totalComps + ' componente' + (totalComps !== 1 ? 's' : '') + ' para separar</div>';
+   486→      for (var j = 0; j < comps.length; j++) {
+   487→        var c = comps[j];
+   488→        matsHtml += '<div class="op-mat-row">' +
+   489→          '<span class="mat-cod">' + c.codigo + '</span>' +
+   490→          '<span class="mat-desc">' + c.descricao + '</span>' +
+   491→          '<span class="mat-qtd">' + c.qtd_necessaria + '</span>' +
+   492→          '<span class="mat-und">' + c.unidade + '</span>' +
+   493→        '</div>';
+   494→      }
+   495→      matsHtml += '</div>';
+   496→    } else {
+   497→      matsHtml = '<div class="op-comp-count" style="margin-top:4px"><i class="fa-solid fa-info-circle" style="margin-right:3px"></i>Sem componentes brutos (so pecas fabricadas)</div>';
+   498→    }
+   499→
+   500→    html += '<div class="' + cls + '">' +
+   501→      '<div class="lote-header">' +
+   502→        '<div class="lote-id">' +
+   503→          '<span class="lote-lp">LP ' + (l.lote_codigo || '---') + '</span>' +
+   504→          '<span class="lote-of-label">OF</span>' +
+   505→          '<span class="lote-ofs">' + ofsHtml + '</span>' +
+   506→          sepInfo +
+   507→        '</div>' +
+   508→        '<div class="lote-badges">' +
+   509→          badgePrio(l.prioridade) +
+   510→          badgeSep(sepStatus) +
+   511→        '</div>' +
+   512→      '</div>' +
+   513→      '<div class="op-info">' +
+   514→        '<div class="op-prod">' + (l.descricao_produto || '\u2014').substring(0, 50) + '</div>' +
+   515→        '<div class="op-meta">' +
+   516→          '<span class="op-qtd"><i class="fa-solid fa-boxes-stacked" style="font-size:.6rem;margin-right:2px"></i>' + Math.round(l.qtde_ordem || 0) + ' pc</span>' +
+   517→          (l.departamento_atual ? '<span class="op-dept">' + l.departamento_atual + '</span>' : '') +
+   518→          (atrasada ? '<span class="op-qtd" style="color:#f87171"><i class="fa-solid fa-circle-exclamation" style="font-size:.6rem;margin-right:2px"></i>' + l.dias_atraso + 'd atraso</span>' : '') +
+   519→          (l.data_previsao_erp ? '<span class="op-qtd"><i class="fa-regular fa-calendar" style="font-size:.6rem;margin-right:2px"></i>' + fmtData(l.data_previsao_erp) + '</span>' : '') +
+   520→        '</div>' +
+   521→        matsHtml +
+   522→      '</div>' +
+   523→    '</div>';
+   524→  }
+   525→  panel.innerHTML = html;
+   526→}
+   527→
+   528→/* ─── Render Estoque ── */
+   529→function renderEstoque(dados) {
+   530→  var panel = document.getElementById('painelEstoque');
+   531→  var produtos = dados.produtos || [];
+   532→  var stats = dados.stats || {};
+   533→
+   534→  document.getElementById('sCritico').textContent = stats.CRITICO || 0;
+   535→  document.getElementById('sBaixo').textContent   = stats.BAIXO || 0;
+   536→  document.getElementById('cntEstoque').textContent = produtos.length;
+   537→
+   538→  var cardCritico = document.getElementById('cardCritico');
+   539→  if ((stats.CRITICO || 0) > 0) cardCritico.classList.add('pulse-alert');
+   540→  else cardCritico.classList.remove('pulse-alert');
+   541→
+   542→  var cardBaixo = document.getElementById('cardBaixo');
+   543→  if ((stats.BAIXO || 0) > 0) cardBaixo.classList.add('pulse-alert');
+   544→  else cardBaixo.classList.remove('pulse-alert');
+   545→
+   546→  if (!produtos.length) {
+   547→    panel.innerHTML = '<div class="empty-panel"><i class="fa-solid fa-circle-check" style="color:#14532d"></i><span>Estoque vazio ou sem dados</span></div>';
+   548→    return;
+   549→  }
+   550→
+   551→  var html = '<table class="tbl-estoque"><thead><tr>' +
+   552→    '<th style="width:16%">Codigo</th>' +
+   553→    '<th style="width:42%">Produto</th>' +
+   554→    '<th style="width:14%;text-align:right">Saldo</th>' +
+   555→    '<th style="width:14%;text-align:right">Min</th>' +
+   556→    '<th style="width:14%">Status</th>' +
+   557→    '</tr></thead><tbody>';
+   558→
+   559→  for (var i = 0; i < produtos.length; i++) {
+   560→    var p = produtos[i];
+   561→    var corSaldo = p.status === 'CRITICO' ? '#f87171' : p.status === 'BAIXO' ? '#fbbf24' : '#4ade80';
+   562→    var statusLabel = p.status === 'CRITICO' ? 'CRITICO' : p.status === 'BAIXO' ? 'ALERTA' : 'OK';
+   563→
+   564→    html += '<tr class="est-row ' + p.status + '">' +
+   565→      '<td class="est-codigo">' + p.codigo + '</td>' +
+   566→      '<td class="est-desc">' + p.descricao + '</td>' +
+   567→      '<td class="est-saldo" style="text-align:right;color:' + corSaldo + '">' + p.saldo + '</td>' +
+   568→      '<td class="est-min" style="text-align:right">' + p.minimo + '</td>' +
+   569→      '<td><span class="est-status ' + p.status + '">' + statusLabel + '</span></td>' +
+   570→      '</tr>';
+   571→  }
+   572→  html += '</tbody></table>';
+   573→  panel.innerHTML = html;
+   574→
+   575→  /* ativar auto-scroll no painel de estoque */
+   576→  scrollCol = document.getElementById('painelEstoque');
+   577→}
+   578→
+   579→/* ─── Atualiza stats OPs ── */
+   580→function atualizarStats(stats) {
+   581→  document.getElementById('sPend').textContent = stats.pendentes || 0;
+   582→  document.getElementById('sSep').textContent  = stats.separando || 0;
+   583→  document.getElementById('sUrg').textContent  = stats.urgentes || 0;
+   584→
+   585→  var cardUrg = document.getElementById('cardUrg');
+   586→  if ((stats.urgentes||0) > 0) cardUrg.classList.add('pulse-alert');
+   587→  else cardUrg.classList.remove('pulse-alert');
+   588→
+   589→  var cardPend = document.getElementById('cardPend');
+   590→  if ((stats.pendentes||0) > 0) cardPend.style.borderColor = 'rgba(34,211,238,0.4)';
+   591→  else cardPend.style.borderColor = '';
+   592→}
+   593→
+   594→/* ─── Carrega dados ── */
+   595→function loadData() {
+   596→  /* OPs separação com componentes do ERP */
+   597→  fetch('/api/almoxarifado/separacao-materiais')
+   598→    .then(function(r) { return r.json(); })
+   599→    .then(function(d) {
+   600→      renderLotes(d.lotes || []);
+   601→      atualizarStats(d.stats || {});
+   602→    })
+   603→    .catch(function() {});
+   604→
+   605→  /* Estoque do SQLite */
+   606→  fetch('/api/almoxarifado/estoque')
+   607→    .then(function(r) { return r.json(); })
+   608→    .then(function(d) {
+   609→      renderEstoque(d);
+   610→    })
+   611→    .catch(function() {
+   612→      document.getElementById('painelEstoque').innerHTML =
+   613→        '<div class="empty-panel"><i class="fa-solid fa-plug-circle-xmark" style="color:#7f1d1d"></i><span>Erro ao carregar estoque</span></div>';
+   614→    });
+   615→
+   616→  document.getElementById('tickerMsg').textContent =
+   617→    'Ultima atualizacao: ' + new Date().toLocaleTimeString('pt-BR') +
+   618→    ' | Pendentes: ' + document.getElementById('sPend').textContent +
+   619→    ' | Separando: ' + document.getElementById('sSep').textContent +
+   620→    ' | Criticos: ' + document.getElementById('sCritico').textContent;
+   621→}
+   622→
+   623→/* ─── Init ── */
+   624→loadData();
+   625→setInterval(loadData, 20000);
+   626→setInterval(autoScrollTick, 40);
+   627→setTimeout(function() { location.reload(); }, 1800000);
+   628→</script>
+   629→</body>
+   630→</html>
