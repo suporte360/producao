@@ -1366,6 +1366,11 @@ class DatabaseMySQL:
                 KEY idx_status (status)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """)
+        # Migration: garante que coluna status existe (tabela pode ter sido criada sem ela)
+        try:
+            self.query_one("SELECT status FROM separacao_componentes LIMIT 1")
+        except Exception:
+            self.execute("ALTER TABLE separacao_componentes ADD COLUMN status ENUM('pendente','separado') DEFAULT 'pendente' AFTER qtd_necessaria")
         return True
 
     def get_separacao_componentes(self, op_ordem):
