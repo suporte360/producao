@@ -1442,6 +1442,85 @@ def api_marcar_entregue(ordem):
                    f'OP #{ordem} marcada como ENTREGUE ao setor', 'lotes', ordem)
     return jsonify({'status': 'success' if ok else 'error'})
 
+@app.route('/api/lotes/<int:ordem>/separar-componentes', methods=['POST'])
+@login_required
+@role_required('admin', 'gerente', 'almoxarifado')
+def api_separar_componentes(ordem):
+    """Marca componentes específicos como separados para uma OP."""
+    data = request.get_json(force=True) or {}
+    codigos = data.get('codigos', [])
+    if not codigos:
+        return jsonify({'status': 'error', 'msg': 'Nenhum componente selecionado'})
+    try:
+        db.criar_tabela_separacao_componentes()
+        ok = db.set_separacao_componentes(ordem, codigos, session.get('usuario_id'))
+        if ok:
+            db.add_log(session['usuario_id'], 'separar_componentes',
+                       f'{len(codigos)} componente(s) separado(s) na OP #{ordem}', 'lotes', ordem)
+            # Verifica se OP deve mudar para separando
+            db.marcar_separacao_lote(ordem, 'separando', session['usuario_id'])
+        return jsonify({'status': 'success' if ok else 'error'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'msg': str(e)}), 500
+
+@app.route('/api/lotes/<int:ordem>/componentes-separacao')
+@login_required
+@role_required('admin', 'gerente', 'almoxarifado')
+def api_componentes_separacao(ordem):
+    """Retorna componentes de uma OP com status de separação individual."""
+    try:
+        db.criar_tabela_separacao_componentes()
+    except Exception:
+        pass
+    # Busca componentes do ERP
+    componentes = []
+    try:
+        pg = DatabasePostgreSQL()
+        mats = pg.get_requisicoes_multiplas_ordens([ordem])
+        try:
+            codigos_fabricados = db.get_codigos_produtos_ofs_ativas()
+        except Exception:
+            codigos_fabricados = set()
+        agrupados = {}
+        for m in mats:
+            cod = str(m.get('produto') or '')
+            if cod.upper().startswith('PC-') or cod.upper().startswith('PC '):
+                continue
+            if cod in codigos_fabricados:
+                continue
+            if cod not in agrupados:
+                agrupados[cod] = {
+                    'codigo': cod,
+                    'descricao': (m.get('descricao') or '')[:50],
+                    'unidade': m.get('unidade') or 'UN',
+                    'qtd_necessaria': 0.0
+                }
+            agrupados[cod]['qtd_necessaria'] += float(m.get('quantidade') or 0)
+        componentes = sorted(agrupados.values(), key=lambda x: x['codigo'])
+    except Exception as e:
+        return jsonify({'status': 'error', 'msg': str(e)}), 500
+
+    # Inicializa registros no banco se necessário
+    if componentes:
+        try:
+            db.init_separacao_componentes_op(ordem, componentes)
+        except Exception:
+            pass
+
+    # Busca status de separação
+    sep_status = {}
+    try:
+        rows = db.get_separacao_componentes(ordem)
+        for r in rows:
+            sep_status[str(r['codigo'])] = r['status']
+    except Exception:
+        pass
+
+    for c in componentes:
+        c['separacao_status'] = sep_status.get(c['codigo'], 'pendente')
+
+    return jsonify({'status': 'success', 'componentes': componentes})
+
 @app.route('/api/requisicoes/<int:req_id>/entregar', methods=['POST'])
 @login_required
 @role_required('admin', 'gerente', 'almoxarifado')

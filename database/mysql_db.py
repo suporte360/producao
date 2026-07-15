@@ -1346,3 +1346,62 @@ class DatabaseMySQL:
             HAVING total_concluidas >= 1
         """)
 
+    # ── Separação por Componente ───────────────────────────────────
+
+    def criar_tabela_separacao_componentes(self):
+        """Cria tabela para rastrear separação individual por componente."""
+        self.execute("""
+            CREATE TABLE IF NOT EXISTS separacao_componentes (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                op_ordem INT NOT NULL,
+                codigo VARCHAR(100) NOT NULL,
+                descricao VARCHAR(200),
+                unidade VARCHAR(10) DEFAULT 'UN',
+                qtd_necessaria FLOAT DEFAULT 0,
+                status ENUM('pendente','separado') DEFAULT 'pendente',
+                data_separacao DATETIME NULL,
+                separado_por INT NULL,
+                UNIQUE KEY uk_op_codigo (op_ordem, codigo),
+                KEY idx_op_ordem (op_ordem),
+                KEY idx_status (status)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """)
+        return True
+
+    def get_separacao_componentes(self, op_ordem):
+        """Retorna status de separação por componente de uma OP."""
+        return self.query(
+            "SELECT codigo, status, data_separacao FROM separacao_componentes WHERE op_ordem = %s",
+            (op_ordem,)
+        )
+
+    def set_separacao_componentes(self, op_ordem, codigos, usuario_id):
+        """Marca componentes como separados. Cria registros se não existem."""
+        for cod in codigos:
+            # Verifica se já existe
+            existing = self.query_one(
+                "SELECT id, status FROM separacao_componentes WHERE op_ordem = %s AND codigo = %s",
+                (op_ordem, cod)
+            )
+            if existing:
+                if existing['status'] != 'separado':
+                    self.execute(
+                        "UPDATE separacao_componentes SET status='separado', data_separacao=NOW(), separado_por=%s WHERE op_ordem=%s AND codigo=%s",
+                        (usuario_id, op_ordem, cod)
+                    )
+            else:
+                self.execute(
+                    "INSERT INTO separacao_componentes (op_ordem, codigo, status, data_separacao, separado_por) VALUES (%s, %s, 'separado', NOW(), %s)",
+                    (op_ordem, cod, usuario_id)
+                )
+        return True
+
+    def init_separacao_componentes_op(self, op_ordem, componentes):
+        """Inicializa registros de separação para uma OP (só cria os que não existem)."""
+        for c in componentes:
+            self.execute(
+                "INSERT IGNORE INTO separacao_componentes (op_ordem, codigo, descricao, unidade, qtd_necessaria) VALUES (%s, %s, %s, %s, %s)",
+                (op_ordem, c.get('codigo'), c.get('descricao', '')[:200], c.get('unidade', 'UN'), c.get('qtd_necessaria', 0))
+            )
+        return True
+
