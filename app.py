@@ -1463,6 +1463,26 @@ def api_separar_componentes(ordem):
     except Exception as e:
         return jsonify({'status': 'error', 'msg': str(e)}), 500
 
+@app.route('/api/lotes/<int:ordem>/separado', methods=['POST'])
+@app.route('/api/lotes/<int:ordem>/entregue', methods=['POST'])
+@app.route('/api/lotes/<int:ordem>/pendente', methods=['POST'])
+@app.route('/api/lotes/<int:ordem>/separando', methods=['POST'])
+@login_required
+@role_required('admin', 'gerente', 'almoxarifado')
+def api_mudar_separacao(ordem):
+    """Muda o status de separacao de uma OP."""
+    novo_status = request.path.split('/')[-1]
+    validos = ('pendente', 'separando', 'separado', 'entregue')
+    if novo_status not in validos:
+        return jsonify({'status': 'error', 'msg': 'Status invalido'}), 400
+    try:
+        db.marcar_separacao_lote(ordem, novo_status, session.get('usuario_id'))
+        db.add_log(session['usuario_id'], 'mudar_separacao',
+                   'OP #%s → %s' % (ordem, novo_status), 'lotes', ordem)
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'msg': str(e)}), 500
+
 @app.route('/api/lotes/<int:ordem>/componentes-separacao')
 @login_required
 @role_required('admin', 'gerente', 'almoxarifado')
