@@ -1532,78 +1532,131 @@ def api_almoxarifado_estoque():
 @app.route('/api/almoxarifado/separacao-materiais')
 def api_separacao_materiais():
     """TV do almoxarifado: OPs liberadas com lista de componentes para separar.
-    Busca materiais do ERP (reqordem) e cruza com estoque local."""
+    Agrupa por lote_codigo, mostra OFs horizontais, oculta OFs ja separadas."""
     lotes = db.get_lotes_separacao_tv()
     if not lotes:
         return jsonify({'status': 'success', 'lotes': [], 'stats': {
             'total': 0, 'pendentes': 0, 'separando': 0, 'separados': 0, 'urgentes': 0
         }})
 
-    # Stats básicos
-    stats = {
-        'total': len(lotes),
-        'pendentes': sum(1 for l in lotes if l.get('separacao_status') == 'pendente'),
-        'separando': sum(1 for l in lotes if l.get('separacao_status') == 'separando'),
-        'separados': sum(1 for l in lotes if l.get('separacao_status') == 'separado'),
-        'urgentes': sum(1 for l in lotes if (l.get('prioridade') or '').lower() in ('urgente', 'alta'))
-    }
-
-    # Busca materiais do ERP para todas as OPs de uma vez
-    ordens = [l['ordem'] for l in lotes]
-    materiais_erp = []
-    try:
-        pg = DatabasePostgreSQL()
-        materiais_erp = pg.get_requisicoes_multiplas_ordens(ordens)
-    except Exception as e:
-        print("[SEP MATS] Erro ERP:", e)
-
-    # Exclui peças fabricadas em outras OFs
+    # Exclui pecas fabricadas em outras OFs
     try:
         codigos_fabricados = db.get_codigos_produtos_ofs_ativas()
     except Exception:
         codigos_fabricados = set()
 
-    # Agrupa materiais por OP
-    mats_por_of = {}
-    for m in materiais_erp:
-        of_num = m.get('ordem')
-        if of_num not in mats_por_of:
-            mats_por_of[of_num] = []
-        mats_por_of[of_num].append(m)
+    # Agrupa OPs por lote_codigo (preserva ordem de prioridade)
+    from collections import OrderedDict
+    lote_map = OrderedDict()
+    for l in lotes:
+        lc = l.get('lote_codigo') or ''
+        if lc not in lote_map:
+            lote_map[lc] = {
+                'lote_codigo': lc,
+                'descricao_produto': l.get('descricao_produto'),
+                'qtde_ordem': l.get('qtde_ordem'),
+                'prioridade': l.get('prioridade'),
+                'data_previsao_erp': l.get('data_previsao_erp'),
+                'departamento_atual': l.get('departamento_atual'),
+                'ordens': []
+            }
+        lote_map[lc]['ordens'].append({
+            'ordem': l['ordem'],
+            'separacao_status': l.get('separacao_status', 'pendente'),
+            'dias_atraso': l.get('dias_atraso', 0),
+            'prioridade': l.get('prioridade', 'media'),
+        })
 
-    # Monta resultado
+    # Busca TODAS as OFs do lote no ERP e materiais
+    pg = None
+    try:
+        pg = DatabasePostgreSQL()
+    except Exception as e:
+        print('[SEP MATS] Erro conectar ERP:', e)
+
     resultado = []
-    for lote in lotes:
-        mats = mats_por_of.get(lote['ordem'], [])
-        mats_filtrados = []
-        for m in mats:
+    stats = {'total': 0, 'pendentes': 0, 'separando': 0, 'separados': 0, 'urgentes': 0}
+
+    for lc, info in lote_map.items():
+        ordens_info = info['ordens']
+
+        # Separa OFs pendentes/separando das ja separadas
+        ofs_pendentes = [o for o in ordens_info if o['separacao_status'] != 'separado']
+        ofs_separadas = [o for o in ordens_info if o['separacao_status'] == 'separado']
+
+        # Se todas as OFs do lote ja foram separadas, nao mostra na TV
+        if not ofs_pendentes:
+            continue
+
+        # Pega OFs do ERP para buscar materiais (so das OFs pendentes/separando)
+        ordens_pendentes_nums = [int(o['ordem']) for o in ofs_pendentes]
+        materiais_erp = []
+        if pg and ordens_pendentes_nums:
+            try:
+                materiais_erp = pg.get_requisicoes_multiplas_ordens(ordens_pendentes_nums)
+            except Exception as e:
+                print('[SEP MATS] Erro materiais ERP lote %s: %s' % (lc, e))
+
+        # Agrupa materiais repetidos somando quantidades
+        agrupados = {}
+        for m in materiais_erp:
             cod = str(m.get('produto') or '')
-            # Exclui PC- (pecas em producao que circulam entre setores, nao passam pelo almoxarifado)
             if cod.upper().startswith('PC-') or cod.upper().startswith('PC '):
                 continue
             if cod in codigos_fabricados:
                 continue
-            mats_filtrados.append({
-                'codigo': cod,
-                'descricao': (m.get('descricao') or '')[:50],
-                'unidade': m.get('unidade') or 'UN',
-                'qtd_necessaria': float(m.get('quantidade') or 0)
-            })
+            if cod not in agrupados:
+                agrupados[cod] = {
+                    'codigo': cod,
+                    'descricao': (m.get('descricao') or '')[:50],
+                    'unidade': m.get('unidade') or 'UN',
+                    'qtd_necessaria': 0.0
+                }
+            agrupados[cod]['qtd_necessaria'] += float(m.get('quantidade') or 0)
+        comps = sorted(agrupados.values(), key=lambda x: x['codigo'])
+
+        # Status do lote = pior status entre OFs pendentes
+        statuses = [o['separacao_status'] for o in ofs_pendentes]
+        lote_sep_status = 'pendente'
+        if 'separando' in statuses:
+            lote_sep_status = 'separando'
+
+        # Pior prioridade / atraso
+        prio = info['prioridade']
+        max_atraso = max((o.get('dias_atraso') or 0) for o in ofs_pendentes)
+        for o in ofs_pendentes:
+            p = (o.get('prioridade') or 'media').lower()
+            if p == 'urgente':
+                prio = 'urgente'
+                break
+            elif p == 'alta' and prio != 'urgente':
+                prio = 'alta'
+
         resultado.append({
-            'ordem': lote['ordem'],
-            'lote_codigo': lote.get('lote_codigo'),
-            'descricao_produto': lote.get('descricao_produto'),
-            'qtde_ordem': lote.get('qtde_ordem'),
-            'prioridade': lote.get('prioridade'),
-            'data_previsao_erp': lote.get('data_previsao_erp'),
-            'departamento_atual': lote.get('departamento_atual'),
-            'separacao_status': lote.get('separacao_status'),
-            'dias_atraso': lote.get('dias_atraso'),
-            'operacoes_concluidas': lote.get('operacoes_concluidas'),
-            'total_operacoes': lote.get('total_operacoes'),
-            'total_componentes': len(mats_filtrados),
-            'componentes': mats_filtrados
+            'lote_codigo': lc,
+            'descricao_produto': info['descricao_produto'],
+            'qtde_ordem': info['qtde_ordem'],
+            'prioridade': prio,
+            'data_previsao_erp': info['data_previsao_erp'],
+            'departamento_atual': info['departamento_atual'],
+            'separacao_status': lote_sep_status,
+            'dias_atraso': max_atraso,
+            'total_componentes': len(comps),
+            'componentes': comps,
+            'ordens_do_lote': sorted(ordens_info, key=lambda x: x['ordem']),
+            'ordens_pendentes_count': len(ofs_pendentes),
+            'ordens_separadas_count': len(ofs_separadas),
         })
+
+        # Stats
+        stats['total'] += 1
+        if lote_sep_status == 'pendente':
+            stats['pendentes'] += 1
+        elif lote_sep_status == 'separando':
+            stats['separando'] += 1
+        if prio in ('urgente', 'alta'):
+            stats['urgentes'] += 1
+        stats['separados'] += len(ofs_separadas)
 
     return jsonify({'status': 'success', 'lotes': resultado, 'stats': stats})
 
