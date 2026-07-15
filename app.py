@@ -1489,7 +1489,8 @@ def api_separar_componentes(ordem):
 @login_required
 @role_required('admin', 'gerente', 'almoxarifado')
 def api_finalizar_separacao(ordem):
-    """Finaliza separacao de uma OP: marca componentes selecionados como separados E muda status da OP para separado."""
+    """Finaliza separacao de uma OP: marca componentes selecionados como separados.
+    So muda para 'separado' se TODOS os componentes estiverem separados."""
     data = request.get_json(force=True) or {}
     codigos = data.get('codigos', [])
     try:
@@ -1497,12 +1498,22 @@ def api_finalizar_separacao(ordem):
         # Marca os componentes selecionados como separados
         if codigos:
             db.set_separacao_componentes(ordem, codigos, session.get('usuario_id'))
-        # Muda status da OP para separado
-        ok = db.marcar_separacao_lote(ordem, 'separado', session['usuario_id'])
-        if ok:
+        # Verifica se TODOS os componentes ja estao separados
+        todos = db.get_separacao_componentes(ordem)
+        total = len(todos)
+        separados = sum(1 for c in todos if c['status'] == 'separado')
+        if total > 0 and separados >= total:
+            # Todos separados -> muda para separado
+            ok = db.marcar_separacao_lote(ordem, 'separado', session['usuario_id'])
             db.add_log(session['usuario_id'], 'finalizar_separacao',
-                       'OP #%s finalizada como SEPARADO (%d componente(s))' % (ordem, len(codigos)), 'lotes', ordem)
-        return jsonify({'status': 'success' if ok else 'error'})
+                       'OP #%s finalizada como SEPARADO (todos %d componentes)' % (ordem, total), 'lotes', ordem)
+        else:
+            # Ainda faltam componentes -> mantem como separando
+            ok = True
+            db.marcar_separacao_lote(ordem, 'separando', session['usuario_id'])
+            db.add_log(session['usuario_id'], 'finalizar_separacao_parcial',
+                       'OP #%s: %d/%d componentes separados' % (ordem, separados, total), 'lotes', ordem)
+        return jsonify({'status': 'success' if ok else 'error', 'todos_separados': total > 0 and separados >= total, 'separados': separados, 'total': total})
     except Exception as e:
         return jsonify({'status': 'error', 'msg': str(e)}), 500
 
@@ -1674,7 +1685,8 @@ def api_almoxarifado_estoque():
 @app.route('/api/almoxarifado/separacao-materiais')
 def api_separacao_materiais():
     """TV do almoxarifado: OPs liberadas com lista de componentes para separar.
-    Agrupa por lote_codigo, mostra OFs horizontais, oculta OFs ja separadas."""
+    Agrupa por lote_codigo, mostra TODAS as OFs (menos entregue).
+    Separando = cor normal, Separado = cor amarela piscando, Entregue = some."""
     lotes = db.get_lotes_separacao_tv()
     if not lotes:
         return jsonify({'status': 'success', 'lotes': [], 'stats': {
@@ -1722,12 +1734,13 @@ def api_separacao_materiais():
     for lc, info in lote_map.items():
         ordens_info = info['ordens']
 
-        # Separa OFs pendentes/separando das ja separadas
-        ofs_pendentes = [o for o in ordens_info if o['separacao_status'] != 'separado']
+        # Conta status das OFs
+        ofs_pendentes = [o for o in ordens_info if o['separacao_status'] in ('pendente', 'separando')]
         ofs_separadas = [o for o in ordens_info if o['separacao_status'] == 'separado']
 
-        # Se todas as OFs do lote ja foram separadas, nao mostra na TV
-        if not ofs_pendentes:
+        # Se TODAS as OFs do lote ja foram entregues, nao mostra (ja excluido pelo SQL)
+        # Se todas separadas mas nenhuma pendente, mostra apenas como informativo
+        if not ofs_pendentes and not ofs_separadas:
             continue
 
         # Pega OFs do ERP para buscar materiais (so das OFs pendentes/separando)
@@ -1757,15 +1770,16 @@ def api_separacao_materiais():
             agrupados[cod]['qtd_necessaria'] += float(m.get('quantidade') or 0)
         comps = sorted(agrupados.values(), key=lambda x: x['codigo'])
 
-        # Status do lote = pior status entre OFs pendentes
-        statuses = [o['separacao_status'] for o in ofs_pendentes]
-        lote_sep_status = 'pendente'
-        if 'separando' in statuses:
-            lote_sep_status = 'separando'
+        # Status do lote: se tem OFs pendentes = separando/separando, se so separadas = separado
+        if ofs_pendentes:
+            statuses = [o['separacao_status'] for o in ofs_pendentes]
+            lote_sep_status = 'separando' if 'separando' in statuses else 'pendente'
+        else:
+            lote_sep_status = 'separado'
 
         # Pior prioridade / atraso
         prio = info['prioridade']
-        max_atraso = max((o.get('dias_atraso') or 0) for o in ofs_pendentes)
+        max_atraso = max((o.get('dias_atraso') or 0) for o in ordens_info)
         for o in ofs_pendentes:
             p = (o.get('prioridade') or 'media').lower()
             if p == 'urgente':
@@ -1796,6 +1810,8 @@ def api_separacao_materiais():
             stats['pendentes'] += 1
         elif lote_sep_status == 'separando':
             stats['separando'] += 1
+        else:
+            stats['separados'] += 1
         if prio in ('urgente', 'alta'):
             stats['urgentes'] += 1
         stats['separados'] += len(ofs_separadas)

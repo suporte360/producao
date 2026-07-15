@@ -549,7 +549,11 @@ function confirmarFinalizar() {
     body: JSON.stringify({codigos: codigos})
   }).then(function(r) { return r.json(); }).then(function(d) {
     if (d.status === 'success') {
-      showToast('OP #' + finOrdemAtual + ' finalizada como SEPARADO!');
+      if (d.todos_separados) {
+        showToast('OP #' + finOrdemAtual + ' finalizada como SEPARADO!');
+      } else {
+        showToast('OP #' + finOrdemAtual + ': ' + d.separados + '/' + d.total + ' separados. Ainda faltam itens.');
+      }
       fecharModalFinalizar();
       carregarSeparacaoOPs();
     } else {
