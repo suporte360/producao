@@ -1145,17 +1145,18 @@ class DatabaseMySQL:
         """Retorna historico de movimentacoes do estoque."""
         sql = """
             SELECT m.*, e.codigo, e.descricao AS material_descricao, e.unidade, e.tipo AS estoque_tipo,
-                   u.nome AS usuario_nome
+                   u.nome AS usuario_nome, op.nome AS operador_nome
             FROM estoque_movimentacao m
             LEFT JOIN estoque_interno e ON m.item_estoque_id = e.id
             LEFT JOIN usuarios u ON m.usuario_id = u.id
+            LEFT JOIN usuarios op ON m.operador_id = op.id
             ORDER BY m.created_at DESC
             LIMIT %s
         """
         return self.query(sql, (limite,))
 
-    def mover_estoque_para_fabrica(self, item_id, quantidade, usuario_id=None):
-        """Move quantidade do almoxarifado para a fabrica."""
+    def mover_estoque_para_fabrica(self, item_id, quantidade, usuario_id=None, operador_id=None):
+        """Move quantidade do almoxarifado para a fabrica. operador_id = quem recebeu na fabrica."""
         item = self.query_one("SELECT * FROM estoque_interno WHERE id = %s AND tipo = 'almoxarifado'", (item_id,))
         if not item or quantidade <= 0:
             return False
@@ -1176,10 +1177,49 @@ class DatabaseMySQL:
         # Registra movimentacao
         fab = self.query_one("SELECT id FROM estoque_interno WHERE codigo = %s AND tipo = 'fabrica'", (item['codigo'],))
         if fab:
-            self.execute("""INSERT INTO estoque_movimentacao (item_estoque_id, tipo, quantidade, usuario_id, observacao)
-                            VALUES (%s, 'transferencia', %s, %s, 'Separado do almoxarifado p/ fabrica')""",
-                         [fab['id'], qtd_mover, usuario_id])
+            obs = 'Separado do almoxarifado p/ fabrica'
+            if operador_id:
+                op = self.query_one("SELECT nome FROM usuarios WHERE id = %s", (operador_id,))
+                if op:
+                    obs = 'Separado p/ ' + op['nome']
+            self.execute("""INSERT INTO estoque_movimentacao (item_estoque_id, tipo, quantidade, usuario_id, operador_id, observacao)
+                            VALUES (%s, 'transferencia', %s, %s, %s, %s)""",
+                         [fab['id'], qtd_mover, usuario_id, operador_id, obs])
         return True
+
+    def migrar_estoque_controlado_por_usuario(self):
+        """Adiciona colunas necessarias para controle por usuario no estoque."""
+        # estoque_interno: flag controlado_por_usuario
+        try:
+            self.execute("SELECT controlado_por_usuario FROM estoque_interno LIMIT 1")
+        except Exception:
+            self.execute("ALTER TABLE estoque_interno ADD COLUMN controlado_por_usuario TINYINT(1) DEFAULT 0")
+        # estoque_movimentacao: operador_id (quem recebeu na fabrica)
+        try:
+            self.execute("SELECT operador_id FROM estoque_movimentacao LIMIT 1")
+        except Exception:
+            self.execute("ALTER TABLE estoque_movimentacao ADD COLUMN operador_id INT NULL")
+
+    def get_estoque_operador(self, operador_id):
+        """Retorna estoque na fabrica por operador (soma de transferencias para ele)."""
+        sql = """
+            SELECT e.codigo, e.descricao, e.unidade,
+                   COALESCE(SUM(m.quantidade), 0) AS qtd_entregue,
+                   e.qtd_atual AS qtd_disponivel_fabrica
+            FROM estoque_movimentacao m
+            JOIN estoque_interno e ON m.item_estoque_id = e.id
+            WHERE m.operador_id = %s AND m.tipo = 'transferencia' AND e.tipo = 'fabrica'
+            GROUP BY e.codigo, e.descricao, e.unidade, e.qtd_atual
+            ORDER BY e.descricao
+        """
+        return self.query(sql, (operador_id,))
+
+    def toggle_controlado_por_usuario(self, item_id, ativo):
+        """Ativa/desativa flag controlado_por_usuario em um item do estoque."""
+        return self.execute(
+            "UPDATE estoque_interno SET controlado_por_usuario = %s, updated_at = NOW() WHERE id = %s",
+            [1 if ativo else 0, item_id]
+        )
 
     def get_lotes_liberados_pendentes(self):
         """OFs liberadas aguardando separacao."""

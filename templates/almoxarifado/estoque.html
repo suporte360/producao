@@ -140,7 +140,7 @@
 
 {# ═══════════════ MODAL SEPARAR P/ FABRICA ═══════════════ #}
 <div id="modalSepararFabrica" class="prodsys-modal-backdrop hidden">
-  <div class="prodsys-modal" style="max-width:400px">
+  <div class="prodsys-modal" style="max-width:440px">
     <div class="flex items-center gap-3 mb-4">
       <div class="w-14 h-14 rounded-2xl bg-indigo-100 flex items-center justify-center flex-shrink-0">
         <i class="fa-solid fa-arrow-right text-indigo-600 text-2xl"></i>
@@ -154,7 +154,15 @@
       <label class="text-xs font-bold text-gray-500 uppercase">Quantidade a separar</label>
       <input id="separarFabricaQtd" type="number" step="0.01" min="0.01" placeholder="Ex: 25"
         class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-lg font-bold focus:ring-2 focus:ring-indigo-500">
-      <p class="text-[11px] text-gray-400 mt-1">Sai do almoxarifado e entra na fabrica.</p>
+    </div>
+    {# ── Dropdown de Operador (so aparece se controlado_por_usuario) ── #}
+    <div id="separarFabricaOperador" class="mt-3 hidden">
+      <label class="text-xs font-bold text-gray-500 uppercase"><i class="fa-solid fa-user-tag mr-1 text-indigo-500"></i>Entregar para</label>
+      <select id="separarFabricaOperadorSelect"
+        class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+        <option value="">Selecione o operador...</option>
+      </select>
+      <p class="text-[11px] text-gray-400 mt-1">Quem vai receber/usa este material.</p>
     </div>
     <div class="flex gap-3 mt-5">
       <button onclick="fecharModal('modalSepararFabrica')" class="btn-touch btn-cancel flex-1">
@@ -206,6 +214,8 @@
 let abaAtual = 'almoxarifado';
 let reporItemId = null;
 let separarFabricaId = null;
+let separarFabricaControlado = false;
+let listaUsuarios = [];
 
 function fecharModal(id) { document.getElementById(id).classList.add('hidden'); }
 
@@ -296,17 +306,24 @@ function renderizarEstoque(itens) {
     const borda = semEstoque ? 'border-red-500' : (baixo ? 'border-amber-400' : 'border-green-400');
     const fundo = semEstoque ? 'bg-red-50/30' : (baixo ? 'bg-amber-50/30' : '');
     const corBarra = semEstoque ? 'bg-red-500' : (baixo ? 'bg-amber-500' : 'bg-green-500');
+    const ctrl = item.controlado_por_usuario ? 1 : 0;
     const desc = (item.descricao || '—').replace(/'/g, "\\'");
     const un = (item.unidade || 'UN');
+    const ctrlBadge = ctrl && abaAtual === 'almoxarifado'
+      ? '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200 ml-1"><i class="fa-solid fa-user-tag"></i>Por Usuario</span>'
+      : '';
 
     let statusTxt, acaoBtn;
     if (abaAtual === 'almoxarifado') {
       statusTxt = semEstoque ? '<span class="badge-priority urgente">SEM ESTOQUE</span>' :
                   (baixo ? '<span class="badge-priority" style="background:#fef3c7;color:#b45309"><i class="fa-solid fa-triangle-exclamation"></i> REPOR</span>' :
                    '<span class="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">OK</span>');
-      acaoBtn = '<button onclick="abrirModalSepararFabrica(' + item.id + ', \'' + desc + '\', ' + qtd + ', \'' + un + '\')"' +
+      acaoBtn = '<button onclick="abrirModalSepararFabrica(' + item.id + ', \'' + desc + '\', ' + qtd + ', \'' + un + '\', ' + ctrl + ')"' +
         ' class="btn-touch w-full text-xs" style="background:#4f46e5;color:#fff;min-height:36px">' +
-        '<i class="fa-solid fa-arrow-right"></i>SEPARAR P/ FABRICA</button>';
+        '<i class="fa-solid fa-arrow-right"></i>SEPARAR P/ FABRICA</button>' +
+        '<button onclick="toggleControladoUsuario(' + item.id + ', ' + (ctrl ? '0' : '1') + ')" class="w-full text-[10px] mt-1.5 py-1 rounded-lg border transition-colors cursor-pointer ' +
+        (ctrl ? 'border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100' : 'border-gray-200 bg-gray-50 text-gray-400 hover:bg-gray-100') + '">' +
+        '<i class="fa-solid fa-user-tag mr-1"></i>' + (ctrl ? 'Desativar controle por usuario' : 'Controlar por usuario') + '</button>';
     } else {
       statusTxt = semEstoque ? '<span class="badge-priority urgente">ACABOU</span>' :
                   (baixo ? '<span class="badge-priority" style="background:#fef3c7;color:#b45309"><i class="fa-solid fa-triangle-exclamation"></i> SEPARAR</span>' :
@@ -328,7 +345,7 @@ function renderizarEstoque(itens) {
           '<div class="min-w-0 flex-1">' +
             '<div class="font-bold text-gray-800 text-sm truncate" title="' + desc + '">' + (item.descricao || '—') + '</div>' +
             '<div class="text-[11px] text-gray-400">' + item.codigo + ' &middot; ' + un + '</div>' +
-          '</div>' + statusTxt +
+          '</div>' + statusTxt + ctrlBadge +
         '</div>' +
         '<div class="flex items-baseline gap-2 mb-2">' +
           '<span class="text-2xl font-black ' + (semEstoque ? 'text-red-600' : (baixo ? 'text-amber-600' : 'text-green-600')) + '">' + qtd.toFixed(2) + '</span>' +
@@ -391,24 +408,42 @@ function salvarItemEstoque() {
   });
 }
 
-function abrirModalSepararFabrica(id, descricao, qtdAtual, unidade) {
+function abrirModalSepararFabrica(id, descricao, qtdAtual, unidade, controlado) {
   separarFabricaId = id;
+  separarFabricaControlado = !!controlado;
   document.getElementById('separarFabricaInfo').textContent = descricao + ' — Disponivel: ' + qtdAtual.toFixed(2) + ' ' + unidade;
   document.getElementById('separarFabricaQtd').value = '';
+  var opDiv = document.getElementById('separarFabricaOperador');
+  var opSel = document.getElementById('separarFabricaOperadorSelect');
+  if (separarFabricaControlado && listaUsuarios.length > 0) {
+    opDiv.classList.remove('hidden');
+    opSel.value = '';
+  } else {
+    opDiv.classList.add('hidden');
+  }
   document.getElementById('modalSepararFabrica').classList.remove('hidden');
-  setTimeout(() => document.getElementById('separarFabricaQtd').focus(), 100);
+  setTimeout(function() { document.getElementById('separarFabricaQtd').focus(); }, 100);
 }
 
 function confirmarSepararFabrica() {
-  const qtd = parseFloat(document.getElementById('separarFabricaQtd').value);
+  var qtd = parseFloat(document.getElementById('separarFabricaQtd').value);
   if (isNaN(qtd) || qtd <= 0) { showToast('Quantidade invalida', 'error'); return; }
+  if (separarFabricaControlado) {
+    var opId = document.getElementById('separarFabricaOperadorSelect').value;
+    if (!opId) { showToast('Selecione o operador', 'error'); return; }
+  }
+  var body = {qtd: qtd};
+  if (separarFabricaControlado) {
+    body.operador_id = document.getElementById('separarFabricaOperadorSelect').value;
+  }
   fetch('/api/estoque/' + separarFabricaId + '/separar-fabrica', {
-    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({qtd: qtd})
-  }).then(r => r.json()).then(d => {
+    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
+  }).then(function(r) { return r.json(); }).then(function(d) {
     if (d.status === 'success') {
       showToast('Material separado para fabrica!');
       fecharModal('modalSepararFabrica');
       carregarEstoque(document.getElementById('filtroEstoque').value);
+      carregarMovimentacao();
     } else showToast('Erro: ' + (d.message || ''), 'error');
   });
 }
@@ -435,6 +470,34 @@ function confirmarReposicao() {
   });
 }
 
+// ════════════════ CONTROLE POR USUARIO ════════════════
+function carregarUsuarios() {
+  fetch('/api/usuarios').then(function(r) { return r.json(); }).then(function(d) {
+    if (d.status === 'success') {
+      listaUsuarios = d.usuarios || [];
+      var sel = document.getElementById('separarFabricaOperadorSelect');
+      var html = '<option value="">Selecione o operador...</option>';
+      for (var i = 0; i < listaUsuarios.length; i++) {
+        var u = listaUsuarios[i];
+        var dept = u.nome_departamento ? ' (' + u.nome_departamento + ')' : '';
+        html += '<option value="' + u.id + '">' + u.nome + dept + ' [' + u.role + ']</option>';
+      }
+      sel.innerHTML = html;
+    }
+  });
+}
+
+function toggleControladoUsuario(item_id, ativo) {
+  fetch('/api/estoque/' + item_id + '/toggle-usuario', {
+    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ativo: !!ativo})
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.status === 'success') {
+      showToast(ativo ? 'Controle por usuario ATIVADO' : 'Controle por usuario desativado');
+      carregarEstoque(document.getElementById('filtroEstoque').value);
+    } else showToast('Erro', 'error');
+  });
+}
+
 // ════════════════ MOVIMENTACAO ════════════════
 function carregarMovimentacao() {
   const el = document.getElementById('listaMovimentacao');
@@ -450,6 +513,7 @@ function carregarMovimentacao() {
         '<th class="px-4 py-2.5 text-left">Material</th>' +
         '<th class="px-4 py-2.5 text-center">Tipo</th>' +
         '<th class="px-4 py-2.5 text-center">Qtd</th>' +
+        '<th class="px-4 py-2.5 text-left">Operador</th>' +
         '<th class="px-4 py-2.5 text-left">OP</th>' +
       '</tr></thead><tbody class="divide-y divide-gray-50">' +
       d.movimentacoes.map(m => {
@@ -466,6 +530,7 @@ function carregarMovimentacao() {
             '<div class="text-[11px] text-gray-400">' + (m.codigo || '') + '</div></td>' +
           '<td class="px-4 py-2.5 text-center">' + tipoHtml + '</td>' +
           '<td class="px-4 py-2.5 text-center font-bold">' + parseFloat(m.quantidade||0).toFixed(2) + ' ' + (m.unidade||'') + '</td>' +
+          '<td class="px-4 py-2.5 text-xs text-gray-600">' + (m.operador_nome || '—') + '</td>' +
           '<td class="px-4 py-2.5 text-xs text-gray-500">' + (m.ordem_relacionada ? 'OF #'+m.ordem_relacionada : '—') + '</td>' +
         '</tr>';
       }).join('') +
@@ -485,7 +550,8 @@ document.getElementById('separarFabricaQtd').addEventListener('keydown', e => { 
 document.getElementById('estoqueCodigo').addEventListener('keydown', e => { if (e.key === 'Tab') buscarProdutoERP(e.target.value); });
 
 // Carregar ao abrir
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', function() {
+  carregarUsuarios();
   carregarEstoque('');
   carregarMovimentacao();
 });

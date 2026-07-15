@@ -1318,6 +1318,23 @@ def api_estoque_atualizar(item_id):
     db.atualizar_estoque(item_id, dados)
     return jsonify({'status': 'success'})
 
+@app.route('/api/estoque/<int:item_id>/toggle-usuario', methods=['POST'])
+@login_required
+@role_required('admin', 'almoxarifado')
+def api_estoque_toggle_usuario(item_id):
+    """Ativa/desativa controle por usuario em um item de estoque."""
+    dados = request.json or {}
+    ativo = dados.get('ativo', False)
+    db.toggle_controlado_por_usuario(item_id, ativo)
+    return jsonify({'status': 'success'})
+
+@app.route('/api/usuarios', methods=['GET'])
+@login_required
+def api_listar_usuarios():
+    """Retorna lista de usuarios ativos para dropdowns."""
+    usuarios = db.listar_usuarios()
+    return jsonify({'status': 'success', 'usuarios': usuarios})
+
 @app.route('/api/estoque/movimentacao', methods=['GET'])
 @login_required
 @role_required('admin', 'gerente', 'almoxarifado', 'diretor')
@@ -1404,12 +1421,17 @@ def api_materiais_pendentes():
 def api_separar_fabrica(item_id):
     dados = request.json or {}
     qtd = float(dados.get('qtd', 0))
+    operador_id = dados.get('operador_id')
+    if operador_id:
+        operador_id = int(operador_id)
+    else:
+        operador_id = None
     if qtd <= 0:
         return jsonify({'status': 'error', 'message': 'Quantidade invalida'}), 400
-    ok = db.mover_estoque_para_fabrica(item_id, qtd, session.get('usuario_id'))
+    ok = db.mover_estoque_para_fabrica(item_id, qtd, session.get('usuario_id'), operador_id=operador_id)
     if ok:
         db.add_log(session.get('usuario_id'), 'separar_fabrica',
-                   f'Item #{item_id} separado para fabrica', 'estoque_interno', item_id)
+                   f'Item #{item_id} separado para fabrica' + (f' (operador #{operador_id})' if operador_id else ''), 'estoque_interno', item_id)
     return jsonify({'status': 'success' if ok else 'error'})
 
 @app.route('/api/lotes/<int:ordem>/separando', methods=['POST'])
@@ -1915,4 +1937,5 @@ def server_error(e):
 # =============================================
 
 if __name__ == '__main__':
+    db.migrar_estoque_controlado_por_usuario()
     app.run(host='0.0.0.0', port=5002, debug=Config.DEBUG)
