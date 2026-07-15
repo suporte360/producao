@@ -1,0 +1,1018 @@
+     1→#!/usr/bin/env python3
+     2→"""
+     3→Totem Generico por Setor - App Flask (porta configuravel)
+     4→Dados do MariaDB (sistema :5002) - PCP classifica/libera, totem apenas consulta.
+     5→Auto-login, 4 telas touch:
+     6→  S0: Dashboard KPIs + lotes ativos + producoes
+     7→  S1: Lista de lotes liberados/em producao
+     8→  S2: Pecas (OFs filhas) de um lote com selecao por setor
+     9→  S3: Selecao de operador
+    10→
+    11→Uso:
+    12→  SETOR=PINTURA PORT=5004 python totem_setor.py
+    13→  SETOR=MONTAGEM PORT=5005 python totem_setor.py
+    14→  SETOR=EMBALAGEM PORT=5006 python totem_setor.py
+    15→  # ou argumentos de linha de comando:
+    16→  python totem_setor.py PINTURA 5004
+    17→"""
+    18→
+    19→import os
+    20→import sys
+    21→import re
+    22→import json
+    23→import logging
+    24→import time
+    25→from decimal import Decimal
+    26→from flask import Flask, jsonify, request, render_template
+    27→import pymysql
+    28→import psycopg2
+    29→from pymysql.cursors import DictCursor
+    30→
+    31→# ── Setor e Porta (env vars ou CLI) ─────────────────────────────────
+    32→if len(sys.argv) >= 3:
+    33→    SETOR = sys.argv[1].upper().strip()
+    34→    PORT = int(sys.argv[2])
+    35→else:
+    36→    SETOR = os.environ.get('SETOR', 'PINTURA').upper().strip()
+    37→    PORT = int(os.environ.get('PORT', '5004'))
+    38→
+    39→VALID_SETORES = ('PINTURA', 'MONTAGEM', 'EMBALAGEM')
+    40→if SETOR not in VALID_SETORES:
+    41→    print('[ERRO] SETOR invalido: %s (esperado: %s)' % (SETOR, ', '.join(VALID_SETORES)))
+    42→    sys.exit(1)
+    43→
+    44→# Cor de destaque por setor
+    45→SETOR_CORES = {
+    46→    'PINTURA':   '#e040fb',
+    47→    'MONTAGEM':  '#42a5f5',
+    48→    'EMBALAGEM': '#66bb6a',
+    49→}
+    50→SETOR_COR = SETOR_CORES.get(SETOR, '#42a5f5')
+    51→
+    52→# ── Config ────────────────────────────────────────────────────────────
+    53→MYSQL_HOST = 'localhost'
+    54→MYSQL_PORT = 3306
+    55→MYSQL_DB = 'producao_db'
+    56→MYSQL_USER = 'producao'
+    57→MYSQL_PASS = 'senha123'
+    58→
+    59→# PostgreSQL config (same as config/config.py)
+    60→PG_HOST = os.environ.get('PG_HOST', '192.168.1.17')
+    61→PG_PORT = int(os.environ.get('PG_PORT', '5432'))
+    62→PG_DB   = os.environ.get('PG_DATABASE', 'salutem')
+    63→PG_USER = os.environ.get('PG_USERNAME', 'postgres')
+    64→PG_PASS = os.environ.get('PG_PASSWORD', 'postgres')
+    65→
+    66→# In-memory cache for product names (loaded from PostgreSQL produto.pronome)
+    67→_produto_cache = {}
+    68→
+    69→# Set of lote_codigo ativos (loaded from MariaDB, no ERP needed)
+    70→_lotes_ativos = set()
+    71→
+    72→# Cada instancia do totem trata apenas do seu proprio setor
+    73→SETORES_TOTEM = (SETOR,)
+    74→
+    75→# Mapeamento de setores ERP -> Sistema Local (mesmo do app.py)
+    76→MAPEAMENTO_SETORES = {
+    77→    'ALMOXARIFADO': 'ALMOXARIFADO',
+    78→    'SERRALHERIA':  'CORTE',
+    79→    'FUNILARIA':    'FUNILARIA',
+    80→    'PINTURA':      'PINTURA',
+    81→    'POLIMENTO':    'ACABAMENTO',
+    82→    'MARCENARIA':   'MARCENARIA',
+    83→    'COSTURA':      'COSTURA',
+    84→    'TAPECARIA':    'TAPECARIA',
+    85→    'MONTAGEM':     'MONTAGEM',
+    86→    'EMBALAGEM':    'EMBALAGEM',
+    87→    'USINAGEM':     'USINAGEM',
+    88→    'EXPEDIÇÃO':    'EXPEDIÇÃO',
+    89→    'EXPEDICAO':    'EXPEDIÇÃO',
+    90→}
+    91→
+    92→app = Flask(__name__, template_folder='templates/serralheria', static_folder='static')
+    93→app.logger.setLevel(logging.INFO)
+    94→_log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'totem_%d.log' % PORT)
+    95→_fh = logging.FileHandler(_log_path)
+    96→_fh.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
+    97→app.logger.addHandler(_fh)
+    98→
+    99→# ── MariaDB helpers ──────────────────────────────────────────────────
+   100→
+   101→def _conn():
+   102→    return pymysql.connect(
+   103→        host=MYSQL_HOST, port=MYSQL_PORT, db=MYSQL_DB,
+   104→        user=MYSQL_USER, password=MYSQL_PASS,
+   105→        charset='utf8mb4', cursorclass=DictCursor,
+   106→        connect_timeout=10, autocommit=True
+   107→    )
+   108→
+   109→def db_query(sql, params=None):
+   110→    conn = _conn()
+   111→    try:
+   112→        with conn.cursor() as cur:
+   113→            cur.execute(sql, params or ())
+   114→            return cur.fetchall()
+   115→    finally:
+   116→        conn.close()
+   117→
+   118→def db_query_one(sql, params=None):
+   119→    conn = _conn()
+   120→    try:
+   121→        with conn.cursor() as cur:
+   122→            cur.execute(sql, params or ())
+   123→            return cur.fetchone()
+   124→    finally:
+   125→        conn.close()
+   126→
+   127→def db_execute(sql, params=None):
+   128→    conn = _conn()
+   129→    try:
+   130→        with conn.cursor() as cur:
+   131→            cur.execute(sql, params or ())
+   132→            return cur.lastrowid or cur.rowcount
+   133→    finally:
+   134→        conn.close()
+   135→
+   136→# ── Helpers ───────────────────────────────────────────────────────────
+   137→
+   138→def _int(val):
+   139→    """Safely convert to int (handles Decimal, None, str)."""
+   140→    if val is None:
+   141→        return 0
+   142→    return int(float(val))
+   143→
+   144→def _str(val):
+   145→    """Safely convert to stripped string."""
+   146→    if val is None:
+   147→        return ''
+   148→    return str(val).strip()
+   149→
+   150→def _is_sob_medida(codigo):
+   151→    """Verifica se o produto codigo termina com -X (sob medida)."""
+   152→    if not codigo:
+   153→        return False
+   154→    c = str(codigo).strip().upper()
+   155→    return c.endswith('-X')
+   156→
+   157→def _extract_s_code(codigo_produto):
+   158→    """Extract S-XXXX from strings like 'PRODUCAO DE S-0240'."""
+   159→    if not codigo_produto:
+   160→        return ''
+   161→    m = re.search(r'S-\d+', str(codigo_produto))
+   162→    return m.group(0) if m else str(codigo_produto).strip()
+   163→
+   164→
+   165→# ── Produto name cache (from MariaDB) ──────────────────────────────
+   166→
+   167→def _get_produto_nome(codigo_produto):
+   168→    """Get real product name from in-memory cache (PostgreSQL produto.pronome)."""
+   169→    if not codigo_produto:
+   170→        return ''
+   171→    key = str(codigo_produto).strip()
+   172→    return _produto_cache.get(key, '')
+   173→
+   174→
+   175→def _pg_query_one(sql, params=None):
+   176→    """Query PostgreSQL and return one row as dict."""
+   177→    conn = psycopg2.connect(host=PG_HOST, port=PG_PORT, dbname=PG_DB,
+   178→                            user=PG_USER, password=PG_PASS, connect_timeout=5)
+   179→    conn.autocommit = True
+   180→    try:
+   181→        with conn.cursor() as cur:
+   182→            cur.execute(sql, params or ())
+   183→            cols = [d[0] for d in cur.description] if cur.description else []
+   184→            row = cur.fetchone()
+   185→            if row:
+   186→                return dict(zip(cols, row))
+   187→            return None
+   188→    finally:
+   189→        conn.close()
+   190→
+   191→
+   192→def _load_produto_cache():
+   193→    """Load product names from PostgreSQL produto.pronome + MariaDB fallback."""
+   194→    global _produto_cache
+   195→    _produto_cache = {}
+   196→    # 1) PostgreSQL: tabela produto (pronome real)
+   197→    try:
+   198→        conn = psycopg2.connect(host=PG_HOST, port=PG_PORT, dbname=PG_DB,
+   199→                                user=PG_USER, password=PG_PASS, connect_timeout=5)
+   200→        conn.autocommit = True
+   201→        try:
+   202→            with conn.cursor() as cur:
+   203→                cur.execute("SELECT produto, pronome FROM public.produto WHERE produto IS NOT NULL AND pronome IS NOT NULL")
+   204→                cols = [d[0] for d in cur.description]
+   205→                for row in cur.fetchall():
+   206→                    r = dict(zip(cols, row))
+   207→                    cod = str(r.get('produto', '')).strip()
+   208→                    nome = str(r.get('pronome', '')).strip()
+   209→                    if cod and nome:
+   210→                        _produto_cache[cod] = nome[:200]
+   211→                print('[OK] Cache de produtos (PostgreSQL): %d' % len(_produto_cache))
+   212→        finally:
+   213→            conn.close()
+   214→    except Exception as e:
+   215→        print('[WARN] Cache PostgreSQL falhou: %s' % e)
+   216→    # 2) Fallback MariaDB: lotes_producao (preenche codigos que o PG nao tem)
+   217→    try:
+   218→        rows = db_query(
+   219→            "SELECT codigo_produto, descricao_produto FROM lotes_producao "
+   220→            "WHERE codigo_produto IS NOT NULL AND descricao_produto IS NOT NULL"
+   221→        )
+   222→        added = 0
+   223→        for r in rows:
+   224→            cod = str(r.get('codigo_produto', '')).strip()
+   225→            nome = str(r.get('descricao_produto', '')).strip()
+   226→            if cod and cod not in _produto_cache and nome:
+   227→                _produto_cache[cod] = nome[:200]
+   228→                added += 1
+   229→        print('[OK] Cache produtos (MariaDB fallback): +%d' % added)
+   230→    except Exception as e:
+   231→        print('[WARN] Cache MariaDB falhou: %s' % e)
+   232→
+   233→
+   234→# ── Lotes ativos (from MariaDB, no ERP) ────────────────────────────
+   235→
+   236→def _refresh_lotes_ativos():
+   237→    """Carrega lotes ativos do MariaDB (liberado, em_producao, pausado)."""
+   238→    global _lotes_ativos
+   239→    try:
+   240→        rows = db_query(
+   241→            "SELECT DISTINCT lote_codigo FROM lotes_producao "
+   242→            "WHERE status IN ('liberado','em_producao','pausado')"
+   243→        )
+   244→        _lotes_ativos = set()
+   245→        for r in rows:
+   246→            if r.get('lote_codigo'):
+   247→                _lotes_ativos.add(str(r['lote_codigo']).strip())
+   248→        print('[OK] Lotes ativos: %d (MariaDB)' % len(_lotes_ativos))
+   249→    except Exception as e:
+   250→        print('[WARN] Lotes ativos falhou: %s' % e)
+   251→
+   252→
+   253→def _build_lotes_filter():
+   254→    """Retorna (where_clause, join_clause, params) para filtrar lotes ativos."""
+   255→    if _lotes_ativos:
+   256→        ph = ','.join(['%s'] * len(_lotes_ativos))
+   257→        where = 'WHERE lote_codigo IN (' + ph + ')'
+   258→        join = ' AND lp.lote_codigo IN (' + ph + ')'
+   259→        params = tuple(_lotes_ativos)
+   260→    else:
+   261→        where = 'WHERE 1=0'
+   262→        join = ' AND 1=0'
+   263→        params = ()
+   264→    return where, join, params
+   265→
+   266→
+   267→def init_db():
+   268→    """Verifica tabelas serralheria_producao e serralheria_usuarios existem.
+   269→    NAO cria tabelas, NAO faz seed de usuarios (admin gerencia via 5002).
+   270→    Apenas carrega caches."""
+   271→    # Verifica serralheria_usuarios existe
+   272→    try:
+   273→        db_query_one("SELECT 1 FROM serralheria_usuarios LIMIT 1")
+   274→        print('[OK] Tabela serralheria_usuarios verificada')
+   275→    except Exception as e:
+   276→        print('[ERRO] Tabela serralheria_usuarios nao encontrada: %s' % e)
+   277→
+   278→    # Verifica serralheria_producao existe
+   279→    try:
+   280→        db_query_one("SELECT 1 FROM serralheria_producao LIMIT 1")
+   281→        print('[OK] Tabela serralheria_producao verificada')
+   282→    except Exception as e:
+   283→        print('[ERRO] Tabela serralheria_producao nao encontrada: %s' % e)
+   284→
+   285→    _load_produto_cache()
+   286→    _refresh_lotes_ativos()
+   287→    print('[OK] Totem %s inicializado (tabelas compartilhadas, cache carregado)' % SETOR)
+   288→
+   289→
+   290→# ── Rotas ────────────────────────────────────────────────────────────
+   291→
+   292→@app.route('/')
+   293→def index():
+   294→    return render_template('dashboard.html',
+   295→                           setor_nome=SETOR,
+   296→                           setor_cor=SETOR_COR)
+   297→
+   298→
+   299→@app.route('/api/kpis')
+   300→def api_kpis():
+   301→    """KPIs do totem: lotes ativos, pecas, total qtd, producoes."""
+   302→    try:
+   303→        lwhere, ljoin, lparams = _build_lotes_filter()
+   304→
+   305→        total_lotes = _int(db_query_one(
+   306→            'SELECT COUNT(*) as t FROM lotes_producao ' + lwhere,
+   307→            lparams
+   308→        )['t'])
+   309→
+   310→        total_pecas = _int(db_query_one(
+   311→            "SELECT COUNT(*) as t "
+   312→            "FROM ordens_fabricacao of2 "
+   313→            "INNER JOIN lotes_producao lp ON of2.lote_ordem = lp.ordem "
+   314→            "WHERE of2.tipo = 'filho' " + ljoin,
+   315→            lparams
+   316→        )['t'])
+   317→
+   318→        total_qtd = _int(db_query_one(
+   319→            'SELECT COALESCE(SUM(qtde_ordem), 0) as t FROM lotes_producao ' + lwhere,
+   320→            lparams
+   321→        )['t'])
+   322→
+   323→        em_andamento = _int(db_query_one(
+   324→            "SELECT COUNT(*) as t FROM serralheria_producao WHERE status = 'em_producao' AND setor IN %s",
+   325→            (SETORES_TOTEM,)
+   326→        )['t'])
+   327→
+   328→        hoje = _int(db_query_one(
+   329→            "SELECT COUNT(*) as t FROM serralheria_producao WHERE DATE(data_inicio) = CURDATE() AND setor IN %s",
+   330→            (SETORES_TOTEM,)
+   331→        )['t'])
+   332→
+   333→        return jsonify({
+   334→            'total_lotes': total_lotes,
+   335→            'total_pecas': total_pecas,
+   336→            'total_qtd': total_qtd,
+   337→            'em_andamento': em_andamento,
+   338→            'hoje': hoje
+   339→        })
+   340→    except Exception as e:
+   341→        app.logger.error('Erro KPIs: %s', e)
+   342→        return jsonify({'error': str(e)}), 500
+   343→
+   344→
+   345→@app.route('/api/dashboard')
+   346→def api_dashboard():
+   347→    """Dados completos para dashboard: KPIs + producoes ativas + lotes."""
+   348→    try:
+   349→        lwhere, ljoin, lparams = _build_lotes_filter()
+   350→
+   351→        # ── KPIs ──
+   352→        total_lotes = _int(db_query_one(
+   353→            'SELECT COUNT(*) as t FROM lotes_producao ' + lwhere,
+   354→            lparams
+   355→        )['t'])
+   356→
+   357→        total_pecas = _int(db_query_one(
+   358→            "SELECT COUNT(*) as t "
+   359→            "FROM ordens_fabricacao of2 "
+   360→            "INNER JOIN lotes_producao lp ON of2.lote_ordem = lp.ordem "
+   361→            "WHERE of2.tipo = 'filho' " + ljoin,
+   362→            lparams
+   363→        )['t'])
+   364→
+   365→        total_qtd = _int(db_query_one(
+   366→            'SELECT COALESCE(SUM(qtde_ordem), 0) as t FROM lotes_producao ' + lwhere,
+   367→            lparams
+   368→        )['t'])
+   369→
+   370→        em_andamento = _int(db_query_one(
+   371→            "SELECT COUNT(*) as t FROM serralheria_producao WHERE status = 'em_producao' AND setor IN %s",
+   372→            (SETORES_TOTEM,)
+   373→        )['t'])
+   374→
+   375→        hoje = _int(db_query_one(
+   376→            "SELECT COUNT(*) as t FROM serralheria_producao WHERE DATE(data_inicio) = CURDATE() AND setor IN %s",
+   377→            (SETORES_TOTEM,)
+   378→        )['t'])
+   379→
+   380→        finalizadas_hoje = _int(db_query_one(
+   381→            "SELECT COUNT(*) as t FROM serralheria_producao "
+   382→            "WHERE status = 'finalizado' AND DATE(data_fim) = CURDATE() AND setor IN %s",
+   383→            (SETORES_TOTEM,)
+   384→        )['t'])
+   385→
+   386→        # ── Producoes ativas com detalhes ──
+   387→        ativos = db_query("""
+   388→            SELECT sp.id, sp.lote, sp.produto, sp.usuario_nome, sp.data_inicio, sp.setor,
+   389→                   sp.qtd_produzida, of2.qtde_ordem
+   390→            FROM serralheria_producao sp
+   391→            LEFT JOIN ordens_fabricacao of2 ON sp.of_numero = of2.of_numero
+   392→            WHERE sp.status = 'em_producao' AND sp.setor IN %s
+   393→            ORDER BY sp.data_inicio DESC
+   394→        """, (SETORES_TOTEM,))
+   395→        for a in ativos:
+   396→            r = db_query_one(
+   397→                "SELECT descricao_produto FROM lotes_producao WHERE lote_codigo = %s",
+   398→                (a['lote'],)
+   399→            )
+   400→            a['lote_desc'] = _str(r['descricao_produto']) if r else ''
+   401→
+   402→            # produto = codigo_produto (ex: PP-0021), busca nome real
+   403→            nome_real = _get_produto_nome(a['produto'])
+   404→            if not nome_real and a['produto']:
+   405→                # Fallback: consulta direta ao PG se cache falhou
+   406→                try:
+   407→                    pg_row = _pg_query_one(
+   408→                        "SELECT pronome FROM public.produto WHERE TRIM(produto) = %s LIMIT 1",
+   409→                        (a['produto'].strip(),)
+   410→                    )
+   411→                    if pg_row and pg_row.get('pronome'):
+   412→                        nome_real = str(pg_row['pronome']).strip()[:200]
+   413→                        _produto_cache[a['produto'].strip()] = nome_real
+   414→                except Exception:
+   415→                    pass
+   416→            if not nome_real:
+   417→                # Fallback MariaDB: descricao_produto da OF filha
+   418→                r = db_query_one(
+   419→                    "SELECT descricao_produto FROM ordens_fabricacao WHERE codigo_produto = %s AND tipo = 'filho' LIMIT 1",
+   420→                    (a['produto'],)
+   421→                )
+   422→                nome_real = _str(r['descricao_produto']) if r else ''
+   423→            a['produto_nome'] = nome_real if nome_real else _str(a['produto'])
+   424→
+   425→            r = db_query_one(
+   426→                "SELECT COUNT(*) as t FROM serralheria_producao "
+   427→                "WHERE lote = %s AND usuario_nome = %s AND status = 'em_producao'",
+   428→                (a['lote'], a['usuario_nome'])
+   429→            )
+   430→            a['pecas_count'] = _int(r['t']) if r else 0
+   431→
+   432→        # ── Lotes ativos com detalhes ──
+   433→        lotes_raw = []
+   434→        if _lotes_ativos:
+   435→            ph = ','.join(['%s'] * len(_lotes_ativos))
+   436→            lotes_raw = db_query(
+   437→                "SELECT ordem, lote_codigo, descricao_produto, status, "
+   438→                "codigo_produto, qtde_ordem "
+   439→                "FROM lotes_producao WHERE lote_codigo IN (" + ph + ") "
+   440→                "ORDER BY lote_codigo DESC",
+   441→                tuple(_lotes_ativos)
+   442→            )
+   443→
+   444→        lotes = []
+   445→        for lp in lotes_raw:
+   446→            ofs = db_query_one("""
+   447→                SELECT COUNT(*) as qtd_pecas, COALESCE(SUM(qtde_ordem), 0) as qtd_total
+   448→                FROM ordens_fabricacao
+   449→                WHERE lote_ordem = %s AND tipo = 'filho'
+   450→            """, (lp['ordem'],))
+   451→
+   452→            pai = db_query_one("""
+   453→                SELECT codigo_produto, descricao_produto, qtde_ordem
+   454→                FROM ordens_fabricacao
+   455→                WHERE lote_ordem = %s AND tipo = 'pai'
+   456→                LIMIT 1
+   457→            """, (lp['ordem'],))
+   458→            if not pai:
+   459→                pai = db_query_one("""
+   460→                    SELECT codigo_produto, descricao_produto, qtde_ordem
+   461→                    FROM ordens_fabricacao WHERE lote_ordem = %s LIMIT 1
+   462→                """, (lp['ordem'],))
+   463→
+   464→            s_code = _extract_s_code(lp['codigo_produto'])
+   465→
+   466→            # Busca pecas filhas para exibir codigos + nomes reais
+   467→            filhas = db_query(
+   468→                "SELECT codigo_produto FROM ordens_fabricacao "
+   469→                "WHERE lote_ordem = %s AND tipo = 'filho' ORDER BY codigo_produto",
+   470→                (lp['ordem'],)
+   471→            )
+   472→            filhas_codigos = [_str(f['codigo_produto']) for f in filhas if _str(f['codigo_produto'])]
+   473→
+   474→            if pai:
+   475→                qtd_final = _int(pai['qtde_ordem'])
+   476→                produto_final = _str(pai['codigo_produto']) or s_code
+   477→                produto_nome = _get_produto_nome(produto_final) or _str(lp['descricao_produto'])
+   478→            else:
+   479→                qtd_final = _int(lp['qtde_ordem'])
+   480→                produto_final = s_code
+   481→                produto_nome = _str(lp['descricao_produto'])
+   482→
+   483→            # Texto com codigos das pecas e nome real da primeira
+   484→            pecas_texto = ', '.join(filhas_codigos[:4])
+   485→            if len(filhas_codigos) > 4:
+   486→                pecas_texto += '... (+' + str(len(filhas_codigos) - 4) + ')'
+   487→            peca_nome1 = _get_produto_nome(filhas_codigos[0]) if filhas_codigos else ''
+   488→
+   489→            prod = db_query_one(
+   490→                "SELECT status, usuario_nome FROM serralheria_producao "
+   491→                "WHERE lote = %s AND status = 'em_producao' AND setor = %s LIMIT 1",
+   492→                (lp['lote_codigo'], SETOR)
+   493→            )
+   494→
+   495→            lotes.append({
+   496→                'lotcod': lp['lote_codigo'],
+   497→                'ordem': lp['ordem'],
+   498→                'descricao': _str(lp['descricao_produto'])[:49],
+   499→                'status': lp['status'],
+   500→                'produto_final': produto_final,
+   501→                'produto_nome': produto_nome,
+   502→                'pecas_codigos': pecas_texto,
+   503→                'peca_nome1': peca_nome1,
+   504→                'qtd_produto_final': qtd_final,
+   505→                'qtd_pecas': _int(ofs['qtd_pecas']) if ofs else 0,
+   506→                'qtd_total': _int(ofs['qtd_total']) if ofs else 0,
+   507→                'status_producao': prod['status'] if prod else None,
+   508→                'operador': prod['usuario_nome'] if prod else None,
+   509→                'sob_medida': _is_sob_medida(produto_final) or _is_sob_medida(lp.get('lote_codigo')),
+   510→            })
+   511→
+   512→        return jsonify({
+   513→            'total_lotes': total_lotes,
+   514→            'total_pecas': total_pecas,
+   515→            'total_qtd': total_qtd,
+   516→            'em_andamento': em_andamento,
+   517→            'hoje': hoje,
+   518→            'finalizadas_hoje': finalizadas_hoje,
+   519→            'ativos': ativos,
+   520→            'lotes': lotes,
+   521→        })
+   522→    except Exception as e:
+   523→        app.logger.error('Erro Dashboard: %s', e)
+   524→        return jsonify({'error': str(e)}), 500
+   525→
+   526→
+   527→@app.route('/api/lotes')
+   528→def api_lotes():
+   529→    """Lotes liberados/em producao com detalhes das OFs filhas."""
+   530→    try:
+   531→        lotes_raw = []
+   532→        if _lotes_ativos:
+   533→            ph = ','.join(['%s'] * len(_lotes_ativos))
+   534→            lotes_raw = db_query(
+   535→                "SELECT ordem, lote_codigo, descricao_produto, status, "
+   536→                "codigo_produto, qtde_ordem "
+   537→                "FROM lotes_producao WHERE lote_codigo IN (" + ph + ") "
+   538→                "ORDER BY lote_codigo DESC",
+   539→                tuple(_lotes_ativos)
+   540→            )
+   541→
+   542→        lotes = []
+   543→        for lp in lotes_raw:
+   544→            ofs = db_query_one("""
+   545→                SELECT COUNT(*) as qtd_pecas, COALESCE(SUM(qtde_ordem), 0) as qtd_total
+   546→                FROM ordens_fabricacao WHERE lote_ordem = %s AND tipo = 'filho'
+   547→            """, (lp['ordem'],))
+   548→
+   549→            pai = db_query_one("""
+   550→                SELECT codigo_produto, descricao_produto, qtde_ordem
+   551→                FROM ordens_fabricacao WHERE lote_ordem = %s AND tipo = 'pai' LIMIT 1
+   552→            """, (lp['ordem'],))
+   553→            if not pai:
+   554→                pai = db_query_one("""
+   555→                    SELECT codigo_produto, descricao_produto, qtde_ordem
+   556→                    FROM ordens_fabricacao WHERE lote_ordem = %s LIMIT 1
+   557→                """, (lp['ordem'],))
+   558→
+   559→            s_code = _extract_s_code(lp['codigo_produto'])
+   560→
+   561→            # Busca pecas filhas
+   562→            filhas = db_query(
+   563→                "SELECT codigo_produto FROM ordens_fabricacao "
+   564→                "WHERE lote_ordem = %s AND tipo = 'filho' ORDER BY codigo_produto",
+   565→                (lp['ordem'],)
+   566→            )
+   567→            filhas_codigos = [_str(f['codigo_produto']) for f in filhas if _str(f['codigo_produto'])]
+   568→
+   569→            if pai:
+   570→                qtd_final = _int(pai['qtde_ordem'])
+   571→                produto_final = _str(pai['codigo_produto']) or s_code
+   572→                produto_nome = _get_produto_nome(produto_final) or _str(lp['descricao_produto'])
+   573→            else:
+   574→                qtd_final = _int(lp['qtde_ordem'])
+   575→                produto_final = s_code
+   576→                produto_nome = _str(lp['descricao_produto'])
+   577→
+   578→            pecas_texto = ', '.join(filhas_codigos[:4])
+   579→            if len(filhas_codigos) > 4:
+   580→                pecas_texto += '... (+' + str(len(filhas_codigos) - 4) + ')'
+   581→            peca_nome1 = _get_produto_nome(filhas_codigos[0]) if filhas_codigos else ''
+   582→
+   583→            prod = db_query_one(
+   584→                "SELECT status, usuario_nome FROM serralheria_producao "
+   585→                "WHERE lote = %s AND status = 'em_producao' AND setor = %s LIMIT 1",
+   586→                (lp['lote_codigo'], SETOR)
+   587→            )
+   588→
+   589→            lotes.append({
+   590→                'lotcod': lp['lote_codigo'],
+   591→                'ordem': lp['ordem'],
+   592→                'descricao': _str(lp['descricao_produto'])[:49],
+   593→                'status': lp['status'],
+   594→                'produto_final': produto_final,
+   595→                'produto_nome': produto_nome,
+   596→                'pecas_codigos': pecas_texto,
+   597→                'peca_nome1': peca_nome1,
+   598→                'qtd_produto_final': qtd_final,
+   599→                'qtd_pecas': _int(ofs['qtd_pecas']) if ofs else 0,
+   600→                'qtd_total': _int(ofs['qtd_total']) if ofs else 0,
+   601→                'status_producao': prod['status'] if prod else None,
+   602→                'operador': prod['usuario_nome'] if prod else None,
+   603→                'sob_medida': _is_sob_medida(produto_final) or _is_sob_medida(lp.get('lote_codigo')),
+   604→            })
+   605→
+   606→        return jsonify({'lotes': lotes})
+   607→    except Exception as e:
+   608→        app.logger.error('Erro lotes: %s', e)
+   609→        return jsonify({'error': str(e)}), 500
+   610→
+   611→
+   612→@app.route('/api/lotes/<lotcod>/pecas')
+   613→def api_pecas(lotcod):
+   614→    """Pecas (OFs filhas) de um lote com operacoes por setor."""
+   615→    try:
+   616→        lote = db_query_one(
+   617→            "SELECT ordem, lote_codigo, descricao_produto, qtde_ordem "
+   618→            "FROM lotes_producao WHERE lote_codigo = %s",
+   619→            (lotcod,)
+   620→        )
+   621→        if not lote:
+   622→            return jsonify({'error': 'Lote nao encontrado'}), 404
+   623→
+   624→        pecas = db_query("""
+   625→            SELECT of.of_numero, of.codigo_produto as codigo, of.descricao_produto as descricao,
+   626→                   of.qtde_ordem as quantidade, of.tipo
+   627→            FROM ordens_fabricacao of
+   628→            WHERE of.lote_ordem = %s AND of.tipo = 'filho'
+   629→            ORDER BY of.codigo_produto
+   630→        """, (lote['ordem'],))
+   631→
+   632→        pai = db_query_one("""
+   633→            SELECT codigo_produto, descricao_produto, qtde_ordem
+   634→            FROM ordens_fabricacao WHERE lote_ordem = %s AND tipo = 'pai' LIMIT 1
+   635→        """, (lote['ordem'],))
+   636→
+   637→        produto_final = None
+   638→        if pai:
+   639→            pai_nome = _get_produto_nome(pai.get('codigo_produto'))
+   640→            produto_final = {
+   641→                'codigo': _str(pai['codigo_produto']),
+   642→                'descricao': pai_nome or _str(pai['descricao_produto']),
+   643→                'quantidade': _int(pai['qtde_ordem']),
+   644→            }
+   645→
+   646→        pecas_result = []
+   647→        for p in pecas:
+   648→            ops = db_query("""
+   649→                SELECT id, departamento, descricao_operacao, status, sequencia
+   650→                FROM operacoes_producao
+   651→                WHERE of_numero = %s
+   652→                ORDER BY sequencia
+   653→            """, (p['of_numero'],))
+   654→
+   655→            setores = list(set(
+   656→                op['departamento'] for op in ops
+   657→                if op.get('departamento') and op['departamento'] in SETORES_TOTEM
+   658→            ))
+   659→
+   660→            peca_cod = str(p.get('codigo', '')).strip()
+   661→            nome_real = _get_produto_nome(peca_cod)
+   662→            # Fallback: consulta direta ao PG se cache falhou
+   663→            if not nome_real and peca_cod:
+   664→                try:
+   665→                    pg_row = _pg_query_one(
+   666→                        "SELECT pronome FROM public.produto WHERE TRIM(produto) = %s LIMIT 1",
+   667→                        (peca_cod,)
+   668→                    )
+   669→                    if pg_row and pg_row.get('pronome'):
+   670→                        nome_real = str(pg_row['pronome']).strip()[:200]
+   671→                        _produto_cache[peca_cod] = nome_real
+   672→                except Exception:
+   673→                    pass
+   674→            produto_nome = nome_real if nome_real else _str(p['descricao'])
+   675→
+   676→            pecas_result.append({
+   677→                'of_numero': p['of_numero'],
+   678→                'ordem': p['of_numero'],
+   679→                'codigo': _str(p['codigo']),
+   680→                'quantidade': _int(p['quantidade']),
+   681→                'produto_nome': produto_nome,
+   682→                'setores': setores,
+   683→                'operacoes': ops,
+   684→            })
+   685→
+   686→        ativas_raw = db_query(
+   687→            "SELECT produto, of_numero, setor, usuario_nome, qtd_produzida "
+   688→            "FROM serralheria_producao WHERE lote = %s AND status = 'em_producao' AND setor IN %s",
+   689→            (lotcod, SETORES_TOTEM)
+   690→        )
+   691→        pecas_ativas = {}
+   692→        for row in ativas_raw:
+   693→            peca = row['produto']
+   694→            if peca not in pecas_ativas:
+   695→                pecas_ativas[peca] = []
+   696→            pecas_ativas[peca].append({
+   697→                'setor': row['setor'],
+   698→                'usuario': row['usuario_nome'],
+   699→                'qtd_produzida': _int(row.get('qtd_produzida')),
+   700→            })
+   701→
+   702→        return jsonify({
+   703→            'lote': lotcod,
+   704→            'descricao': _str(lote['descricao_produto']),
+   705→            'produto_final': produto_final,
+   706→            'pecas': pecas_result,
+   707→            'pecas_ativas': pecas_ativas,
+   708→        })
+   709→    except Exception as e:
+   710→        app.logger.error('Erro pecas: %s', e)
+   711→        return jsonify({'error': str(e)}), 500
+   712→
+   713→
+   714→@app.route('/api/usuarios')
+   715→def api_usuarios():
+   716→    """Lista usuarios ativos do setor (admin gerencia via 5002)."""
+   717→    try:
+   718→        usuarios = db_query(
+   719→            "SELECT MIN(id) as id, nome, MAX(setor) as setor "
+   720→            "FROM serralheria_usuarios WHERE ativo = 1 AND setor = %s "
+   721→            "GROUP BY nome ORDER BY nome",
+   722→            (SETOR,)
+   723→        )
+   724→        return jsonify({'usuarios': usuarios})
+   725→    except Exception as e:
+   726→        app.logger.error('Erro usuarios: %s', e)
+   727→        return jsonify({'error': str(e)}), 500
+   728→
+   729→
+   730→@app.route('/api/iniciar', methods=['POST'])
+   731→def api_iniciar():
+   732→    """Iniciar producao: salva no MariaDB e sincroniza operacoes_producao + kanban."""
+   733→    try:
+   734→        data = request.get_json()
+   735→        lotcod = data.get('lote')
+   736→        usuario_id = data.get('usuario_id')
+   737→        usuario_nome = data.get('usuario_nome')
+   738→        setor = data.get('setor', SETOR)
+   739→        pecas = data.get('pecas', [])
+   740→
+   741→        if not lotcod or not usuario_id:
+   742→            return jsonify({'error': 'Dados obrigatorios: lote, usuario_id'}), 400
+   743→
+   744→        # Mapeia setor totem -> departamento operacoes_producao
+   745→        setor_para_dept = {
+   746→            'CORTE': 'CORTE', 'DOBRA': 'DOBRA', 'SOLDA': 'SOLDA',
+   747→            'ACABAMENTO': 'ACABAMENTO', 'MONTAGEM': 'MONTAGEM',
+   748→            'FUNILARIA': 'FUNILARIA', 'PINTURA': 'PINTURA',
+   749→            'EMBALAGEM': 'EMBALAGEM',
+   750→        }
+   751→        dept = setor_para_dept.get(setor, setor)
+   752→
+   753→        for peca in pecas:
+   754→            db_execute(
+   755→                "INSERT INTO serralheria_producao "
+   756→                "(ordem_id, lote, produto, of_numero, usuario_id, usuario_nome, setor, status, data_inicio) "
+   757→                "VALUES (%s, %s, %s, %s, %s, %s, %s, 'em_producao', NOW())",
+   758→                (peca.get('ordem'), lotcod, peca['codigo'], peca.get('ordem'),
+   759→                 usuario_id, usuario_nome, setor)
+   760→            )
+   761→            # Sincroniza operacoes_producao -> em_andamento
+   762→            _sync_op_status(peca.get('ordem'), dept, 'em_andamento')
+   763→
+   764→        app.logger.info(
+   765→            'Producao iniciada: lote=%s usuario=%s setor=%s pecas=%d',
+   766→            lotcod, usuario_nome, setor, len(pecas)
+   767→        )
+   768→        return jsonify({'success': True, 'mensagem': 'Producao iniciada!'})
+   769→    except Exception as e:
+   770→        app.logger.error('Erro iniciar: %s', e)
+   771→        return jsonify({'error': str(e)}), 500
+   772→
+   773→
+   774→def _atualizar_departamento_lote(lote_ordem):
+   775→    """Recalcula departamento_atual, setor_atual_seq e total_setores de um lote.
+   776→    Replica a logica de mysql_db.atualizar_departamento_atual para o totem."""
+   777→    if not lote_ordem:
+   778→        return
+   779→    # Total de departamentos unicos do lote
+   780→    total = db_query_one(
+   781→        "SELECT COUNT(DISTINCT op.departamento) as t FROM operacoes_producao op "
+   782→        "INNER JOIN ordens_fabricacao of2 ON op.of_numero = of2.of_numero "
+   783→        "WHERE of2.lote_ordem = %s AND op.departamento IS NOT NULL AND op.departamento != ''",
+   784→        (lote_ordem,)
+   785→    )
+   786→    total_setores = int(total['t'] or 0) if total else 0
+   787→
+   788→    # Primeira operacao pendente (nao concluida) por sequencia
+   789→    primeira = db_query_one(
+   790→        "SELECT op.departamento, op.sequencia FROM operacoes_producao op "
+   791→        "INNER JOIN ordens_fabricacao of2 ON op.of_numero = of2.of_numero "
+   792→        "WHERE of2.lote_ordem = %s AND op.status != 'concluido' "
+   793→        "ORDER BY op.sequencia ASC LIMIT 1",
+   794→        (lote_ordem,)
+   795→    )
+   796→    dept = primeira['departamento'] if primeira else None
+   797→    seq = int(primeira['sequencia']) if primeira else 0
+   798→
+   799→    db_execute(
+   800→        "UPDATE lotes_producao "
+   801→        "SET departamento_atual = %s, setor_atual_seq = %s, total_setores = %s "
+   802→        "WHERE ordem = %s",
+   803→        (dept, seq, total_setores, lote_ordem)
+   804→    )
+   805→
+   806→
+   807→def _sync_lote_status(of_numero, novo_status):
+   808→    """Atualiza status do lote em lotes_producao conforme operacoes."""
+   809→    if not of_numero:
+   810→        return
+   811→    of_row = db_query_one(
+   812→        "SELECT lote_ordem FROM ordens_fabricacao WHERE of_numero = %s LIMIT 1",
+   813→        (of_numero,)
+   814→    )
+   815→    if not of_row or not of_row.get('lote_ordem'):
+   816→        return
+   817→    lote_ordem = of_row['lote_ordem']
+   818→
+   819→    if novo_status == 'em_andamento':
+   820→        # Muda status do lote para em_producao se ainda estiver liberado
+   821→        db_execute(
+   822→            "UPDATE lotes_producao SET status = 'em_producao' "
+   823→            "WHERE ordem = %s AND status = 'liberado'",
+   824→            (lote_ordem,)
+   825→        )
+   826→    elif novo_status == 'concluido':
+   827→        # Verifica se TODAS as ops do lote estao concluidas
+   828→        total_pend = db_query_one(
+   829→            "SELECT COUNT(*) as t FROM operacoes_producao op "
+   830→            "INNER JOIN ordens_fabricacao of2 ON op.of_numero = of2.of_numero "
+   831→            "WHERE of2.lote_ordem = %s AND op.status != 'concluido'",
+   832→            (lote_ordem,)
+   833→        )
+   834→        if total_pend and int(total_pend['t']) == 0:
+   835→            db_execute(
+   836→                "UPDATE lotes_producao SET status = 'finalizado' WHERE ordem = %s AND status != 'finalizado'",
+   837→                (lote_ordem,)
+   838→            )
+   839→
+   840→
+   841→def _sync_op_status(of_numero, departamento, novo_status):
+   842→    """Sincroniza operacoes_producao, kanban_cards e lotes_producao quando totem inicia/finaliza."""
+   843→    if not of_numero or not departamento:
+   844→        return
+   845→    try:
+   846→        # 1. Atualiza operacoes_producao
+   847→        db_execute(
+   848→            "UPDATE operacoes_producao SET status = %s, data_inicio = COALESCE(data_inicio, NOW()), "
+   849→            "data_fim = CASE WHEN %s = 'concluido' THEN NOW() ELSE data_fim END "
+   850→            "WHERE of_numero = %s AND departamento = %s AND status != 'concluido'",
+   851→            (novo_status, novo_status, of_numero, departamento)
+   852→        )
+   853→        # 2. Atualiza kanban_cards
+   854→        etapa_map = {'em_andamento': 'em_producao', 'concluido': 'concluido', 'pendente': 'aguardando'}
+   855→        nova_etapa = etapa_map.get(novo_status)
+   856→        if nova_etapa:
+   857→            db_execute(
+   858→                "UPDATE kanban_cards SET etapa = %s, atualizado_em = NOW() "
+   859→                "WHERE of_numero = %s AND departamento = %s AND etapa != 'concluido'",
+   860→                (nova_etapa, of_numero, departamento)
+   861→            )
+   862→        # 3. Sincroniza lotes_producao (status + departamento_atual)
+   863→        _sync_lote_status(of_numero, novo_status)
+   864→        _atualizar_departamento_lote_from_of(of_numero)
+   865→    except Exception as e:
+   866→        app.logger.warning('Sync op status falhou: %s', e)
+   867→
+   868→
+   869→def _atualizar_departamento_lote_from_of(of_numero):
+   870→    """Recalcula departamento_atual do lote a partir de uma OF."""
+   871→    if not of_numero:
+   872→        return
+   873→    of_row = db_query_one(
+   874→        "SELECT lote_ordem FROM ordens_fabricacao WHERE of_numero = %s LIMIT 1",
+   875→        (of_numero,)
+   876→    )
+   877→    if of_row and of_row.get('lote_ordem'):
+   878→        _atualizar_departamento_lote(of_row['lote_ordem'])
+   879→
+   880→
+   881→@app.route('/api/finalizar', methods=['POST'])
+   882→def api_finalizar():
+   883→    """Finalizar producao de pecas especificas e sincroniza com operacoes_producao."""
+   884→    try:
+   885→        data = request.get_json()
+   886→        lotcod = data.get('lote')
+   887→        pecas = data.get('pecas', [])
+   888→        setor = data.get('setor', SETOR)
+   889→        qtd_informada = data.get('qtd_produzida', 0)
+   890→
+   891→        if not lotcod:
+   892→            return jsonify({'error': 'Lote obrigatorio'}), 400
+   893→
+   894→        setor_para_dept = {
+   895→            'CORTE': 'CORTE', 'DOBRA': 'DOBRA', 'SOLDA': 'SOLDA',
+   896→            'ACABAMENTO': 'ACABAMENTO', 'MONTAGEM': 'MONTAGEM',
+   897→            'FUNILARIA': 'FUNILARIA', 'PINTURA': 'PINTURA',
+   898→            'EMBALAGEM': 'EMBALAGEM',
+   899→        }
+   900→
+   901→        if pecas and setor:
+   902→            # Finalizar pecas em um setor especifico (com suporte a quantidade parcial)
+   903→            for pcod in pecas:
+   904→                row = db_query_one(
+   905→                    "SELECT sp.id, sp.of_numero, sp.qtd_produzida, "
+   906→                    "COALESCE(of2.qtde_ordem, 0) as qtde_ordem "
+   907→                    "FROM serralheria_producao sp "
+   908→                    "LEFT JOIN ordens_fabricacao of2 ON sp.of_numero = of2.of_numero "
+   909→                    "WHERE sp.lote = %s AND sp.produto = %s AND sp.setor = %s "
+   910→                    "AND sp.status = 'em_producao'",
+   911→                    (lotcod, pcod, setor)
+   912→                )
+   913→                if not row:
+   914→                    app.logger.warning('Finalizar: peca %s setor %s nao encontrada em producao', pcod, setor)
+   915→                    continue
+   916→
+   917→                qtd_total = _int(row['qtde_ordem'])
+   918→                qtd_ja_feita = _int(row['qtd_produzida'])
+   919→                restante = qtd_total - qtd_ja_feita
+   920→
+   921→                if qtd_total <= 0:
+   922→                    # Sem qtde_ordem, finaliza direto
+   923→                    db_execute(
+   924→                        "UPDATE serralheria_producao SET status='finalizado', data_fim=NOW() "
+   925→                        "WHERE id=%s", (row['id'],)
+   926→                    )
+   927→                    dept = setor_para_dept.get(setor, setor)
+   928→                    _sync_op_status(row['of_numero'], dept, 'concluido')
+   929→                    continue
+   930→
+   931→                # Validacao: quantidade nao pode exceder o restante
+   932→                if qtd_informada > restante:
+   933→                    return jsonify({
+   934→                        'error': 'Quantidade maxima permitida: %d (restam %d de %d)' % (restante, restante, qtd_total),
+   935→                        'max_qtd': restante
+   936→                    }), 400
+   937→
+   938→                if qtd_informada <= 0:
+   939→                    return jsonify({'error': 'Informe uma quantidade maior que zero'}), 400
+   940→
+   941→                nova_qtd = qtd_ja_feita + qtd_informada
+   942→
+   943→                if nova_qtd >= qtd_total:
+   944→                    # Finalizacao completa
+   945→                    db_execute(
+   946→                        "UPDATE serralheria_producao "
+   947→                        "SET status='finalizado', data_fim=NOW(), qtd_produzida=%s "
+   948→                        "WHERE id=%s",
+   949→                        (qtd_total, row['id'])
+   950→                    )
+   951→                    dept = setor_para_dept.get(setor, setor)
+   952→                    _sync_op_status(row['of_numero'], dept, 'concluido')
+   953→                    app.logger.info('Lote %s peca %s setor %s: FINALIZADA (%d/%d)', lotcod, pcod, setor, nova_qtd, qtd_total)
+   954→                else:
+   955→                    # Finalizacao parcial: acumula e mantem em_producao
+   956→                    db_execute(
+   957→                        "UPDATE serralheria_producao SET qtd_produzida=%s WHERE id=%s",
+   958→                        (nova_qtd, row['id'])
+   959→                    )
+   960→                    app.logger.info('Lote %s peca %s setor %s: PARCIAL %d/%d (restam %d)',
+   961→                        lotcod, pcod, setor, nova_qtd, qtd_total, qtd_total - nova_qtd)
+   962→
+   963→            return jsonify({'success': True, 'mensagem': 'Producao atualizada!'})
+   964→        elif pecas:
+   965→            # Finalizar todas as producoes das pecas selecionadas (todos os setores) — sem qtde parcial
+   966→            placeholders = ','.join(['%s'] * len(pecas))
+   967→            rows = db_query(
+   968→                "SELECT of_numero, setor FROM serralheria_producao "
+   969→                "WHERE lote = %s AND produto IN (" + placeholders + ") AND status = 'em_producao'",
+   970→                [lotcod] + pecas
+   971→            )
+   972→            db_execute(
+   973→                "UPDATE serralheria_producao "
+   974→                "SET status = 'finalizado', data_fim = NOW() "
+   975→                "WHERE lote = %s AND produto IN (" + placeholders + ") AND status = 'em_producao'",
+   976→                [lotcod] + pecas
+   977→            )
+   978→            for row in rows:
+   979→                dept = setor_para_dept.get(row.get('setor',''), row.get('setor',''))
+   980→                _sync_op_status(row.get('of_numero'), dept, 'concluido')
+   981→            app.logger.info('Lote %s: %d peca(s) finalizada(s) no totem', lotcod, len(pecas))
+   982→        else:
+   983→            # Finalizar todas as pecas do lote
+   984→            rows = db_query(
+   985→                "SELECT of_numero, setor FROM serralheria_producao "
+   986→                "WHERE lote = %s AND status = 'em_producao'", (lotcod,)
+   987→            )
+   988→            db_execute(
+   989→                "UPDATE serralheria_producao "
+   990→                "SET status = 'finalizado', data_fim = NOW() "
+   991→                "WHERE lote = %s AND status = 'em_producao'",
+   992→                (lotcod,)
+   993→            )
+   994→            for row in rows:
+   995→                dept = setor_para_dept.get(row.get('setor',''), row.get('setor',''))
+   996→                _sync_op_status(row.get('of_numero'), dept, 'concluido')
+   997→            app.logger.info('Lote %s finalizado no totem', lotcod)
+   998→
+   999→        return jsonify({'success': True, 'mensagem': 'Producao finalizada!'})
+  1000→    except Exception as e:
+  1001→        app.logger.error('Erro finalizar: %s', e)
+  1002→        return jsonify({'error': str(e)}), 500
+  1003→
+  1004→
+  1005→@app.route('/api/refresh_lotes')
+  1006→def api_refresh_lotes():
+  1007→    """Recarrega lista de lotes ativos do MariaDB."""
+  1008→    _refresh_lotes_ativos()
+  1009→    _load_produto_cache()
+  1010→    return jsonify({'status': 'ok', 'lotes_count': len(_lotes_ativos)})
+  1011→
+  1012→
+  1013→# ── Main ─────────────────────────────────────────────────────────────
+  1014→
+  1015→if __name__ == '__main__':
+  1016→    init_db()
+  1017→    print('[TOTEM] %s Totem rodando em http://0.0.0.0:%d' % (SETOR, PORT))
+  1018→    app.run(host='0.0.0.0', port=PORT, debug=False, threaded=True)

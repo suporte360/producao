@@ -18,3 +18,21 @@ Stage Summary:
 - 6 arquivos modificados: app.py, database/mysql_db.py, database/postgresql_db.py, templates/almoxarifado/estoque.html, templates/almoxarifado/dashboard.html, worklog.md
 - Fluxo: cadastrar material no almoxarifado com codigo ERP → ver materiais das OFs no dashboard → separar p/ fabrica → consumo automatico
 - Migration automatica: ao iniciar o Flask, se a coluna tipo nao existir, cria com DEFAULT 'fabrica' (registros existentes ficam como fabrica)
+---
+Task ID: 1
+Agent: main
+Task: Corrigir totems que nao mostravam lotes para fazer (so mostravam lotes produzindo)
+
+Work Log:
+- Investigou o codigo do totem_setor.py e serralheria_tomem.py
+- Identificou causa raiz: o cache `_lotes_ativos` so era carregado na inicializacao do servidor
+- Novos lotes liberados pelo PCP apos o totem iniciar nunca apareciam
+- Adicionou `import threading` em todos os 4 arquivos
+- Criou funcao `_background_refresh_loop()` com intervalo de 30 segundos
+- Iniciou thread daemon no bloco `if __name__ == '__main__'`
+- Arquivos modificados: totem_setor.py, serralheria_tomem.py (raiz + producao/)
+- Commits feitos no submodule e repo pai
+
+Stage Summary:
+- Todos os totems (5003, 5004, 5005, 5006) agora auto-refresh a cada 30s
+- Lotes liberados pelo PCP aparecem automaticamente nos totems sem reiniciar

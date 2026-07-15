@@ -1,0 +1,1202 @@
+     1→"""
+     2→Sistema de Produção SALUTEM - Camada de Banco de Dados MySQL/MariaDB
+     3→Versão 4.0 - Controle Total de Linha de Fabricação
+     4→"""
+     5→import pymysql
+     6→from pymysql.cursors import DictCursor
+     7→from contextlib import contextmanager
+     8→from datetime import datetime
+     9→from config.config import Config
+    10→from werkzeug.security import check_password_hash, generate_password_hash
+    11→
+    12→
+    13→class DatabaseMySQL:
+    14→    _initialized = False
+    15→    _instance = None
+    16→
+    17→    def __new__(cls):
+    18→        if cls._instance is None:
+    19→            cls._instance = super(DatabaseMySQL, cls).__new__(cls)
+    20→        return cls._instance
+    21→
+    22→    def __init__(self):
+    23→        if self._initialized:
+    24→            return
+    25→        self._initialized = True
+    26→        self.config = {
+    27→            'host': Config.MYSQL_HOST,
+    28→            'port': Config.MYSQL_PORT,
+    29→            'user': Config.MYSQL_USERNAME,
+    30→            'password': Config.MYSQL_PASSWORD,
+    31→            'database': Config.MYSQL_DATABASE,
+    32→            'charset': 'utf8mb4',
+    33→            'cursorclass': DictCursor,
+    34→            'autocommit': False,
+    35→            'connect_timeout': 10,
+    36→        }
+    37→
+    38→    @contextmanager
+    39→    def get_connection(self):
+    40→        connection = pymysql.connect(**self.config)
+    41→        try:
+    42→            yield connection
+    43→            connection.commit()
+    44→        except Exception as e:
+    45→            connection.rollback()
+    46→            raise e
+    47→        finally:
+    48→            connection.close()
+    49→
+    50→    def query(self, sql, params=None):
+    51→        with self.get_connection() as conn:
+    52→            with conn.cursor() as cursor:
+    53→                cursor.execute(sql, params or ())
+    54→                return cursor.fetchall()
+    55→
+    56→    def query_one(self, sql, params=None):
+    57→        with self.get_connection() as conn:
+    58→            with conn.cursor() as cursor:
+    59→                cursor.execute(sql, params or ())
+    60→                return cursor.fetchone()
+    61→
+    62→    def execute(self, sql, params=None):
+    63→        with self.get_connection() as conn:
+    64→            with conn.cursor() as cursor:
+    65→                cursor.execute(sql, params or ())
+    66→                return cursor.lastrowid or cursor.rowcount
+    67→
+    68→    # =============================================
+    69→    # AUTENTICAÇÃO E USUÁRIOS
+    70→    # =============================================
+    71→
+    72→    def verificar_usuario(self, usuario, senha):
+    73→        sql = "SELECT * FROM usuarios WHERE usuario = %s AND ativo = 1"
+    74→        user = self.query_one(sql, (usuario,))
+    75→        if user:
+    76→            if user['senha'].startswith('scrypt:') or user['senha'].startswith('pbkdf2:'):
+    77→                if check_password_hash(user['senha'], senha):
+    78→                    self.execute("UPDATE usuarios SET ultimo_acesso = NOW() WHERE id = %s", (user['id'],))
+    79→                    return user
+    80→            elif user['senha'] == senha:
+    81→                self.execute("UPDATE usuarios SET ultimo_acesso = NOW() WHERE id = %s", (user['id'],))
+    82→                return user
+    83→        return None
+    84→
+    85→    def listar_usuarios(self):
+    86→        return self.query("""
+    87→            SELECT u.id, u.usuario, u.nome, u.role, u.nome_departamento,
+    88→                   u.departamento_codigo, u.ativo, u.data_criacao, u.ultimo_acesso
+    89→            FROM usuarios u
+    90→            ORDER BY u.nome
+    91→        """)
+    92→
+    93→    def get_usuario_por_id(self, user_id):
+    94→        return self.query_one("""
+    95→            SELECT id, usuario, nome, role, nome_departamento, departamento_codigo, ativo
+    96→            FROM usuarios WHERE id = %s
+    97→        """, (user_id,))
+    98→
+    99→    def criar_usuario(self, dados):
+   100→        sql = """
+   101→            INSERT INTO usuarios (usuario, nome, senha, role, nome_departamento, departamento_codigo, ativo)
+   102→            VALUES (%s, %s, %s, %s, %s, %s, %s)
+   103→        """
+   104→        senha_hash = generate_password_hash(dados['senha'])
+   105→        return self.execute(sql, [
+   106→            dados['usuario'], dados['nome'], senha_hash,
+   107→            dados['role'], dados.get('nome_departamento'), dados.get('departamento_codigo'), 1
+   108→        ])
+   109→
+   110→    def atualizar_usuario(self, user_id, dados):
+   111→        sql = "UPDATE usuarios SET nome = %s, role = %s, nome_departamento = %s, departamento_codigo = %s, ativo = %s"
+   112→        params = [dados['nome'], dados['role'], dados.get('nome_departamento'), dados.get('departamento_codigo'), dados['ativo']]
+   113→        if dados.get('senha'):
+   114→            sql += ", senha = %s"
+   115→            params.append(generate_password_hash(dados['senha']))
+   116→        sql += " WHERE id = %s"
+   117→        params.append(user_id)
+   118→        return self.execute(sql, params)
+   119→
+   120→    def deletar_usuario(self, user_id):
+   121→        return self.execute("DELETE FROM usuarios WHERE id = %s", (user_id,))
+   122→
+   123→    # =============================================
+   124→    # DEPARTAMENTOS
+   125→    # =============================================
+   126→
+   127→    def listar_departamentos(self, apenas_ativos=True):
+   128→        sql = "SELECT * FROM departamentos"
+   129→        if apenas_ativos:
+   130→            sql += " WHERE ativo = 1"
+   131→        sql += " ORDER BY ordem_fluxo, nome"
+   132→        return self.query(sql)
+   133→
+   134→    def get_departamento(self, codigo):
+   135→        return self.query_one("SELECT * FROM departamentos WHERE codigo = %s", (codigo,))
+   136→
+   137→    # =============================================
+   138→    # LOTES DE PRODUÇÃO
+   139→    # =============================================
+   140→
+   141→    def get_lotes(self, status=None, departamento=None, prioridade=None, pagina=1, por_pagina=30):
+   142→        offset = (pagina - 1) * por_pagina
+   143→        sql = """
+   144→            SELECT l.*, 
+   145→                   (SELECT COUNT(*) FROM operacoes_producao op WHERE op.lote_ordem = l.ordem) AS total_operacoes,
+   146→                   (SELECT COUNT(*) FROM operacoes_producao op WHERE op.lote_ordem = l.ordem AND op.status = 'concluido') AS operacoes_concluidas
+   147→            FROM lotes_producao l
+   148→            WHERE 1=1
+   149→        """
+   150→        params = []
+   151→        if status:
+   152→            if isinstance(status, list):
+   153→                placeholders = ','.join(['%s'] * len(status))
+   154→                sql += f" AND l.status IN ({placeholders})"
+   155→                params.extend(status)
+   156→            else:
+   157→                sql += " AND l.status = %s"
+   158→                params.append(status)
+   159→        if departamento:
+   160→            sql += " AND l.departamento_atual = %s"
+   161→            params.append(departamento)
+   162→        if prioridade:
+   163→            sql += " AND l.prioridade = %s"
+   164→            params.append(prioridade)
+   165→        sql += """
+   166→            ORDER BY
+   167→                FIELD(l.prioridade, 'urgente', 'alta', 'media', 'baixa'),
+   168→                l.data_previsao_erp ASC
+   169→            LIMIT %s OFFSET %s
+   170→        """
+   171→        params.extend([por_pagina, offset])
+   172→        return self.query(sql, params)
+   173→
+   174→    def get_lote_por_ordem(self, ordem):
+   175→        return self.query_one("""
+   176→            SELECT l.*,
+   177→                   (SELECT COUNT(*) FROM operacoes_producao op WHERE op.lote_ordem = l.ordem) AS total_operacoes,
+   178→                   (SELECT COUNT(*) FROM operacoes_producao op WHERE op.lote_ordem = l.ordem AND op.status = 'concluido') AS operacoes_concluidas,
+   179→                   (SELECT COUNT(*) FROM ordens_fabricacao of2 WHERE of2.lote_ordem = l.ordem) AS total_ofs
+   180→            FROM lotes_producao l
+   181→            WHERE l.ordem = %s
+   182→        """, (ordem,))
+   183→
+   184→    def get_lotes_por_departamento(self, departamento, status=None):
+   185→        """
+   186→        Retorna 1 linha por OP/LOTE para o departamento, com a próxima operação pendente.
+   187→        Evita duplicação: pega só a operação mais antiga pendente/em_andamento do setor.
+   188→        """
+   189→        sql = """
+   190→            SELECT l.*,
+   191→                   op.id            AS op_id,
+   192→                   op.status        AS op_status,
+   193→                   op.data_inicio   AS data_inicio,
+   194→                   op.descricao_operacao,
+   195→                   op.qtde_produzida,
+   196→                   op.sequencia,
+   197→                   op.of_numero,
+   198→                   (SELECT COUNT(*) FROM operacoes_producao op2
+   199→                    WHERE op2.lote_ordem = l.ordem AND op2.departamento = %s
+   200→                      AND op2.status != 'concluido') AS ops_pendentes
+   201→            FROM lotes_producao l
+   202→            INNER JOIN operacoes_producao op ON op.lote_ordem = l.ordem
+   203→            WHERE op.departamento = %s
+   204→              AND op.status IN ('pendente', 'em_andamento', 'pausado')
+   205→              AND l.status NOT IN ('cancelado', 'finalizado')
+   206→              AND op.id = (
+   207→                  SELECT MIN(op3.id)
+   208→                  FROM operacoes_producao op3
+   209→                  WHERE op3.lote_ordem = l.ordem
+   210→                    AND op3.departamento = %s
+   211→                    AND op3.status IN ('pendente', 'em_andamento', 'pausado')
+   212→              )
+   213→        """
+   214→        params = [departamento, departamento, departamento]
+   215→        if status:
+   216→            sql += " AND l.status = %s"
+   217→            params.append(status)
+   218→        sql += " ORDER BY FIELD(l.prioridade, 'urgente', 'alta', 'media', 'baixa'), l.data_previsao_erp ASC"
+   219→        return self.query(sql, params)
+   220→
+   221→    def importar_lote_erp(self, dados):
+   222→        """Importa ou atualiza um lote vindo do ERP"""
+   223→        sql = """
+   224→            INSERT INTO lotes_producao 
+   225→                (ordem, lote_codigo, codigo_produto, descricao_produto, qtde_ordem,
+   226→                 unidade_medida, status_erp, data_previsao_erp, data_abertura_erp, planejador, status, observacoes)
+   227→            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'importado', %s)
+   228→            ON DUPLICATE KEY UPDATE
+   229→                descricao_produto = VALUES(descricao_produto),
+   230→                qtde_ordem = VALUES(qtde_ordem),
+   231→                data_previsao_erp = VALUES(data_previsao_erp),
+   232→                status_erp = VALUES(status_erp),
+   233→                data_ultima_sync = NOW(),
+   234→                observacoes = COALESCE(NULLIF(VALUES(observacoes),''), observacoes)
+   235→        """
+   236→        return self.execute(sql, [
+   237→            dados['ordem'], dados.get('lote_codigo'), dados.get('codigo_produto'),
+   238→            dados.get('descricao_produto'), dados.get('qtde_ordem', 0),
+   239→            dados.get('unidade_medida', 'UN'), dados.get('status_erp', 'A'),
+   240→            dados.get('data_previsao_erp'), dados.get('data_abertura_erp'),
+   241→            dados.get('planejador'),
+   242→            dados.get('observacoes')
+   243→        ])
+   244→
+   245→    def atualizar_status_lote(self, ordem, novo_status, usuario_id=None):
+   246→        sql = "UPDATE lotes_producao SET status = %s"
+   247→        params = [novo_status]
+   248→        if novo_status == 'em_producao':
+   249→            sql += ", data_inicio_producao = COALESCE(data_inicio_producao, NOW())"
+   250→        elif novo_status == 'finalizado':
+   251→            sql += ", data_fim_producao = NOW()"
+   252→        elif novo_status == 'liberado':
+   253→            # Ao liberar, zera o status de separação para o almoxarifado pegar
+   254→            sql += ", separacao_status = 'pendente', data_separacao = NULL, data_entrega = NULL"
+   255→        sql += " WHERE ordem = %s"
+   256→        params.append(ordem)
+   257→        return self.execute(sql, params)
+   258→
+   259→    def atualizar_prioridade_lote(self, ordem, prioridade):
+   260→        return self.execute("UPDATE lotes_producao SET prioridade = %s WHERE ordem = %s", (prioridade, ordem))
+   261→
+   262→    def atualizar_departamento_atual(self, lote_ordem):
+   263→        """Calcula e atualiza o departamento_atual, setor_atual_seq e total_setores
+   264→        de um lote baseado na primeira operacao pendente (nao concluida)."""
+   265→        # Busca OFs do lote
+   266→        ofs = self.query(
+   267→            "SELECT of_numero FROM ordens_fabricacao WHERE lote_ordem = %s",
+   268→            (lote_ordem,)
+   269→        )
+   270→        if not ofs:
+   271→            return
+   272→
+   273→        of_nums = [o['of_numero'] for o in ofs]
+   274→        if not of_nums:
+   275→            return
+   276→
+   277→        ph = ','.join(['%s'] * len(of_nums))
+   278→
+   279→        # Total de departamentos unicos (setores) do lote
+   280→        total = self.query_one(
+   281→            "SELECT COUNT(DISTINCT departamento) as t FROM operacoes_producao "
+   282→            "WHERE of_numero IN (" + ph + ") AND departamento IS NOT NULL AND departamento != ''",
+   283→            tuple(of_nums)
+   284→        )
+   285→        total_setores = int(total['t'] or 0) if total else 0
+   286→
+   287→        # Primeira operacao pendente (nao concluida) ordenada por sequencia
+   288→        primeira = self.query_one(
+   289→            "SELECT departamento, sequencia FROM operacoes_producao "
+   290→            "WHERE of_numero IN (" + ph + ") "
+   291→            "AND status != 'concluido' "
+   292→            "ORDER BY sequencia ASC LIMIT 1",
+   293→            tuple(of_nums)
+   294→        )
+   295→
+   296→        dept = primeira['departamento'] if primeira else None
+   297→        seq = int(primeira['sequencia']) if primeira else 0
+   298→
+   299→        self.execute(
+   300→            "UPDATE lotes_producao "
+   301→            "SET departamento_atual = %s, setor_atual_seq = %s, total_setores = %s "
+   302→            "WHERE ordem = %s",
+   303→            (dept, seq, total_setores, lote_ordem)
+   304→        )
+   305→
+   306→    # =============================================
+   307→    # ORDENS DE FABRICAÇÃO (OFs)
+   308→    # =============================================
+   309→
+   310→    def get_ofs_por_lote(self, lote_ordem):
+   311→        return self.query("""
+   312→            SELECT of2.*, 
+   313→                   (SELECT COUNT(*) FROM operacoes_producao op WHERE op.of_numero = of2.of_numero) AS total_ops,
+   314→                   (SELECT COUNT(*) FROM operacoes_producao op WHERE op.of_numero = of2.of_numero AND op.status = 'concluido') AS ops_concluidas
+   315→            FROM ordens_fabricacao of2
+   316→            WHERE of2.lote_ordem = %s
+   317→            ORDER BY of2.tipo DESC, of2.of_numero
+   318→        """, (lote_ordem,))
+   319→
+   320→    def importar_of(self, dados):
+   321→        sql = """
+   322→            INSERT INTO ordens_fabricacao
+   323→                (lote_ordem, of_numero, codigo_produto, descricao_produto, qtde_ordem, unidade_medida, tipo, data_previsao)
+   324→            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+   325→            ON DUPLICATE KEY UPDATE
+   326→                descricao_produto = VALUES(descricao_produto),
+   327→                qtde_ordem = VALUES(qtde_ordem)
+   328→        """
+   329→        return self.execute(sql, [
+   330→            dados['lote_ordem'], dados['of_numero'], dados.get('codigo_produto'),
+   331→            dados.get('descricao_produto'), dados.get('qtde_ordem', 0),
+   332→            dados.get('unidade_medida', 'PC'), dados.get('tipo', 'filho'),
+   333→            dados.get('data_previsao')
+   334→        ])
+   335→
+   336→    # =============================================
+   337→    # OPERAÇÕES DE PRODUÇÃO
+   338→    # =============================================
+   339→
+   340→    def get_operacoes_por_lote(self, lote_ordem, departamento=None):
+   341→        sql = """
+   342→            SELECT op.*, COALESCE(u_ini.nome, sp.usuario_nome) AS usuario_inicio_nome,
+   343→                   u_fim.nome AS usuario_fim_nome,
+   344→                   of2.codigo_produto, of2.descricao_produto AS produto_of
+   345→            FROM operacoes_producao op
+   346→            LEFT JOIN ordens_fabricacao of2 ON op.of_numero = of2.of_numero
+   347→            LEFT JOIN usuarios u_ini ON op.usuario_inicio_id = u_ini.id
+   348→            LEFT JOIN usuarios u_fim ON op.usuario_fim_id = u_fim.id
+   349→            LEFT JOIN serralheria_producao sp ON op.of_numero = sp.of_numero
+   350→                AND op.departamento = sp.setor AND sp.status = 'em_producao'
+   351→            WHERE op.lote_ordem = %s
+   352→        """
+   353→        params = [lote_ordem]
+   354→        if departamento:
+   355→            sql += " AND op.departamento = %s"
+   356→            params.append(departamento)
+   357→        sql += " ORDER BY op.of_numero, op.sequencia"
+   358→        return self.query(sql, params)
+   359→
+   360→    def get_operacoes_por_departamento(self, departamento, status=None):
+   361→        sql = """
+   362→            SELECT op.*, l.descricao_produto, l.prioridade, l.data_previsao_erp, l.lote_codigo,
+   363→                   of2.codigo_produto AS cod_produto_of,
+   364→                   u.nome AS operador_nome
+   365→            FROM operacoes_producao op
+   366→            INNER JOIN lotes_producao l ON op.lote_ordem = l.ordem
+   367→            LEFT JOIN ordens_fabricacao of2 ON op.of_numero = of2.of_numero
+   368→            LEFT JOIN usuarios u ON op.usuario_inicio_id = u.id
+   369→            WHERE op.departamento = %s
+   370→              AND l.status NOT IN ('cancelado', 'finalizado')
+   371→        """
+   372→        params = [departamento]
+   373→        if status:
+   374→            if isinstance(status, list):
+   375→                placeholders = ','.join(['%s'] * len(status))
+   376→                sql += f" AND op.status IN ({placeholders})"
+   377→                params.extend(status)
+   378→            else:
+   379→                sql += " AND op.status = %s"
+   380→                params.append(status)
+   381→        sql += " ORDER BY FIELD(l.prioridade, 'urgente', 'alta', 'media', 'baixa'), l.data_previsao_erp ASC, op.sequencia"
+   382→        return self.query(sql, params)
+   383→
+   384→    def importar_operacao(self, dados):
+   385→        sql = """
+   386→            INSERT INTO operacoes_producao
+   387→                (of_numero, lote_ordem, sequencia, fase, descricao_operacao, departamento, codigo_barras)
+   388→            VALUES (%s, %s, %s, %s, %s, %s, %s)
+   389→            ON DUPLICATE KEY UPDATE
+   390→                descricao_operacao = VALUES(descricao_operacao),
+   391→                departamento = VALUES(departamento)
+   392→        """
+   393→        return self.execute(sql, [
+   394→            dados['of_numero'], dados['lote_ordem'], dados['sequencia'],
+   395→            dados.get('fase'), dados['descricao_operacao'],
+   396→            dados.get('departamento'), dados.get('codigo_barras')
+   397→        ])
+   398→
+   399→    def iniciar_operacao(self, operacao_id, usuario_id):
+   400→        op = self.query_one("SELECT * FROM operacoes_producao WHERE id = %s", (operacao_id,))
+   401→        if not op:
+   402→            return False
+   403→        self.execute("""
+   404→            UPDATE operacoes_producao 
+   405→            SET status = 'em_andamento', data_inicio = NOW(), usuario_inicio_id = %s
+   406→            WHERE id = %s AND status IN ('pendente', 'pausado')
+   407→        """, (usuario_id, operacao_id))
+   408→        self.atualizar_status_lote(op['lote_ordem'], 'em_producao', usuario_id)
+   409→        self.registrar_apontamento_tempo(op['lote_ordem'], op['of_numero'], operacao_id, op['departamento'], usuario_id, 'inicio')
+   410→        # Sincroniza kanban: card vai para 'em_producao'
+   411→        self._sincronizar_kanban_operacao(operacao_id, 'em_producao', usuario_id)
+   412→        return True
+   413→
+   414→    def pausar_operacao(self, operacao_id, usuario_id, motivo='Pausa'):
+   415→        op = self.query_one("SELECT * FROM operacoes_producao WHERE id = %s", (operacao_id,))
+   416→        if not op:
+   417→            return False
+   418→        self.execute("""
+   419→            UPDATE operacoes_producao SET status = 'pausado' WHERE id = %s AND status = 'em_andamento'
+   420→        """, (operacao_id,))
+   421→        self.registrar_apontamento_tempo(op['lote_ordem'], op['of_numero'], operacao_id, op['departamento'], usuario_id, 'pausa', motivo)
+   422→        # Sincroniza kanban: card vai para 'pausado'
+   423→        self._sincronizar_kanban_operacao(operacao_id, 'pausado', usuario_id)
+   424→        return True
+   425→
+   426→    def retomar_operacao(self, operacao_id, usuario_id):
+   427→        op = self.query_one("SELECT * FROM operacoes_producao WHERE id = %s", (operacao_id,))
+   428→        if not op:
+   429→            return False
+   430→        self.execute("""
+   431→            UPDATE operacoes_producao SET status = 'em_andamento' WHERE id = %s AND status = 'pausado'
+   432→        """, (operacao_id,))
+   433→        self.registrar_apontamento_tempo(op['lote_ordem'], op['of_numero'], operacao_id, op['departamento'], usuario_id, 'retomada')
+   434→        # Sincroniza kanban: card volta para 'em_producao'
+   435→        self._sincronizar_kanban_operacao(operacao_id, 'em_producao', usuario_id)
+   436→        return True
+   437→
+   438→    def _sincronizar_kanban_operacao(self, operacao_id, etapa, operador_id=None):
+   439→        """Atualiza o card do kanban correspondente à operação.
+   440→        Se o card não existir, cria automaticamente."""
+   441→        try:
+   442→            # Busca a operação e o lote
+   443→            op = self.query_one("""
+   444→                SELECT op.*, l.prioridade
+   445→                FROM operacoes_producao op
+   446→                LEFT JOIN lotes_producao l ON op.lote_ordem = l.ordem
+   447→                WHERE op.id = %s
+   448→            """, (operacao_id,))
+   449→            if not op:
+   450→                return
+   451→
+   452→            # Verifica se já existe card para esta operação
+   453→            existente = self.query_one(
+   454→                "SELECT id FROM kanban_cards WHERE operacao_id = %s",
+   455→                (operacao_id,)
+   456→            )
+   457→
+   458→            if existente:
+   459→                # Atualiza card existente
+   460→                self.execute("""
+   461→                    UPDATE kanban_cards
+   462→                    SET etapa = %s,
+   463→                        operador_id = COALESCE(%s, operador_id),
+   464→                        atualizado_em = NOW()
+   465→                    WHERE operacao_id = %s
+   466→                """, (etapa, operador_id, operacao_id))
+   467→            else:
+   468→                # Cria card novo (para operações importadas antes do fix)
+   469→                self.execute("""
+   470→                    INSERT INTO kanban_cards
+   471→                        (lote_ordem, of_numero, operacao_id, etapa, departamento, prioridade, operador_id)
+   472→                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+   473→                """, (
+   474→                    op['lote_ordem'],
+   475→                    op.get('of_numero'),
+   476→                    operacao_id,
+   477→                    etapa,
+   478→                    op.get('departamento'),
+   479→                    op.get('prioridade') or 'media',
+   480→                    operador_id
+   481→                ))
+   482→        except Exception as e:
+   483→            print(f"Erro ao sincronizar kanban: {e}")
+   484→
+   485→    def finalizar_operacao(self, operacao_id, usuario_id, qtde_produzida=None, qtde_refugada=0, observacoes=None, tipo='total'):
+   486→        """
+   487→        tipo='total'   → marca como concluido e fecha o lote se todas as ops concluídas
+   488→        tipo='parcial' → registra a quantidade produzida até agora e reinicia a operação
+   489→                         (status volta para 'pendente' com qtde_produzida acumulada)
+   490→                         Assim o próximo setor já pode ver as peças disponíveis.
+   491→        """
+   492→        op = self.query_one("SELECT * FROM operacoes_producao WHERE id = %s", (operacao_id,))
+   493→        if not op:
+   494→            return False
+   495→
+   496→        if tipo == 'parcial':
+   497→            # Acumula a quantidade e volta para pendente (disponível para próximo setor)
+   498→            self.execute("""
+   499→                UPDATE operacoes_producao
+   500→                SET status = 'pendente',
+   501→                    data_inicio = NULL,
+   502→                    qtde_produzida = COALESCE(qtde_produzida, 0) + COALESCE(%s, 0),
+   503→                    qtde_refugada  = COALESCE(qtde_refugada, 0)  + COALESCE(%s, 0),
+   504→                    observacoes    = COALESCE(%s, observacoes)
+   505→                WHERE id = %s
+   506→            """, (qtde_produzida, qtde_refugada, observacoes, operacao_id))
+   507→            # Atualiza status do lote para 'importado' (disponível) se estava em_producao
+   508→            self.execute("""
+   509→                UPDATE lotes_producao SET status = 'importado'
+   510→                WHERE ordem = %s AND status = 'em_producao'
+   511→            """, (op['lote_ordem'],))
+   512→            self.registrar_apontamento_tempo(op['lote_ordem'], op.get('of_numero'), operacao_id, op['departamento'], usuario_id, 'parcial', qtde_produzida=qtde_produzida)
+   513→            # Sincroniza kanban: card volta para 'aguardando' (próximo setor pega)
+   514→            self._sincronizar_kanban_operacao(operacao_id, 'aguardando')
+   515→        else:
+   516→            self.execute("""
+   517→                UPDATE operacoes_producao
+   518→                SET status = 'concluido', data_fim = NOW(), usuario_fim_id = %s,
+   519→                    qtde_produzida = COALESCE(%s, qtde_produzida),
+   520→                    qtde_refugada = COALESCE(%s, 0),
+   521→                    observacoes = COALESCE(%s, observacoes)
+   522→                WHERE id = %s
+   523→            """, (usuario_id, qtde_produzida, qtde_refugada, observacoes, operacao_id))
+   524→            self.registrar_apontamento_tempo(op['lote_ordem'], op.get('of_numero'), operacao_id, op['departamento'], usuario_id, 'fim', qtde_produzida=qtde_produzida)
+   525→            # Sincroniza kanban: card vai para 'concluido'
+   526→            self._sincronizar_kanban_operacao(operacao_id, 'concluido', usuario_id)
+   527→            # Verifica se todas as operações do lote foram concluídas
+   528→            self._verificar_conclusao_lote(op['lote_ordem'])
+   529→        return True
+   530→
+   531→    def _verificar_conclusao_lote(self, lote_ordem):
+   532→        total = self.query_one("SELECT COUNT(*) as t FROM operacoes_producao WHERE lote_ordem = %s", (lote_ordem,))['t']
+   533→        concluidas = self.query_one("SELECT COUNT(*) as t FROM operacoes_producao WHERE lote_ordem = %s AND status = 'concluido'", (lote_ordem,))['t']
+   534→        if total > 0 and total == concluidas:
+   535→            self.execute("UPDATE lotes_producao SET status = 'finalizado', data_fim_producao = NOW() WHERE ordem = %s", (lote_ordem,))
+   536→        # Sempre recalcula departamento_atual ao finalizar uma operacao
+   537→        try:
+   538→            self.atualizar_departamento_atual(lote_ordem)
+   539→        except Exception:
+   540→            pass
+   541→
+   542→    # =============================================
+   543→    # APONTAMENTOS DE TEMPO
+   544→    # =============================================
+   545→
+   546→    def registrar_apontamento_tempo(self, lote_ordem, of_numero, operacao_id, departamento, usuario_id, tipo, motivo_pausa=None, qtde_produzida=None):
+   547→        sql = """
+   548→            INSERT INTO apontamentos_tempo (lote_ordem, of_numero, operacao_id, departamento, usuario_id, tipo, motivo_pausa, qtde_produzida, data_hora)
+   549→            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
+   550→        """
+   551→        return self.execute(sql, [lote_ordem, of_numero, operacao_id, departamento, usuario_id, tipo, motivo_pausa, qtde_produzida])
+   552→
+   553→    def calcular_tempo_operacao(self, operacao_id):
+   554→        """Calcula o tempo total gasto em uma operação em minutos"""
+   555→        sql = """
+   556→            SELECT 
+   557→                SUM(CASE WHEN tipo IN ('inicio', 'retomada') THEN UNIX_TIMESTAMP(data_hora) * -1
+   558→                         WHEN tipo IN ('pausa', 'fim') THEN UNIX_TIMESTAMP(data_hora)
+   559→                    END) / 60 AS minutos
+   560→            FROM apontamentos_tempo
+   561→            WHERE operacao_id = %s
+   562→        """
+   563→        result = self.query_one(sql, (operacao_id,))
+   564→        return max(0, int(result['minutos'] or 0))
+   565→
+   566→    def get_apontamentos_operacao(self, operacao_id):
+   567→        return self.query("""
+   568→            SELECT at.*, u.nome AS usuario_nome
+   569→            FROM apontamentos_tempo at
+   570→            LEFT JOIN usuarios u ON at.usuario_id = u.id
+   571→            WHERE at.operacao_id = %s
+   572→            ORDER BY at.data_hora ASC
+   573→        """, (operacao_id,))
+   574→
+   575→    # =============================================
+   576→    # REQUISIÇÕES DE MATERIAIS (ALMOXARIFADO)
+   577→    # =============================================
+   578→
+   579→    def get_requisicoes(self, status=None, departamento=None):
+   580→        sql = """
+   581→            SELECT r.*, l.descricao_produto, l.prioridade AS prioridade_lote,
+   582→                   u_sol.nome AS solicitante_nome, u_at.nome AS atendente_nome
+   583→            FROM requisicoes_materiais r
+   584→            LEFT JOIN lotes_producao l ON r.lote_ordem = l.ordem
+   585→            LEFT JOIN usuarios u_sol ON r.usuario_solicitante_id = u_sol.id
+   586→            LEFT JOIN usuarios u_at ON r.usuario_atendimento_id = u_at.id
+   587→            WHERE 1=1
+   588→        """
+   589→        params = []
+   590→        if status:
+   591→            sql += " AND r.status = %s"
+   592→            params.append(status)
+   593→        if departamento:
+   594→            sql += " AND r.departamento_solicitante = %s"
+   595→            params.append(departamento)
+   596→        sql += " ORDER BY FIELD(l.prioridade, 'urgente', 'alta', 'media', 'baixa'), r.data_solicitacao DESC"
+   597→        return self.query(sql, params)
+   598→
+   599→    def criar_requisicao(self, dados):
+   600→        sql = """
+   601→            INSERT INTO requisicoes_materiais
+   602→                (lote_ordem, of_numero, material_codigo, material_descricao, quantidade,
+   603→                 unidade_medida, departamento_solicitante, usuario_solicitante_id)
+   604→            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+   605→        """
+   606→        return self.execute(sql, [
+   607→            dados['lote_ordem'], dados.get('of_numero'), dados.get('material_codigo'),
+   608→            dados['material_descricao'], dados['quantidade'],
+   609→            dados.get('unidade_medida', 'UN'), dados.get('departamento'),
+   610→            dados.get('usuario_id')
+   611→        ])
+   612→
+   613→    def atualizar_status_requisicao(self, req_id, novo_status, usuario_id=None):
+   614→        sql = "UPDATE requisicoes_materiais SET status = %s"
+   615→        params = [novo_status]
+   616→        if novo_status in ('aprovado', 'entregue', 'recusado'):
+   617→            sql += ", usuario_atendimento_id = %s, data_atendimento = NOW()"
+   618→            params.append(usuario_id)
+   619→        sql += " WHERE id = %s"
+   620→        params.append(req_id)
+   621→        return self.execute(sql, params)
+   622→
+   623→    def get_requisicao_por_id(self, req_id):
+   624→        return self.query_one("""
+   625→            SELECT r.*, l.descricao_produto, l.prioridade AS prioridade_lote
+   626→            FROM requisicoes_materiais r
+   627→            LEFT JOIN lotes_producao l ON r.lote_ordem = l.ordem
+   628→            WHERE r.id = %s
+   629→        """, (req_id,))
+   630→
+   631→    # =============================================
+   632→    # KANBAN
+   633→    # =============================================
+   634→
+   635→    def get_kanban_cards(self, departamento=None, etapa=None):
+   636→        sql = """
+   637→            SELECT k.*, l.lote_codigo, l.descricao_produto, l.qtde_ordem,
+   638→                   l.data_previsao_erp, l.prioridade AS prioridade_lote,
+   639→                   op.descricao_operacao, op.sequencia, op.status AS status_operacao,
+   640→                   op.qtde_produzida, op.data_inicio,
+   641→                   of2.codigo_produto AS cod_peca,
+   642→                   u.nome AS operador_nome,
+   643→                   (SELECT CASE WHEN COUNT(*) = 0 THEN 0
+   644→                       ELSE ROUND(SUM(CASE WHEN status = 'concluido' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 0)
+   645→                       END
+   646→                    FROM operacoes_producao WHERE lote_ordem = k.lote_ordem
+   647→                   ) AS progresso
+   648→            FROM kanban_cards k
+   649→            LEFT JOIN lotes_producao l ON k.lote_ordem = l.ordem
+   650→            LEFT JOIN operacoes_producao op ON k.operacao_id = op.id
+   651→            LEFT JOIN ordens_fabricacao of2 ON k.of_numero = of2.of_numero
+   652→            LEFT JOIN usuarios u ON k.operador_id = u.id
+   653→            WHERE 1=1
+   654→        """
+   655→        params = []
+   656→        if departamento:
+   657→            sql += " AND k.departamento = %s"
+   658→            params.append(departamento)
+   659→        if etapa:
+   660→            sql += " AND k.etapa = %s"
+   661→            params.append(etapa)
+   662→        sql += """
+   663→            ORDER BY
+   664→                FIELD(k.prioridade, 'urgente', 'alta', 'media', 'baixa'),
+   665→                k.criado_em ASC
+   666→        """
+   667→        return self.query(sql, params)
+   668→
+   669→    def get_kanban_stats(self, departamento=None):
+   670→        sql = """
+   671→            SELECT k.etapa, COUNT(*) as total,
+   672→                   SUM(CASE WHEN k.prioridade = 'urgente' THEN 1 ELSE 0 END) as urgentes,
+   673→                   SUM(CASE WHEN k.prioridade = 'alta' THEN 1 ELSE 0 END) as altas
+   674→            FROM kanban_cards k
+   675→            WHERE k.etapa != 'concluido'
+   676→        """
+   677→        params = []
+   678→        if departamento:
+   679→            sql += " AND k.departamento = %s"
+   680→            params.append(departamento)
+   681→        sql += " GROUP BY k.etapa"
+   682→        return self.query(sql, params)
+   683→
+   684→    def get_kanban_concluidos_hoje(self, departamento=None):
+   685→        sql = """
+   686→            SELECT COUNT(*) as total FROM kanban_cards
+   687→            WHERE etapa = 'concluido' AND DATE(atualizado_em) = CURDATE()
+   688→        """
+   689→        params = []
+   690→        if departamento:
+   691→            sql += " AND departamento = %s"
+   692→            params.append(departamento)
+   693→        result = self.query_one(sql, params)
+   694→        return result['total'] if result else 0
+   695→
+   696→    def get_lotes_em_atraso(self, departamento=None):
+   697→        """Conta lotes com data_previsao_erp < hoje e status ativo."""
+   698→        sql = """
+   699→            SELECT COUNT(*) as total FROM lotes_producao
+   700→            WHERE data_previsao_erp < CURDATE()
+   701→              AND status NOT IN ('finalizado', 'cancelado')
+   702→        """
+   703→        params = []
+   704→        if departamento:
+   705→            sql += " AND departamento_atual = %s"
+   706→            params.append(departamento)
+   707→        result = self.query_one(sql, params)
+   708→        return result['total'] if result else 0
+   709→
+   710→    def move_kanban_card(self, card_id, nova_etapa, operador_id=None):
+   711→        return self.execute("""
+   712→            UPDATE kanban_cards
+   713→            SET etapa = %s, operador_id = COALESCE(%s, operador_id), atualizado_em = NOW()
+   714→            WHERE id = %s
+   715→        """, (nova_etapa, operador_id, card_id))
+   716→
+   717→    def add_kanban_card(self, lote_ordem, etapa='aguardando', operador_id=None, prioridade='media', departamento=None, of_numero=None, operacao_id=None):
+   718→        return self.execute("""
+   719→            INSERT INTO kanban_cards (lote_ordem, of_numero, operacao_id, etapa, departamento, prioridade, operador_id)
+   720→            VALUES (%s, %s, %s, %s, %s, %s, %s)
+   721→        """, (lote_ordem, of_numero, operacao_id, etapa, departamento, prioridade, operador_id))
+   722→
+   723→    def sincronizar_kanban_com_operacoes(self, lote_ordem):
+   724→        """Cria/atualiza cards do Kanban baseado nas operações do lote"""
+   725→        operacoes = self.get_operacoes_por_lote(lote_ordem)
+   726→        lote = self.get_lote_por_ordem(lote_ordem)
+   727→        if not lote:
+   728→            return
+   729→        for op in operacoes:
+   730→            existente = self.query_one("SELECT id FROM kanban_cards WHERE operacao_id = %s", (op['id'],))
+   731→            if not existente:
+   732→                etapa = 'aguardando'
+   733→                if op['status'] == 'em_andamento':
+   734→                    etapa = 'em_producao'
+   735→                elif op['status'] == 'concluido':
+   736→                    etapa = 'concluido'
+   737→                elif op['status'] == 'pausado':
+   738→                    etapa = 'pausado'
+   739→                self.add_kanban_card(
+   740→                    lote_ordem=lote_ordem,
+   741→                    etapa=etapa,
+   742→                    prioridade=lote['prioridade'],
+   743→                    departamento=op['departamento'],
+   744→                    of_numero=op['of_numero'],
+   745→                    operacao_id=op['id']
+   746→                )
+   747→
+   748→    # =============================================
+   749→    # ESTATÍSTICAS E DASHBOARD
+   750→    # =============================================
+   751→
+   752→    def get_estatisticas_gerais(self):
+   753→        """Retorna estatísticas gerais do sistema em apenas 2 queries (antes eram 8)."""
+   754→        try:
+   755→            lotes = self.query_one("""
+   756→                SELECT
+   757→                    COUNT(*)                                                              AS total_lotes,
+   758→                    SUM(status = 'importado')                                             AS importados,
+   759→                    SUM(status = 'em_producao')                                           AS em_producao,
+   760→                    SUM(status = 'finalizado' AND DATE(data_fim_producao) = CURDATE())    AS finalizados_hoje
+   761→                FROM lotes_producao
+   762→            """)
+   763→            ops = self.query_one("""
+   764→                SELECT
+   765→                    COUNT(*)                                                              AS total_operacoes,
+   766→                    SUM(status = 'em_andamento')                                          AS ops_em_andamento,
+   767→                    SUM(status = 'concluido' AND DATE(data_fim) = CURDATE())              AS ops_concluidas_hoje,
+   768→                    (SELECT COUNT(*) FROM requisicoes_materiais WHERE status = 'pendente') AS requisicoes_pendentes
+   769→                FROM operacoes_producao
+   770→            """)
+   771→            return {
+   772→                'total_lotes':          int(lotes['total_lotes']       or 0),
+   773→                'importados':           int(lotes['importados']         or 0),
+   774→                'em_producao':          int(lotes['em_producao']        or 0),
+   775→                'finalizados_hoje':     int(lotes['finalizados_hoje']   or 0),
+   776→                'total_operacoes':      int(ops['total_operacoes']      or 0),
+   777→                'ops_em_andamento':     int(ops['ops_em_andamento']     or 0),
+   778→                'ops_concluidas_hoje':  int(ops['ops_concluidas_hoje']  or 0),
+   779→                'requisicoes_pendentes':int(ops['requisicoes_pendentes']or 0),
+   780→            }
+   781→        except Exception as e:
+   782→            print(f"Erro get_estatisticas_gerais: {e}")
+   783→            return {'total_lotes': 0, 'importados': 0, 'em_producao': 0, 'finalizados_hoje': 0,
+   784→                    'total_operacoes': 0, 'ops_em_andamento': 0, 'ops_concluidas_hoje': 0, 'requisicoes_pendentes': 0}
+   785→
+   786→    def get_estatisticas_departamento(self, departamento):
+   787→        """Retorna estatísticas de um departamento em 1 query (antes eram 4)."""
+   788→        try:
+   789→            r = self.query_one("""
+   790→                SELECT
+   791→                    SUM(status = 'pendente')                                                                      AS pendentes,
+   792→                    SUM(status = 'em_andamento')                                                                  AS em_andamento,
+   793→                    SUM(status = 'concluido' AND DATE(data_fim) = CURDATE())                                      AS concluidas_hoje,
+   794→                    SUM(status = 'concluido' AND MONTH(data_fim) = MONTH(CURDATE())
+   795→                                             AND YEAR(data_fim)  = YEAR(CURDATE()))                               AS concluidas_mes
+   796→                FROM operacoes_producao
+   797→                WHERE departamento = %s
+   798→            """, (departamento,))
+   799→            return {
+   800→                'pendentes':       int(r['pendentes']       or 0),
+   801→                'em_andamento':    int(r['em_andamento']    or 0),
+   802→                'concluidas_hoje': int(r['concluidas_hoje'] or 0),
+   803→                'concluidas_mes':  int(r['concluidas_mes']  or 0),
+   804→            }
+   805→        except Exception as e:
+   806→            print(f"Erro get_estatisticas_departamento: {e}")
+   807→            return {'pendentes': 0, 'em_andamento': 0, 'concluidas_hoje': 0, 'concluidas_mes': 0}
+   808→
+   809→    def get_lotes_importados_tv(self):
+   810→        return self.query("""
+   811→            SELECT l.ordem, l.lote_codigo, l.descricao_produto, l.qtde_ordem,
+   812→                   l.prioridade, l.data_previsao_erp, l.departamento_atual, l.status,
+   813→                   l.separacao_status, l.data_separacao, l.data_entrega
+   814→            FROM lotes_producao l
+   815→            WHERE l.status IN ('importado', 'liberado')
+   816→            ORDER BY FIELD(l.prioridade, 'urgente', 'alta', 'media', 'baixa'), l.data_previsao_erp ASC
+   817→        """)
+   818→
+   819→    def marcar_separacao_lote(self, ordem, novo_status, usuario_id=None):
+   820→        """
+   821→        Atualiza o status de separação pelo almoxarifado.
+   822→        novo_status: 'separando' | 'separado' | 'entregue' | 'pendente'
+   823→        """
+   824→        sql = "UPDATE lotes_producao SET separacao_status = %s"
+   825→        params = [novo_status]
+   826→        if novo_status == 'separado':
+   827→            sql += ", data_separacao = COALESCE(data_separacao, NOW()), usuario_separacao_id = %s"
+   828→            params.append(usuario_id)
+   829→        elif novo_status == 'entregue':
+   830→            sql += ", data_entrega = COALESCE(data_entrega, NOW()), usuario_entrega_id = %s"
+   831→            params.append(usuario_id)
+   832→        elif novo_status == 'separando':
+   833→            sql += ", usuario_separacao_id = %s"
+   834→            params.append(usuario_id)
+   835→        sql += " WHERE ordem = %s"
+   836→        params.append(ordem)
+   837→        return self.execute(sql, params)
+   838→
+   839→    def get_lotes_separacao_tv(self):
+   840→        """Retorna lotes com info de separação para a TV do almoxarifado."""
+   841→        return self.query("""
+   842→            SELECT l.ordem, l.lote_codigo, l.descricao_produto, l.qtde_ordem,
+   843→                   l.prioridade, l.data_previsao_erp, l.departamento_atual,
+   844→                   l.status, l.separacao_status, l.data_separacao, l.data_entrega,
+   845→                   l.data_importacao,
+   846→                   (SELECT COUNT(*) FROM operacoes_producao op WHERE op.lote_ordem = l.ordem) AS total_operacoes,
+   847→                   (SELECT COUNT(*) FROM operacoes_producao op WHERE op.lote_ordem = l.ordem AND op.status = 'concluido') AS operacoes_concluidas,
+   848→                   DATEDIFF(CURDATE(), l.data_previsao_erp) AS dias_atraso
+   849→            FROM lotes_producao l
+   850→            WHERE l.status IN ('liberado', 'em_producao')
+   851→              AND l.separacao_status IN ('pendente', 'separando', 'separado')
+   852→            ORDER BY FIELD(l.separacao_status, 'pendente', 'separando', 'separado'),
+   853→                     FIELD(l.prioridade, 'urgente', 'alta', 'media', 'baixa'),
+   854→                     l.data_previsao_erp ASC
+   855→        """)
+   856→
+   857→    def get_novas_liberacoes(self, ultima_data=None):
+   858→        """Retorna lotes liberados após uma data (para alerta sonoro na TV)."""
+   859→        sql = """
+   860→            SELECT ordem, lote_codigo, descricao_produto, qtde_ordem,
+   861→                   prioridade, data_previsao_erp, separacao_status
+   862→            FROM lotes_producao
+   863→            WHERE status = 'liberado' AND separacao_status = 'pendente'
+   864→        """
+   865→        params = []
+   866→        if ultima_data:
+   867→            sql += " AND data_ultima_sync > %s"
+   868→            params.append(ultima_data)
+   869→        sql += " ORDER BY data_ultima_sync DESC LIMIT 5"
+   870→        return self.query(sql, params)
+   871→
+   872→    def get_requisicoes_pendentes_tv(self):
+   873→        return self.query("""
+   874→            SELECT r.id, r.lote_ordem, r.material_descricao AS material, r.quantidade,
+   875→                   r.departamento_solicitante AS solicitado_por, r.data_solicitacao, r.status,
+   876→                   l.descricao_produto, l.prioridade, l.data_previsao_erp
+   877→            FROM requisicoes_materiais r
+   878→            LEFT JOIN lotes_producao l ON r.lote_ordem = l.ordem
+   879→            WHERE r.status = 'pendente'
+   880→            ORDER BY FIELD(l.prioridade, 'urgente', 'alta', 'media', 'baixa'), r.data_solicitacao DESC
+   881→        """)
+   882→
+   883→    def count_requisicoes_aprovadas_hoje(self):
+   884→        result = self.query_one("""
+   885→            SELECT COUNT(*) as t FROM requisicoes_materiais
+   886→            WHERE status IN ('aprovado', 'entregue') AND DATE(data_atendimento) = CURDATE()
+   887→        """)
+   888→        return result['t'] if result else 0
+   889→
+   890→    # =============================================
+   891→    # LOGS
+   892→    # =============================================
+   893→
+   894→    def add_log(self, usuario_id, acao, descricao=None, tabela=None, registro_id=None):
+   895→        try:
+   896→            usuario = self.query_one("SELECT nome FROM usuarios WHERE id = %s", (usuario_id,))
+   897→            nome = usuario['nome'] if usuario else 'Sistema'
+   898→            self.execute("""
+   899→                INSERT INTO log_atividades (usuario_id, usuario_nome, acao, tabela, registro_id, descricao)
+   900→                VALUES (%s, %s, %s, %s, %s, %s)
+   901→            """, [usuario_id, nome, acao, tabela, registro_id, descricao])
+   902→        except:
+   903→            pass
+   904→
+   905→    def get_logs(self, limit=100, usuario_id=None):
+   906→        sql = "SELECT * FROM log_atividades"
+   907→        params = []
+   908→        if usuario_id:
+   909→            sql += " WHERE usuario_id = %s"
+   910→            params.append(usuario_id)
+   911→        sql += " ORDER BY data_hora DESC LIMIT %s"
+   912→        params.append(limit)
+   913→        return self.query(sql, params)
+   914→
+   915→    # =============================================
+   916→    # DASHBOARD GERENTE — Visão consolidada
+   917→    # =============================================
+   918→
+   919→    def get_dashboard_gerente(self):
+   920→        """Retorna todos os dados do dashboard gerencial em poucas queries."""
+   921→        try:
+   922→            # 1. KPIs principais
+   923→            kpis = self.query_one("""
+   924→                SELECT
+   925→                    COUNT(*) AS total_lotes,
+   926→                    SUM(status = 'importado')     AS aguardando_liberacao,
+   927→                    SUM(status = 'liberado')      AS aguardando_inicio,
+   928→                    SUM(status = 'em_producao')   AS em_producao,
+   929→                    SUM(status = 'pausado')       AS pausados,
+   930→                    SUM(status = 'finalizado' AND DATE(data_fim_producao) = CURDATE()) AS concluidos_hoje,
+   931→                    SUM(status = 'finalizado' AND MONTH(data_fim_producao) = MONTH(CURDATE())
+   932→                                                AND YEAR(data_fim_producao)  = YEAR(CURDATE())) AS concluidos_mes,
+   933→                    SUM(prioridade = 'urgente' AND status NOT IN ('finalizado','cancelado')) AS urgentes,
+   934→                    SUM(prioridade = 'alta'     AND status NOT IN ('finalizado','cancelado')) AS altas,
+   935→                    SUM(data_previsao_erp IS NOT NULL
+   936→                        AND data_previsao_erp < CURDATE()
+   937→                        AND status NOT IN ('finalizado','cancelado')) AS atrasados
+   938→                FROM lotes_producao
+   939→            """)
+   940→
+   941→            # 2. Produção por setor (quantidade de operações por status)
+   942→            por_setor = self.query("""
+   943→                SELECT
+   944→                    d.codigo AS departamento,
+   945→                    d.nome   AS nome_departamento,
+   946→                    d.cor_hex,
+   947→                    d.ordem_fluxo,
+   948→                    COUNT(op.id) AS total_ops,
+   949→                    SUM(op.status = 'pendente')     AS pendentes,
+   950→                    SUM(op.status = 'em_andamento') AS em_andamento,
+   951→                    SUM(op.status = 'pausado')      AS pausados,
+   952→                    SUM(op.status = 'concluido' AND DATE(op.data_fim) = CURDATE()) AS concluidas_hoje
+   953→                FROM departamentos d
+   954→                LEFT JOIN operacoes_producao op ON op.departamento = d.codigo
+   955→                WHERE d.ativo = 1 AND d.ordem_fluxo > 0
+   956→                GROUP BY d.codigo, d.nome, d.cor_hex, d.ordem_fluxo
+   957→                ORDER BY d.ordem_fluxo
+   958→            """)
+   959→
+   960→            # 3. Produção dos últimos 7 dias (finalizados por dia)
+   961→            por_dia = self.query("""
+   962→                SELECT
+   963→                    DATE(data_fim_producao) AS dia,
+   964→                    COUNT(*) AS total,
+   965→                    SUM(qtde_ordem) AS pecas
+   966→                FROM lotes_producao
+   967→                WHERE status = 'finalizado'
+   968→                  AND data_fim_producao >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+   969→                GROUP BY DATE(data_fim_producao)
+   970→                ORDER BY dia
+   971→            """)
+   972→
+   973→            # 4. Próximas OPs a iniciar (liberadas + aguardando, com prioridade)
+   974→            proximas = self.query("""
+   975→                SELECT ordem, lote_codigo, descricao_produto, qtde_ordem,
+   976→                       prioridade, data_previsao_erp, status
+   977→                FROM lotes_producao
+   978→                WHERE status IN ('liberado', 'importado')
+   979→                ORDER BY FIELD(prioridade, 'urgente','alta','media','baixa'),
+   980→                         data_previsao_erp ASC
+   981→                LIMIT 8
+   982→            """)
+   983→
+   984→            # 5. Em produção agora
+   985→            em_producao = self.query("""
+   986→                SELECT ordem, lote_codigo, descricao_produto, qtde_ordem,
+   987→                       prioridade, data_inicio_producao, departamento_atual
+   988→                FROM lotes_producao
+   989→                WHERE status = 'em_producao'
+   990→                ORDER BY data_inicio_producao ASC
+   991→                LIMIT 8
+   992→            """)
+   993→
+   994→            # 6. TOP atrasados (alertas)
+   995→            atrasados = self.query("""
+   996→                SELECT ordem, lote_codigo, descricao_produto, qtde_ordem,
+   997→                       prioridade, data_previsao_erp, status, departamento_atual
+   998→                FROM lotes_producao
+   999→                WHERE data_previsao_erp IS NOT NULL
+  1000→                  AND data_previsao_erp < CURDATE()
+  1001→                  AND status NOT IN ('finalizado','cancelado')
+  1002→                ORDER BY FIELD(prioridade, 'urgente','alta','media','baixa'),
+  1003→                         data_previsao_erp ASC
+  1004→                LIMIT 10
+  1005→            """)
+  1006→
+  1007→            return {
+  1008→                'kpis': {
+  1009→                    'total_lotes':          int(kpis['total_lotes']          or 0),
+  1010→                    'aguardando_liberacao': int(kpis['aguardando_liberacao'] or 0),
+  1011→                    'aguardando_inicio':    int(kpis['aguardando_inicio']    or 0),
+  1012→                    'em_producao':          int(kpis['em_producao']          or 0),
+  1013→                    'pausados':             int(kpis['pausados']             or 0),
+  1014→                    'concluidos_hoje':      int(kpis['concluidos_hoje']      or 0),
+  1015→                    'concluidos_mes':       int(kpis['concluidos_mes']       or 0),
+  1016→                    'urgentes':             int(kpis['urgentes']             or 0),
+  1017→                    'altas':                int(kpis['altas']                or 0),
+  1018→                    'atrasados':            int(kpis['atrasados']            or 0),
+  1019→                },
+  1020→                'por_setor':      por_setor,
+  1021→                'por_dia':        por_dia,
+  1022→                'proximas_ops':   proximas,
+  1023→                'em_producao':    em_producao,
+  1024→                'atrasados':      atrasados,
+  1025→            }
+  1026→        except Exception as e:
+  1027→            print(f"Erro get_dashboard_gerente: {e}")
+  1028→            return {
+  1029→                'kpis': {'total_lotes':0,'aguardando_liberacao':0,'aguardando_inicio':0,'em_producao':0,
+  1030→                         'pausados':0,'concluidos_hoje':0,'concluidos_mes':0,'urgentes':0,'altas':0,'atrasados':0},
+  1031→                'por_setor': [], 'por_dia': [], 'proximas_ops': [], 'em_producao': [], 'atrasados': []
+  1032→            }
+  1033→
+  1034→    # =============================================
+  1035→    # ESTOQUE INTERNO (ALMOXARIFADO)
+  1036→    # =============================================
+  1037→
+  1038→    def get_estoque_interno(self, status_filtro=None, tipo=None):
+  1039→        """Retorna itens do estoque. status_filtro: 'baixo'|'normal'|None  tipo: 'almoxarifado'|'fabrica'|None"""
+  1040→        sql = "SELECT * FROM estoque_interno WHERE 1=1"
+  1041→        params = []
+  1042→        if tipo:
+  1043→            sql += " AND tipo = %s"
+  1044→            params.append(tipo)
+  1045→        if status_filtro == 'baixo':
+  1046→            sql += " AND (qtd_atual <= 0 OR (qtd_inicial > 0 AND qtd_atual <= qtd_inicial * 0.2))"
+  1047→        elif status_filtro == 'normal':
+  1048→            sql += " AND qtd_atual > 0 AND (qtd_inicial = 0 OR qtd_atual > qtd_inicial * 0.2)"
+  1049→        sql += " ORDER BY (qtd_atual <= 0 OR (qtd_inicial > 0 AND qtd_atual <= qtd_inicial * 0.2)) DESC, descricao ASC"
+  1050→        return self.query(sql, params)
+  1051→
+  1052→    def get_estoque_kpis(self, tipo=None):
+  1053→        """KPIs do estoque. Filtra por tipo se informado."""
+  1054→        sql = """
+  1055→            SELECT
+  1056→                COUNT(*) AS total_itens,
+  1057→                SUM(CASE WHEN qtd_atual <= 0 THEN 1 ELSE 0 END) AS sem_estoque,
+  1058→                SUM(CASE WHEN qtd_atual > 0 AND qtd_inicial > 0 AND qtd_atual <= qtd_inicial * 0.2 THEN 1 ELSE 0 END) AS estoque_baixo,
+  1059→                SUM(CASE WHEN qtd_atual > 0 AND (qtd_inicial = 0 OR qtd_atual > qtd_inicial * 0.2) THEN 1 ELSE 0 END) AS estoque_ok
+  1060→            FROM estoque_interno
+  1061→        """
+  1062→        if tipo:
+  1063→            sql += " WHERE tipo = %s"
+  1064→            return self.query_one(sql, (tipo,))
+  1065→        return self.query_one(sql)
+  1066→
+  1067→    def adicionar_estoque(self, dados):
+  1068→        """Adiciona item ao estoque. Se existe o codigo+tipo, acumula. tipo: 'almoxarifado'|'fabrica'"""
+  1069→        qtd = dados.get('qtd_atual', 0)
+  1070→        tipo = dados.get('tipo', 'almoxarifado')
+  1071→        sql = """
+  1072→            INSERT INTO estoque_interno (codigo, descricao, unidade, qtd_atual, qtd_minima, qtd_inicial, tipo)
+  1073→            VALUES (%s, %s, %s, %s, %s, %s, %s)
+  1074→            ON DUPLICATE KEY UPDATE
+  1075→                descricao = VALUES(descricao),
+  1076→                unidade = VALUES(unidade),
+  1077→                qtd_inicial = qtd_inicial + VALUES(qtd_inicial),
+  1078→                qtd_atual = qtd_atual + VALUES(qtd_atual)
+  1079→        """
+  1080→        return self.execute(sql, [
+  1081→            dados['codigo'], dados['descricao'], dados.get('unidade', 'UN'),
+  1082→            qtd, dados.get('qtd_minima', 0),
+  1083→            dados.get('qtd_inicial', qtd), tipo
+  1084→        ])
+  1085→
+  1086→    def repor_estoque(self, item_id, nova_qtd_total):
+  1087→        """Reposiciona o estoque: define nova qtd_atual e atualiza qtd_inicial como referência."""
+  1088→        sql = """
+  1089→            UPDATE estoque_interno
+  1090→            SET qtd_atual = %s,
+  1091→                qtd_inicial = %s,
+  1092→                updated_at = NOW()
+  1093→            WHERE id = %s
+  1094→        """
+  1095→        return self.execute(sql, [nova_qtd_total, nova_qtd_total, item_id])
+  1096→
+  1097→    def baixar_estoque_por_codigo(self, codigo, quantidade, tipo=None):
+  1098→        """Dá baixa no estoque pelo código. Se tipo, filtra por tipo."""
+  1099→        if tipo:
+  1100→            sql = "UPDATE estoque_interno SET qtd_atual = GREATEST(qtd_atual - %s, 0), updated_at = NOW() WHERE codigo = %s AND tipo = %s"
+  1101→            return self.execute(sql, [quantidade, codigo, tipo])
+  1102→        sql = "UPDATE estoque_interno SET qtd_atual = GREATEST(qtd_atual - %s, 0), updated_at = NOW() WHERE codigo = %s"
+  1103→        return self.execute(sql, [quantidade, codigo])
+  1104→
+  1105→    def registrar_baixa_estoque(self, codigo, quantidade, ordem, motivo='liberacao_of', tipo='fabrica'):
+  1106→        """Dá baixa e registra no histórico de movimentação."""
+  1107→        self.baixar_estoque_por_codigo(codigo, quantidade, tipo=tipo)
+  1108→        where = "WHERE codigo = %s"
+  1109→        params_hist = [quantidade, ordem, motivo, codigo]
+  1110→        if tipo:
+  1111→            where += " AND tipo = %s"
+  1112→            params_hist.append(tipo)
+  1113→        sql_hist = f"""
+  1114→            INSERT INTO estoque_movimentacao (item_estoque_id, tipo, quantidade, ordem_relacionada, usuario_id, observacao)
+  1115→            SELECT id, 'baixa', %s, %s, NULL, %s
+  1116→            FROM estoque_interno {where}
+  1117→        """
+  1118→        self.execute(sql_hist, params_hist)
+  1119→
+  1120→    def get_estoque_por_codigo(self, codigo, tipo=None):
+  1121→        """Busca item de estoque pelo código e opcionalmente por tipo."""
+  1122→        if tipo:
+  1123→            return self.query_one("SELECT * FROM estoque_interno WHERE codigo = %s AND tipo = %s", (codigo, tipo))
+  1124→        return self.query_one("SELECT * FROM estoque_interno WHERE codigo = %s", (codigo,))
+  1125→
+  1126→    def atualizar_estoque(self, item_id, dados):
+  1127→        """Atualiza dados de um item do estoque."""
+  1128→        campos = []
+  1129→        params = []
+  1130→        for campo in ('descricao', 'unidade', 'qtd_minima'):
+  1131→            if campo in dados:
+  1132→                campos.append(f"{campo} = %s")
+  1133→                params.append(dados[campo])
+  1134→        if not campos:
+  1135→            return False
+  1136→        params.append(item_id)
+  1137→        sql = f"UPDATE estoque_interno SET {', '.join(campos)}, updated_at = NOW() WHERE id = %s"
+  1138→        return self.execute(sql, params)
+  1139→
+  1140→    def get_movimentacao_estoque(self, limite=50):
+  1141→        """Retorna historico de movimentacoes do estoque."""
+  1142→        sql = """
+  1143→            SELECT m.*, e.codigo, e.descricao AS material_descricao, e.unidade, e.tipo AS estoque_tipo,
+  1144→                   u.nome AS usuario_nome
+  1145→            FROM estoque_movimentacao m
+  1146→            LEFT JOIN estoque_interno e ON m.item_estoque_id = e.id
+  1147→            LEFT JOIN usuarios u ON m.usuario_id = u.id
+  1148→            ORDER BY m.created_at DESC
+  1149→            LIMIT %s
+  1150→        """
+  1151→        return self.query(sql, (limite,))
+  1152→
+  1153→    def mover_estoque_para_fabrica(self, item_id, quantidade, usuario_id=None):
+  1154→        """Move quantidade do almoxarifado para a fabrica."""
+  1155→        item = self.query_one("SELECT * FROM estoque_interno WHERE id = %s AND tipo = 'almoxarifado'", (item_id,))
+  1156→        if not item or quantidade <= 0:
+  1157→            return False
+  1158→        qtd_mover = min(quantidade, item['qtd_atual'])
+  1159→        # Deduz do almoxarifado
+  1160→        self.execute(
+  1161→            "UPDATE estoque_interno SET qtd_atual = GREATEST(qtd_atual - %s, 0), updated_at = NOW() WHERE id = %s",
+  1162→            [qtd_mover, item_id]
+  1163→        )
+  1164→        # Adiciona na fabrica
+  1165→        self.execute("""
+  1166→            INSERT INTO estoque_interno (codigo, descricao, unidade, qtd_atual, qtd_minima, qtd_inicial, tipo)
+  1167→            VALUES (%s, %s, %s, %s, 0, %s, 'fabrica')
+  1168→            ON DUPLICATE KEY UPDATE
+  1169→                qtd_atual = qtd_atual + VALUES(qtd_atual),
+  1170→                qtd_inicial = qtd_inicial + VALUES(qtd_inicial)
+  1171→        """, [item['codigo'], item['descricao'], item['unidade'], qtd_mover, qtd_mover])
+  1172→        # Registra movimentacao
+  1173→        fab = self.query_one("SELECT id FROM estoque_interno WHERE codigo = %s AND tipo = 'fabrica'", (item['codigo'],))
+  1174→        if fab:
+  1175→            self.execute("""INSERT INTO estoque_movimentacao (item_estoque_id, tipo, quantidade, usuario_id, observacao)
+  1176→                            VALUES (%s, 'transferencia', %s, %s, 'Separado do almoxarifado p/ fabrica')""",
+  1177→                         [fab['id'], qtd_mover, usuario_id])
+  1178→        return True
+  1179→
+  1180→    def get_lotes_liberados_pendentes(self):
+  1181→        """OFs liberadas aguardando separacao."""
+  1182→        return self.query("""
+  1183→            SELECT ordem, lote_descricao, descricao_produto, qtde_ordem AS quantidade,
+  1184→                   prioridade, departamento_atual AS departamento, data_previsao_erp AS data_previsao
+  1185→            FROM lotes
+  1186→            WHERE status = 'liberado'
+  1187→            AND separacao_status IN ('pendente', 'separando')
+  1188→            ORDER BY
+  1189→                CASE prioridade WHEN 'urgente' THEN 1 WHEN 'alta' THEN 2 WHEN 'media' THEN 3 ELSE 4 END,
+  1190→                data_previsao_erp ASC
+  1191→        """)
+  1192→
+  1193→    def get_codigos_produtos_ofs_ativas(self):
+  1194→        """Retorna todos os codigo_produto das OFs ativas (para filtrar peças fabricadas do BOM)."""
+  1195→        rows = self.query("""
+  1196→            SELECT DISTINCT codigo_produto
+  1197→            FROM lotes_producao
+  1198→            WHERE codigo_produto IS NOT NULL AND codigo_produto != ''
+  1199→        """)
+  1200→        return set(str(r['codigo_produto']) for r in rows)
+  1201→
+  1202→

@@ -1,0 +1,780 @@
+     1→<!DOCTYPE html>
+     2→<html lang="pt-BR">
+     3→<head>
+     4→  <meta charset="UTF-8">
+     5→  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     6→  <title>TV Kanban — SALUTEM</title>
+     7→  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+     8→  <style>
+     9→    :root {
+    10→      --bg:      #060d18;
+    11→      --bg2:     #0b1628;
+    12→      --bg3:     #0f1e35;
+    13→      --border:  rgba(255,255,255,0.06);
+    14→      --text:    #e8edf5;
+    15→      --muted:   #5a6a88;
+    16→      --blue:    #2563eb;
+    17→      --cyan:    #22d3ee;
+    18→      --green:   #22c55e;
+    19→      --amber:   #f59e0b;
+    20→      --red:     #ef4444;
+    21→      --purple:  #a855f7;
+    22→      --orange:  #f97316;
+    23→      --pink:    #ec4899;
+    24→      --yellow:  #eab308;
+    25→    }
+    26→    * { box-sizing:border-box; margin:0; padding:0; }
+    27→    html, body { height: 100%; }
+    28→    body {
+    29→      background: var(--bg);
+    30→      color: var(--text);
+    31→      font-family: 'Segoe UI', system-ui, sans-serif;
+    32→      overflow: hidden;
+    33→      display: flex; flex-direction: column;
+    34→      position: relative;
+    35→    }
+    36→
+    37→    /* ── FUNDO ANIMADO INDUSTRIAL ── */
+    38→    .bg-animated {
+    39→      position: fixed; inset: 0;
+    40→      z-index: 0; pointer-events: none;
+    41→      overflow: hidden;
+    42→    }
+    43→    /* Linhas de grade tipo "blueprint" */
+    44→    .bg-animated::before {
+    45→      content: '';
+    46→      position: absolute; inset: 0;
+    47→      background-image:
+    48→        linear-gradient(rgba(37,99,235,0.04) 1px, transparent 1px),
+    49→        linear-gradient(90deg, rgba(37,99,235,0.04) 1px, transparent 1px);
+    50→      background-size: 40px 40px;
+    51→      mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+    52→    }
+    53→    /* Engrenagens girando no fundo */
+    54→    .gear {
+    55→      position: absolute;
+    56→      color: rgba(37,99,235,0.06);
+    57→      animation: spin 20s linear infinite;
+    58→    }
+    59→    .gear.g1 { top: 10%; left: 5%; font-size: 6rem; animation-duration: 25s; }
+    60→    .gear.g2 { top: 60%; right: 8%; font-size: 8rem; animation-duration: 30s; animation-direction: reverse; }
+    61→    .gear.g3 { bottom: 5%; left: 30%; font-size: 5rem; animation-duration: 18s; }
+    62→    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    63→
+    64→    /* ── HEADER ── */
+    65→    header {
+    66→      background: linear-gradient(90deg, #070f22 0%, #0c1a3a 55%, #070f22 100%);
+    67→      border-bottom: 1px solid rgba(37,99,235,0.35);
+    68→      padding: 0 24px; height: 64px;
+    69→      display: flex; align-items: center; justify-content: space-between;
+    70→      flex-shrink: 0; position: relative; z-index: 2;
+    71→    }
+    72→    .h-left { display:flex; align-items:center; gap:14px; }
+    73→    .h-logo {
+    74→      width:42px; height:42px; border-radius:10px;
+    75→      background: var(--blue);
+    76→      display:flex; align-items:center; justify-content:center;
+    77→      font-size:1.3rem;
+    78→      box-shadow: 0 0 20px rgba(37,99,235,0.5);
+    79→      animation: logoPulse 3s ease-in-out infinite;
+    80→    }
+    81→    @keyframes logoPulse {
+    82→      0%, 100% { box-shadow: 0 0 20px rgba(37,99,235,0.5); }
+    83→      50% { box-shadow: 0 0 30px rgba(37,99,235,0.8); }
+    84→    }
+    85→    .h-title { font-size:1.3rem; font-weight:800; letter-spacing:.02em; }
+    86→    .h-title span { color:#60a5fa; text-shadow: 0 0 12px rgba(96,165,250,0.5); }
+    87→    .h-sub { font-size:.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-top:1px; }
+    88→    .h-clock .time { font-size:1.9rem; font-weight:700; font-family:'Courier New',monospace; color:#60a5fa; line-height:1; text-align:right; text-shadow: 0 0 12px rgba(96,165,250,0.4); }
+    89→    .h-clock .date { font-size:.7rem; color:var(--muted); margin-top:2px; text-align:right; text-transform:capitalize; }
+    90→
+    91→    /* ── STATS BAR ── */
+    92→    .stats-bar {
+    93→      display:grid; grid-template-columns:repeat(5,1fr);
+    94→      gap:8px; padding:10px 16px; flex-shrink:0;
+    95→      position: relative; z-index: 2;
+    96→    }
+    97→    .stat-card {
+    98→      background: var(--bg2); border:1px solid var(--border);
+    99→      border-radius:10px; padding:12px 16px;
+   100→      display:flex; align-items:center; gap:12px;
+   101→      transition: all .3s;
+   102→    }
+   103→    .stat-card.highlight {
+   104→      animation: cardGlow 2s ease-in-out infinite;
+   105→    }
+   106→    @keyframes cardGlow {
+   107→      0%, 100% { box-shadow: 0 0 0 0 rgba(217,119,6,0.4); border-color: rgba(217,119,6,0.4); }
+   108→      50% { box-shadow: 0 0 20px 4px rgba(217,119,6,0.2); border-color: rgba(217,119,6,0.8); }
+   109→    }
+   110→    .stat-card.highlight-red {
+   111→      animation: cardGlowRed 2s ease-in-out infinite;
+   112→    }
+   113→    @keyframes cardGlowRed {
+   114→      0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); border-color: rgba(239,68,68,0.4); }
+   115→      50% { box-shadow: 0 0 20px 4px rgba(239,68,68,0.2); border-color: rgba(239,68,68,0.8); }
+   116→    }
+   117→    .stat-icon {
+   118→      width:40px; height:40px; border-radius:8px;
+   119→      display:flex; align-items:center; justify-content:center;
+   120→      font-size:1.1rem; flex-shrink:0;
+   121→    }
+   122→    .stat-num { font-size:1.7rem; font-weight:800; line-height:1; }
+   123→    .stat-lbl { font-size:.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-top:2px; }
+   124→
+   125→    /* ── FLUXO ── */
+   126→    .fluxo {
+   127→      display:flex; align-items:center; justify-content:center;
+   128→      gap:6px; padding:4px 16px 8px; flex-shrink:0;
+   129→      flex-wrap:wrap;
+   130→      position: relative; z-index: 2;
+   131→    }
+   132→    .fluxo-step {
+   133→      display:flex; align-items:center; gap:6px;
+   134→      background: rgba(255,255,255,0.03);
+   135→      border:1px solid rgba(255,255,255,0.06);
+   136→      border-radius:20px; padding:5px 12px;
+   137→      transition: all .2s;
+   138→    }
+   139→    .fluxo-step.ativo {
+   140→      background: rgba(37,99,235,0.15);
+   141→      border-color: rgba(37,99,235,0.4);
+   142→      box-shadow: 0 0 12px rgba(37,99,235,0.3);
+   143→    }
+   144→    .fluxo-dot { width:8px; height:8px; border-radius:50%; box-shadow: 0 0 6px currentColor; }
+   145→    .fluxo-nome { font-size:.62rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; }
+   146→    .fluxo-cnt {
+   147→      font-size:.6rem; font-weight:800;
+   148→      background:rgba(255,255,255,0.1);
+   149→      border-radius:10px; padding:1px 7px;
+   150→    }
+   151→    .fluxo-arrow {
+   152→      color:#1e2d45; font-size:1rem;
+   153→      animation: arrowPulse 1.5s ease-in-out infinite;
+   154→    }
+   155→    @keyframes arrowPulse {
+   156→      0%, 100% { opacity: 0.4; transform: translateX(0); }
+   157→      50% { opacity: 1; transform: translateX(2px); }
+   158→    }
+   159→
+   160→    /* ── KANBAN ── */
+   161→    .kanban-outer {
+   162→      flex:1; overflow:hidden;
+   163→      padding:0 16px 8px;
+   164→      display:flex; flex-direction:column; gap:0;
+   165→      position: relative; z-index: 2;
+   166→    }
+   167→
+   168→    .status-group {
+   169→      display:flex; flex-direction:column;
+   170→      border:1px solid var(--border);
+   171→      border-radius:12px;
+   172→      overflow:hidden;
+   173→      flex:1;
+   174→    }
+   175→    .status-group + .status-group { margin-top:8px; }
+   176→
+   177→    .sg-header {
+   178→      padding:8px 14px;
+   179→      font-size:.78rem; font-weight:800;
+   180→      text-transform:uppercase; letter-spacing:.07em;
+   181→      display:flex; align-items:center; justify-content:space-between;
+   182→      flex-shrink:0; border-bottom:1px solid var(--border);
+   183→    }
+   184→    .sg-body {
+   185→      flex:1; display:flex; overflow:hidden;
+   186→    }
+   187→
+   188→    .setor-col {
+   189→      flex:1; display:flex; flex-direction:column;
+   190→      border-right:1px solid var(--border); overflow:hidden;
+   191→    }
+   192→    .setor-col:last-child { border-right:none; }
+   193→    .setor-col-header {
+   194→      padding:6px 10px;
+   195→      font-size:.6rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em;
+   196→      display:flex; align-items:center; justify-content:space-between;
+   197→      border-bottom:1px solid var(--border); flex-shrink:0;
+   198→    }
+   199→    .setor-col-body {
+   200→      flex:1; overflow-y:auto; padding:6px; display:flex; flex-direction:column; gap:4px;
+   201→    }
+   202→    .setor-col-body::-webkit-scrollbar { width:2px; }
+   203→    .setor-col-body::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.08); border-radius:2px; }
+   204→
+   205→    /* Card do lote */
+   206→    .k-card {
+   207→      background:rgba(255,255,255,0.04);
+   208→      border:1px solid rgba(255,255,255,0.06);
+   209→      border-left:3px solid transparent;
+   210→      border-radius:7px; padding:7px 9px;
+   211→      transition: background .2s, transform .2s;
+   212→    }
+   213→    .k-card.p-urgente { border-left-color:#ef4444; background:rgba(239,68,68,0.08); }
+   214→    .k-card.p-alta    { border-left-color:#f97316; }
+   215→    .k-card.p-media   { border-left-color:#eab308; }
+   216→    .k-card.p-baixa   { border-left-color:#22c55e; }
+   217→
+   218→    /* Card em produção com animação */
+   219→    .sg-em_producao .k-card {
+   220→      animation: cardProducing 3s ease-in-out infinite;
+   221→    }
+   222→    @keyframes cardProducing {
+   223→      0%, 100% { background: rgba(217,119,6,0.04); }
+   224→      50% { background: rgba(217,119,6,0.12); }
+   225→    }
+   226→
+   227→    .kc-op   { font-size:.62rem; color:#60a5fa; font-weight:700; margin-bottom:2px; }
+   228→    .kc-prod { font-size:.75rem; font-weight:600; color:#e2e8f0; line-height:1.3; margin-bottom:2px; }
+   229→    .kc-op2  { font-size:.62rem; color:var(--muted); margin-bottom:4px; }
+   230→    .kc-meta { display:flex; justify-content:space-between; align-items:center; gap:4px; flex-wrap:wrap; }
+   231→    .kc-timer { font-size:.68rem; font-weight:700; font-family:'Courier New',monospace; }
+   232→
+   233→    .badge-p {
+   234→      font-size:.55rem; font-weight:700; text-transform:uppercase;
+   235→      padding:1px 6px; border-radius:8px;
+   236→    }
+   237→    .badge-p.urgente { background:#7f1d1d; color:#fca5a5; }
+   238→    .badge-p.alta    { background:#7c2d12; color:#fdba74; }
+   239→    .badge-p.media   { background:#713f12; color:#fde68a; }
+   240→    .badge-p.baixa   { background:#14532d; color:#86efac; }
+   241→
+   242→    .k-empty {
+   243→      display:flex; flex-direction:column;
+   244→      align-items:center; justify-content:center;
+   245→      height:100%; color:#1e3050;
+   246→      font-size:.7rem; gap:4px;
+   247→    }
+   248→    .k-empty i { font-size:1.4rem; }
+   249→
+   250→    .cnt-badge {
+   251→      background:rgba(255,255,255,0.1);
+   252→      border-radius:12px; padding:1px 8px;
+   253→      font-size:.65rem; font-weight:700;
+   254→    }
+   255→
+   256→    /* cores por status */
+   257→    .sg-aguardando  .sg-header { background:#0a1628; color:#60a5fa; border-left:3px solid #2563eb; }
+   258→    .sg-em_producao .sg-header { background:#1a0e00; color:#fb923c; border-left:3px solid #d97706; }
+   259→    .sg-concluido   .sg-header { background:#001a0a; color:#4ade80; border-left:3px solid #16a34a; }
+   260→
+   261→    /* Indicador "AGORA" no header em produção */
+   262→    .sg-em_producao .sg-header .now-indicator {
+   263→      display: inline-flex; align-items: center; gap: 4px;
+   264→      font-size:.55rem; padding: 2px 7px;
+   265→      background: rgba(217,119,6,0.3); color:#fb923c;
+   266→      border-radius: 8px; font-weight: 800;
+   267→    }
+   268→    .now-indicator { display: none; }
+   269→    .now-indicator .dot {
+   270→      width: 5px; height: 5px; border-radius: 50%;
+   271→      background: #fb923c;
+   272→      animation: pulse 1s infinite;
+   273→    }
+   274→
+   275→    /* ── FOOTER ── */
+   276→    footer {
+   277→      height:30px; background:#040a14;
+   278→      border-top:1px solid rgba(37,99,235,0.25);
+   279→      display:flex; align-items:center;
+   280→      padding:0 16px; gap:12px; flex-shrink:0;
+   281→      position: relative; z-index: 2;
+   282→    }
+   283→    .live-dot {
+   284→      display:flex; align-items:center; gap:5px;
+   285→      font-size:.6rem; font-weight:700; color:#22c55e; white-space:nowrap;
+   286→    }
+   287→    .dot { width:6px; height:6px; border-radius:50%; background:#22c55e; animation:pulse 1.4s infinite; }
+   288→    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.75)} }
+   289→    .ticker-msg { font-size:.65rem; color:#2d4060; }
+   290→
+   291→    /* ── ESTEIRA ANIMADA NO RODAPÉ ── */
+   292→    .esteira {
+   293→      height: 3px;
+   294→      background: linear-gradient(90deg,
+   295→        transparent 0%,
+   296→        var(--blue) 30%,
+   297→        var(--cyan) 50%,
+   298→        var(--blue) 70%,
+   299→        transparent 100%);
+   300→      background-size: 200% 100%;
+   301→      animation: esteiraMove 3s linear infinite;
+   302→      flex-shrink: 0;
+   303→    }
+   304→    @keyframes esteiraMove {
+   305→      0% { background-position: -100% 0; }
+   306→      100% { background-position: 100% 0; }
+   307→    }
+   308→
+   309→    /* ── PARTÍCULAS (pontos flutuantes no fundo) ── */
+   310→    .particles {
+   311→      position: fixed; inset: 0; z-index: 1;
+   312→      pointer-events: none;
+   313→      overflow: hidden;
+   314→    }
+   315→    .particle {
+   316→      position: absolute;
+   317→      width: 3px; height: 3px;
+   318→      background: rgba(96,165,250,0.6);
+   319→      border-radius: 50%;
+   320→      box-shadow: 0 0 6px rgba(96,165,250,0.8);
+   321→      animation: floatUp 15s linear infinite;
+   322→    }
+   323→    @keyframes floatUp {
+   324→      from { transform: translateY(100vh); opacity: 0; }
+   325→      10% { opacity: 1; }
+   326→      90% { opacity: 1; }
+   327→      to { transform: translateY(-10vh); opacity: 0; }
+   328→    }
+   329→  </style>
+   330→</head>
+   331→<body>
+   332→
+   333→<!-- FUNDO ANIMADO -->
+   334→<div class="bg-animated">
+   335→  <i class="fa-solid fa-gear gear g1"></i>
+   336→  <i class="fa-solid fa-gear gear g2"></i>
+   337→  <i class="fa-solid fa-gear gear g3"></i>
+   338→</div>
+   339→<div class="particles" id="particles"></div>
+   340→
+   341→<!-- ALERTA ERP OFFLINE -->
+   342→{% if not pg_ok %}
+   343→<div id="erpAlert" style="background:rgba(220,38,38,.95);border-bottom:2px solid #fca5a5;padding:8px 16px;text-align:center;z-index:100;position:relative;flex-shrink:0">
+   344→  <div style="display:flex;align-items:center;justify-content:center;gap:8px;color:#fff;font-size:13px">
+   345→    <i class="fa-solid fa-triangle-exclamation" style="font-size:16px"></i>
+   346→    <span style="font-weight:700">ERP Lógica OFFLINE</span>
+   347→    <span style="opacity:.85;font-size:11px">— Dados do banco local, podem estar desatualizados</span>
+   348→  </div>
+   349→</div>
+   350→{% endif %}
+   351→
+   352→<!-- HEADER -->
+   353→<header>
+   354→  <div class="h-left">
+   355→    <div class="h-logo"><i class="fa-solid fa-industry"></i></div>
+   356→    <div>
+   357→      <div class="h-title">PRODUÇÃO <span>Kanban</span></div>
+   358→      <div class="h-sub">Painel de Acompanhamento — Todos os Setores</div>
+   359→    </div>
+   360→  </div>
+   361→  <div class="h-clock">
+   362→    <div class="time" id="clock">00:00:00</div>
+   363→    <div class="date" id="dateStr">—</div>
+   364→  </div>
+   365→</header>
+   366→
+   367→<!-- STATS BAR -->
+   368→<div class="stats-bar">
+   369→  <div class="stat-card" id="cardAguard">
+   370→    <div class="stat-icon" style="background:rgba(37,99,235,.15);color:#60a5fa">
+   371→      <i class="fa-solid fa-hourglass-start"></i>
+   372→    </div>
+   373→    <div>
+   374→      <div class="stat-num" style="color:#60a5fa" id="sAguardando">0</div>
+   375→      <div class="stat-lbl">Aguardando</div>
+   376→    </div>
+   377→  </div>
+   378→  <div class="stat-card" id="cardProd">
+   379→    <div class="stat-icon" style="background:rgba(217,119,6,.15);color:#fb923c">
+   380→      <i class="fa-solid fa-gear"></i>
+   381→    </div>
+   382→    <div>
+   383→      <div class="stat-num" style="color:#fb923c" id="sEmProd">0</div>
+   384→      <div class="stat-lbl">Em Produção</div>
+   385→    </div>
+   386→  </div>
+   387→  <div class="stat-card" id="cardAtraso">
+   388→    <div class="stat-icon" style="background:rgba(239,68,68,.15);color:#f87171">
+   389→      <i class="fa-solid fa-triangle-exclamation"></i>
+   390→    </div>
+   391→    <div>
+   392→      <div class="stat-num" style="color:#f87171" id="sAtraso">0</div>
+   393→      <div class="stat-lbl">Em Atraso</div>
+   394→    </div>
+   395→  </div>
+   396→  <div class="stat-card">
+   397→    <div class="stat-icon" style="background:rgba(22,163,74,.15);color:#4ade80">
+   398→      <i class="fa-solid fa-circle-check"></i>
+   399→    </div>
+   400→    <div>
+   401→      <div class="stat-num" style="color:#4ade80" id="sConcluido">0</div>
+   402→      <div class="stat-lbl">Concluídos Hoje</div>
+   403→    </div>
+   404→  </div>
+   405→  <div class="stat-card">
+   406→    <div class="stat-icon" style="background:rgba(168,85,247,.15);color:#c084fc">
+   407→      <i class="fa-solid fa-layer-group"></i>
+   408→    </div>
+   409→    <div>
+   410→      <div class="stat-num" style="color:#c084fc" id="sTotal">0</div>
+   411→      <div class="stat-lbl">Total de Lotes</div>
+   412→    </div>
+   413→  </div>
+   414→</div>
+   415→
+   416→<!-- FLUXO DOS SETORES -->
+   417→<div class="fluxo" id="fluxoBar"></div>
+   418→
+   419→<!-- KANBAN -->
+   420→<div class="kanban-outer" id="kanbanOuter">
+   421→  <div style="display:flex;align-items:center;justify-content:center;flex:1;color:#1e3050;font-size:.9rem;">
+   422→    <i class="fa-solid fa-rotate fa-spin" style="margin-right:8px"></i> Carregando dados...
+   423→  </div>
+   424→</div>
+   425→
+   426→<!-- ESTEIRA ANIMADA -->
+   427→<div class="esteira"></div>
+   428→
+   429→<!-- FOOTER -->
+   430→<footer>
+   431→  <div class="live-dot"><div class="dot"></div> AO VIVO</div>
+   432→  <div class="ticker-msg" id="tickerMsg">Carregando...</div>
+   433→</footer>
+   434→
+   435→<script>
+   436→/* ─── Config ─── */
+   437→const SETORES = [
+   438→  { key:'ALMOXARIFADO', label:'Almox',    cor:'#06b6d4' },
+   439→  { key:'CORTE',        label:'Corte',    cor:'#f97316' },
+   440→  { key:'SOLDA',        label:'Solda',    cor:'#ef4444' },
+   441→  { key:'DOBRA',        label:'Dobra',    cor:'#8b5cf6' },
+   442→  { key:'SERRALHERIA',  label:'Serr.',    cor:'#eab308' },
+   443→  { key:'ACABAMENTO',   label:'Acab.',    cor:'#a855f7' },
+   444→  { key:'PINTURA',      label:'Pintura',  cor:'#ec4899' },
+   445→  { key:'MONTAGEM',     label:'Montagem', cor:'#3b82f6' },
+   446→  { key:'EMBALAGEM',    label:'Embalagem',cor:'#22c55e' },
+   447→];
+   448→
+   449→const STATUS_CONFIG = [
+   450→  { key:'aguardando',  label:'Aguardando',  icon:'fa-hourglass-start' },
+   451→  { key:'em_producao', label:'Em Produção', icon:'fa-gear'            },
+   452→  { key:'pausado',     label:'Pausados',    icon:'fa-pause'           },
+   453→  { key:'concluido',   label:'Concluídos',  icon:'fa-circle-check'   },
+   454→];
+   455→
+   456→/* ─── Partículas flutuantes ─── */
+   457→function criarParticulas() {
+   458→  const container = document.getElementById('particles');
+   459→  for (let i = 0; i < 20; i++) {
+   460→    const p = document.createElement('div');
+   461→    p.className = 'particle';
+   462→    p.style.left = Math.random() * 100 + '%';
+   463→    p.style.animationDelay = (Math.random() * 15) + 's';
+   464→    p.style.animationDuration = (10 + Math.random() * 10) + 's';
+   465→    container.appendChild(p);
+   466→  }
+   467→}
+   468→criarParticulas();
+   469→
+   470→/* ─── Relógio ─── */
+   471→function tick() {
+   472→  const n = new Date();
+   473→  document.getElementById('clock').textContent   = n.toLocaleTimeString('pt-BR');
+   474→  document.getElementById('dateStr').textContent = n.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
+   475→}
+   476→setInterval(tick,1000); tick();
+   477→
+   478→/* ─── Cronômetro de card ─── */
+   479→function tempoDecorrido(isoStr) {
+   480→  if (!isoStr || isoStr === 'None') return '';
+   481→  try {
+   482→    // Aceita formato "YYYY-MM-DD HH:MM:SS" ou "YYYY-MM-DDTHH:MM:SS"
+   483→    var clean = isoStr.replace('T', ' ');
+   484→    var parts = clean.substring(0, 19).split(/[- :]/);
+   485→    if (parts.length < 3) return '';
+   486→    var y = parseInt(parts[0], 10), mo = parseInt(parts[1], 10) - 1, d = parseInt(parts[2], 10);
+   487→    var h = parseInt(parts[3] || 0, 10), mi = parseInt(parts[4] || 0, 10), s = parseInt(parts[5] || 0, 10);
+   488→    if (isNaN(y) || isNaN(mo) || isNaN(d)) return '';
+   489→    var inicio = new Date(y, mo, d, h, mi, s);
+   490→    if (isNaN(inicio.getTime())) return '';
+   491→    var diff = Math.max(0, Math.floor((Date.now() - inicio.getTime()) / 1000));
+   492→    var hh = String(Math.floor(diff / 3600)).padStart(2, '0');
+   493→    var mm = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
+   494→    var ss = String(diff % 60).padStart(2, '0');
+   495→    return hh + ':' + mm + ':' + ss;
+   496→  } catch (e) { return ''; }
+   497→}
+   498→
+   499→/* ─── Minutos decorridos desde data formato YYYY-MM-DD HH:MM:SS ─── */
+   500→function minutosDecorridos(isoStr) {
+   501→  if (!isoStr || isoStr === 'None') return -1;
+   502→  try {
+   503→    var parts = isoStr.replace('T', ' ').substring(0, 19).split(/[- :]/);
+   504→    if (parts.length < 3) return -1;
+   505→    var inicio = new Date(parseInt(parts[0],10), parseInt(parts[1],10)-1, parseInt(parts[2],10), parseInt(parts[3]||0,10), parseInt(parts[4]||0,10), parseInt(parts[5]||0,10));
+   506→    if (isNaN(inicio.getTime())) return -1;
+   507→    return Math.max(0, (Date.now() - inicio.getTime()) / 60000);
+   508→  } catch (e) { return -1; }
+   509→}
+   510→
+   511→/* ─── Render ─── */
+   512→let _timerInterval = null;
+   513→
+   514→function renderFluxo(cards) {
+   515→  const bar = document.getElementById('fluxoBar');
+   516→  const ativos = SETORES.filter(s => cards.some(c => (c.departamento||'').toUpperCase() === s.key));
+   517→  if (ativos.length === 0) { bar.innerHTML = ''; return; }
+   518→  bar.innerHTML = ativos.map((s,i) => {
+   519→    const cnt = cards.filter(c => (c.departamento||'').toUpperCase() === s.key).length;
+   520→    const arrow = (i < ativos.length-1) ? '<span class="fluxo-arrow">›</span>' : '';
+   521→    return `
+   522→      <div class="fluxo-step">
+   523→        <div class="fluxo-dot" style="background:${s.cor};color:${s.cor}"></div>
+   524→        <span class="fluxo-nome" style="color:${s.cor}">${s.label}</span>
+   525→        <span class="fluxo-cnt" style="color:${s.cor}">${cnt}</span>
+   526→      </div>${arrow}`;
+   527→  }).join('');
+   528→}
+   529→
+   530→/* ─── Tempos médios globais (preenchido pelo loadData) ─── */
+   531→var _temposMedios = {};
+   532→
+   533→function calcProgressoTempo(card) {
+   534→  /* Prioridade: tempo estimado > operações concluídas > 0 */
+   535→  if (card.etapa === 'concluido') return 100;
+   536→  if (card.etapa !== 'em_producao') return 0;
+   537→
+   538→  var dtInicio = card.data_inicio_fmt || null;
+   539→  var minDecorridos = minutosDecorridos(dtInicio);
+   540→
+   541→  /* Busca tempo medio para este produto+setor */
+   542→  var peca = (card.cod_peca || '').trim();
+   543→  var setor = (card.departamento || '').trim().toUpperCase();
+   544→  var chave = peca + '|' + setor;
+   545→  var tempoEstimado = _temposMedios[chave];
+   546→
+   547→  /* Se tem tempo medio historico, calcula % por tempo */
+   548→  if (tempoEstimado > 0 && minDecorridos >= 0) {
+   549→    var pct = Math.min(99, Math.round((minDecorridos / tempoEstimado) * 100));
+   550→    return Math.max(1, pct);
+   551→  }
+   552→  /* Se tem data inicio mas sem historico, mostra 10% (sinalizando que comecou) */
+   553→  if (minDecorridos >= 0) return 10;
+   554→  /* Fallback: progresso por operacoes */
+   555→  return card.progresso_ops || 0;
+   556→}
+   557→
+   558→function buildCard(card) {
+   559→  var prio = (card.prioridade || 'media').toLowerCase();
+   560→
+   561→  /* Operador nome (nao mostra timer sem operador) */
+   562→  var operador = (card.operador_nome || '').trim();
+   563→  var timerHtml = '';
+   564→  if (card.etapa === 'em_producao' && operador) {
+   565→    timerHtml = '<span class="kc-timer" style="color:#4ade80"><i class="fa-solid fa-user" style="font-size:.5rem;margin-right:3px"></i>' + operador + '</span>';
+   566→  }
+   567→  var pausaBadge = card.etapa === 'pausado'
+   568→    ? '<span style="display:inline-flex;align-items:center;gap:3px;font-size:.5rem;font-weight:800;padding:1px 6px;border-radius:9999px;background:rgba(245,158,11,.2);color:#f59e0b"><i class="fa-solid fa-pause" style="font-size:.45rem"></i>PAUSADO</span>'
+   569→    : '';
+   570→  var badge = '<span class="badge-p ' + prio + '">' + ((card.prioridade || 'MEDIA')).toUpperCase() + '</span>';
+   571→  var pecaCode = card.cod_peca || '';
+   572→  var pecaName = card.nome_peca || '';
+   573→  var prod = pecaCode
+   574→    ? '<span style="color:#60a5fa;font-weight:700">' + pecaCode + '</span>' + (card.sob_medida ? ' <span style="font-size:.5rem;font-weight:700;padding:1px 5px;border-radius:9999px;background:#e9d5ff;color:#a855f7">SOB MEDIDA</span>' : '') + (pecaName ? ' <span style="color:#ccc">' + pecaName.substring(0, 35) + '</span>' : '')
+   575→    : (card.descricao_operacao || 'Produto').substring(0, 45);
+   576→  var op2 = card.descricao_operacao
+   577→    ? '<div class="kc-op2"><i class="fa-solid fa-screwdriver-wrench" style="font-size:.55rem;margin-right:3px"></i>' + card.descricao_operacao.substring(0, 38) + '</div>' : '';
+   578→  var qtd = card.qtde_ordem ? '<span style="font-size:.6rem;color:var(--muted)">' + Math.round(card.qtde_ordem) + 'pc</span>' : '';
+   579→
+   580→  /* Progresso baseado em tempo (so mostra se tiver historico ou operacoes) */
+   581→  var prog = calcProgressoTempo(card);
+   582→  var temHistorico = (card.data_inicio_fmt || card.data_inicio) ? true : false;
+   583→  var peca = (card.cod_peca || '').trim();
+   584→  var setor = (card.departamento || '').trim().toUpperCase();
+   585→  var chave = peca + '|' + setor;
+   586→  var temTempoEstimado = _temposMedios[chave] > 0;
+   587→  var progBar = '';
+   588→  if (card.etapa === 'em_producao' && (temTempoEstimado || prog > 10)) {
+   589→    var progColor = prog >= 75 ? '#4ade80' : (prog >= 40 ? '#fbbf24' : '#f87171');
+   590→    var progLabel = prog >= 100 ? 'OK' : prog + '%';
+   591→    progBar = '<div style="display:flex;align-items:center;gap:4px;margin-top:4px"><div style="flex:1;height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden"><div style="height:100%;width:' + prog + '%;background:' + progColor + ';border-radius:2px;transition:width .5s"></div></div><span style="font-size:.55rem;color:' + progColor + ';font-weight:700">' + progLabel + '</span></div>';
+   592→  }
+   593→  return '<div class="k-card p-' + prio + '">'
+   594→    + '<div class="kc-op">OP #' + card.lote_ordem + (card.lote_codigo ? ' &middot; ' + card.lote_codigo : '') + '</div>'
+   595→    + '<div class="kc-prod">' + prod + '</div>'
+   596→    + op2
+   597→    + '<div class="kc-meta">' + badge + pausaBadge + qtd + timerHtml + '</div>'
+   598→    + progBar
+   599→    + '</div>';
+   600→}
+   601→
+   602→function renderKanban(cards) {
+   603→  const setoresPresentes = SETORES.filter(s =>
+   604→    cards.some(c => (c.departamento||'').toUpperCase() === s.key)
+   605→  );
+   606→  const cols = setoresPresentes.length ? setoresPresentes : SETORES.slice(0,6);
+   607→
+   608→  const outer = document.getElementById('kanbanOuter');
+   609→  outer.innerHTML = '';
+   610→
+   611→  STATUS_CONFIG.forEach(st => {
+   612→    const cardsStatus = cards.filter(c => c.etapa === st.key);
+   613→    const total = cardsStatus.length;
+   614→
+   615→    const group = document.createElement('div');
+   616→    group.className = `status-group sg-${st.key}`;
+   617→    group.style.flex = total > 0 ? '1' : '0 0 44px';
+   618→
+   619→    const nowIndicator = st.key === 'em_producao' && total > 0
+   620→      ? '<span class="now-indicator"><span class="dot"></span>AGORA</span>'
+   621→      : '';
+   622→
+   623→    group.innerHTML = `
+   624→      <div class="sg-header">
+   625→        <span><i class="fa-solid ${st.icon}" style="margin-right:6px"></i>${st.label}</span>
+   626→        <span style="display:flex;align-items:center;gap:8px;">
+   627→          ${nowIndicator}
+   628→          <span class="cnt-badge">${total}</span>
+   629→        </span>
+   630→      </div>`;
+   631→
+   632→    const body = document.createElement('div');
+   633→    body.className = 'sg-body';
+   634→
+   635→    cols.forEach(setor => {
+   636→      const lotesSetor = cardsStatus.filter(c => (c.departamento||'').toUpperCase() === setor.key);
+   637→      const col = document.createElement('div');
+   638→      col.className = 'setor-col';
+   639→      const countBadge = lotesSetor.length
+   640→        ? `<span style="background:${setor.cor}22;color:${setor.cor};font-size:.6rem;font-weight:800;padding:1px 7px;border-radius:8px">${lotesSetor.length}</span>`
+   641→        : '';
+   642→      col.innerHTML = `
+   643→        <div class="setor-col-header" style="color:${setor.cor}">
+   644→          <span><i class="fa-solid fa-circle" style="font-size:.4rem;margin-right:4px"></i>${setor.label}</span>
+   645→          ${countBadge}
+   646→        </div>
+   647→        <div class="setor-col-body">
+   648→          ${lotesSetor.length
+   649→            ? lotesSetor.map(buildCard).join('')
+   650→            : `<div class="k-empty"><i class="fa-regular fa-rectangle-list"></i><span>—</span></div>`
+   651→          }
+   652→        </div>`;
+   653→      body.appendChild(col);
+   654→    });
+   655→
+   656→    group.appendChild(body);
+   657→    outer.appendChild(group);
+   658→  });
+   659→}
+   660→
+   661→function renderStats(stats, concluidos, cards, emAtraso) {
+   662→  document.getElementById('sAguardando').textContent = stats.aguardando  || 0;
+   663→  document.getElementById('sEmProd').textContent     = stats.em_producao || 0;
+   664→  document.getElementById('sConcluido').textContent  = concluidos        || 0;
+   665→  document.getElementById('sTotal').textContent      = cards.length      || 0;
+   666→  document.getElementById('sAtraso').textContent     = emAtraso          || 0;
+   667→
+   668→  // Destaque pulsante quando há OPs em produção
+   669→  var cardProd = document.getElementById('cardProd');
+   670→  if ((stats.em_producao||0) > 0) cardProd.classList.add('highlight');
+   671→  else cardProd.classList.remove('highlight');
+   672→
+   673→  // Destaque pulsante vermelho quando há lotes em atraso
+   674→  var cardAtraso = document.getElementById('cardAtraso');
+   675→  if (emAtraso > 0) cardAtraso.classList.add('highlight-red');
+   676→  else cardAtraso.classList.remove('highlight-red');
+   677→}
+   678→
+   679→function updateTimers() {
+   680→  document.querySelectorAll('[data-inicio]').forEach(function(el) {
+   681→    /* Se tem icone de usuario, nao sobrescreve o nome - apenas atualiza se for timer puro */
+   682→    if (el.querySelector('i')) return;
+   683→    el.textContent = tempoDecorrido(el.dataset.inicio);
+   684→  });
+   685→}
+   686→
+   687→/* ─── Carrega dados ─── */
+   688→function loadData() {
+   689→  Promise.all([
+   690→    fetch('/api/kanban/cards').then(r=>r.json()).catch(()=>({cards:[]})),
+   691→    fetch('/api/kanban/status').then(r=>r.json()).catch(()=>({stats:{},concluidos_hoje:0})),
+   692→  ]).then(([cardsRes, statsRes]) => {
+   693→    const cards = cardsRes.cards || cardsRes.data || [];
+   694→    /* Carrega tempos medios na memoria */
+   695→    _temposMedios = cardsRes.tempos || {};
+   696→    const stats = {};
+   697→    (statsRes.stats || []).forEach(function(s) { stats[s.etapa] = s.total; });
+   698→    const concluidos = statsRes.concluidos_hoje || 0;
+   699→    const emAtraso = statsRes.em_atraso || 0;
+   700→
+   701→    /* Atualiza alerta ERP offline via AJAX */
+   702→    var pgOk = (cardsRes.pg_ok === true || statsRes.pg_ok === true);
+   703→    var alertEl = document.getElementById('erpAlert');
+   704→    if (!pgOk && !alertEl) {
+   705→      var a = document.createElement('div');
+   706→      a.id = 'erpAlert';
+   707→      a.style.cssText = 'background:rgba(220,38,38,.95);border-bottom:2px solid #fca5a5;padding:8px 16px;text-align:center;z-index:100;position:relative;flex-shrink:0';
+   708→      a.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;gap:8px;color:#fff;font-size:13px"><i class="fa-solid fa-triangle-exclamation" style="font-size:16px"></i><span style="font-weight:700">ERP Lógica OFFLINE</span><span style="opacity:.85;font-size:11px">— Dados do banco local, podem estar desatualizados</span></div>';
+   709→      document.body.insertBefore(a, document.querySelector('header'));
+   710→    } else if (pgOk && alertEl) {
+   711→      alertEl.remove();
+   712→    }
+   713→
+   714→    renderFluxo(cards);
+   715→    renderKanban(cards);
+   716→    renderStats(stats, concluidos, cards, emAtraso);
+   717→    startAutoScroll();
+   718→
+   719→    document.getElementById('tickerMsg').textContent =
+   720→      'Última atualização: ' + new Date().toLocaleTimeString('pt-BR') +
+   721→      ' | Em produção: ' + (stats.em_producao||0) +
+   722→      ' | Pausados: '    + (stats.pausado||0) +
+   723→      ' | Concluídos hoje: ' + concluidos;
+   724→  }).catch(err => {
+   725→    document.getElementById('tickerMsg').textContent = 'Erro ao carregar dados: ' + err;
+   726→  });
+   727→}
+   728→
+   729→/* ─── Auto-scroll lento nas colunas com overflow ─── */
+   730→var _scrollIntervals = [];
+   731→
+   732→function startAutoScroll() {
+   733→  // Limpa scrolls anteriores (intervals + timeouts)
+   734→  _scrollIntervals.forEach(function(id) { clearInterval(id); clearTimeout(id); });
+   735→  _scrollIntervals = [];
+   736→
+   737→  // Espera o browser calcular o layout antes de medir scrollHeight
+   738→  setTimeout(function() {
+   739→    var cols = document.querySelectorAll('.setor-col-body');
+   740→    for (var i = 0; i < cols.length; i++) {
+   741→      (function(col, idx) {
+   742→        // Verifica se precisa de scroll (com margem de erro)
+   743→        if (col.scrollHeight <= col.clientHeight + 4) return;
+   744→
+   745→        var speed = 0.4; // pixels por tick (~13px/s)
+   746→        var direction = 1;
+   747→        var pauseTicks = 0;
+   748→        var pauseMax = 100; // pausa de ~3s no topo/fundo
+   749→
+   750→        var intervalId = setInterval(function() {
+   751→          // Pausa se mouse sobre a coluna
+   752→          try { if (col.matches(':hover')) return; } catch(e) {}
+   753→
+   754→          if (pauseTicks > 0) { pauseTicks--; return; }
+   755→
+   756→          col.scrollTop += speed * direction;
+   757→
+   758→          if (col.scrollTop + col.clientHeight >= col.scrollHeight - 1) {
+   759→            direction = -1;
+   760→            pauseTicks = pauseMax;
+   761→          }
+   762→          if (col.scrollTop <= 0) {
+   763→            direction = 1;
+   764→            pauseTicks = pauseMax;
+   765→          }
+   766→        }, 30);
+   767→
+   768→        _scrollIntervals.push(intervalId);
+   769→      })(cols[i], i);
+   770→    }
+   771→  }, 500); // 500ms de delay para o layout
+   772→}
+   773→
+   774→loadData();
+   775→setInterval(loadData, 30000);
+   776→setTimeout(function() { location.reload(); }, 1800000);
+   777→</script>
+   778→</body>
+   779→</html>
+   780→

@@ -1,0 +1,624 @@
+     1→{% extends "base.html" %}
+     2→{% block title %}Relatórios — PRODSYS{% endblock %}
+     3→{% block header_title %}
+     4→  <span class="flex items-center gap-2">
+     5→    <i class="fa-solid fa-chart-pie text-emerald-600"></i>
+     6→    <span class="hidden sm:inline">Relatórios de Produção</span>
+     7→  </span>
+     8→{% endblock %}
+     9→
+    10→{% block content %}
+    11→{% if not k %}
+    12→  {% set k = {'total_lotes':0,'aguardando_liberacao':0,'aguardando_inicio':0,'em_producao':0,'pausados':0,'concluidos_hoje':0,'concluidos_mes':0,'urgentes':0,'altas':0,'atrasados':0} %}
+    13→{% endif %}
+    14→
+    15→{# ═══════════════ TABS ═══════════════ #}
+    16→<div class="flex items-center gap-1 mb-5 bg-white rounded-2xl border border-gray-200 p-1.5 overflow-x-auto">
+    17→  <button onclick="switchTab('geral')" id="btn-tab-geral" class="tab-btn active">
+    18→    <i class="fa-solid fa-gauge-high"></i> Visao Geral
+    19→  </button>
+    20→  <button onclick="switchTab('atrasados')" id="btn-tab-atrasados" class="tab-btn">
+    21→    <i class="fa-solid fa-triangle-exclamation"></i> Atrasados
+    22→    {% if lotes_atrasados|length > 0 %}
+    23→    <span class="ml-1 bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">{{ lotes_atrasados|length }}</span>
+    24→    {% endif %}
+    25→  </button>
+    26→  <button onclick="switchTab('periodo')" id="btn-tab-periodo" class="tab-btn">
+    27→    <i class="fa-solid fa-calendar-days"></i> Producao por Periodo
+    28→  </button>
+    29→  <button onclick="switchTab('serralheria')" id="btn-tab-serralheria" class="tab-btn">
+    30→    <i class="fa-solid fa-gears"></i> Serralheria (Totem)
+    31→  </button>
+    32→</div>
+    33→
+    34→{# ═══════════════ TAB 1: VISAO GERAL ═══════════════ #}
+    35→<div id="tab-geral" class="tab-panel">
+    36→
+    37→  {# KPIs #}
+    38→  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
+    39→    <div class="kpi-card">
+    40→      <div class="kpi-icon" style="background:#dbeafe;color:#1d4ed8"><i class="fa-solid fa-layer-group"></i></div>
+    41→      <div>
+    42→        <div class="kpi-num text-blue-700">{{ k.total_lotes }}</div>
+    43→        <div class="kpi-lbl">Total OPs</div>
+    44→      </div>
+    45→    </div>
+    46→    <div class="kpi-card">
+    47→      <div class="kpi-icon" style="background:#fef3c7;color:#a16207"><i class="fa-solid fa-hourglass-start"></i></div>
+    48→      <div>
+    49→        <div class="kpi-num text-amber-600">{{ k.aguardando_liberacao + k.aguardando_inicio }}</div>
+    50→        <div class="kpi-lbl">Aguardando</div>
+    51→      </div>
+    52→    </div>
+    53→    <div class="kpi-card">
+    54→      <div class="kpi-icon" style="background:#fed7aa;color:#c2410c"><i class="fa-solid fa-gear"></i></div>
+    55→      <div>
+    56→        <div class="kpi-num text-orange-500">{{ k.em_producao }}</div>
+    57→        <div class="kpi-lbl">Em Producao</div>
+    58→      </div>
+    59→    </div>
+    60→    <div class="kpi-card">
+    61→      <div class="kpi-icon" style="background:#dcfce7;color:#15803d"><i class="fa-solid fa-circle-check"></i></div>
+    62→      <div>
+    63→        <div class="kpi-num text-green-600">{{ k.concluidos_hoje }}</div>
+    64→        <div class="kpi-lbl">Finaliz. Hoje</div>
+    65→      </div>
+    66→    </div>
+    67→    <div class="kpi-card">
+    68→      <div class="kpi-icon" style="background:#fee2e2;color:#b91c1c"><i class="fa-solid fa-triangle-exclamation"></i></div>
+    69→      <div>
+    70→        <div class="kpi-num text-red-600">{{ k.atrasados }}</div>
+    71→        <div class="kpi-lbl">Atrasados</div>
+    72→      </div>
+    73→    </div>
+    74→    <div class="kpi-card">
+    75→      <div class="kpi-icon" style="background:#f3e8ff;color:#7c3aed"><i class="fa-solid fa-calendar-check"></i></div>
+    76→      <div>
+    77→        <div class="kpi-num text-purple-600">{{ k.concluidos_mes }}</div>
+    78→        <div class="kpi-lbl">Mes Atual</div>
+    79→      </div>
+    80→    </div>
+    81→  </div>
+    82→
+    83→  {# Graficos #}
+    84→  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
+    85→    <div class="prodsys-card p-4 lg:col-span-2">
+    86→      <h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+    87→        <i class="fa-solid fa-chart-column text-blue-500"></i>
+    88→        Producao — Ultimos 30 dias
+    89→        <span class="ml-auto text-xs font-normal text-gray-400">lotes finalizados por dia</span>
+    90→      </h3>
+    91→      <div style="height:280px"><canvas id="chart30dias"></canvas></div>
+    92→    </div>
+    93→    <div class="prodsys-card p-4">
+    94→      <h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+    95→        <i class="fa-solid fa-chart-pie text-indigo-500"></i>
+    96→        Status Geral
+    97→      </h3>
+    98→      <div style="height:200px"><canvas id="chartStatus"></canvas></div>
+    99→      <div class="mt-3 space-y-1.5">
+   100→        <div class="flex items-center justify-between text-xs">
+   101→          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>Aguardando</span>
+   102→          <span class="font-bold">{{ k.aguardando_liberacao + k.aguardando_inicio }}</span>
+   103→        </div>
+   104→        <div class="flex items-center justify-between text-xs">
+   105→          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-orange-500"></span>Em Producao</span>
+   106→          <span class="font-bold">{{ k.em_producao }}</span>
+   107→        </div>
+   108→        <div class="flex items-center justify-between text-xs">
+   109→          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-green-500"></span>Concluidos Hoje</span>
+   110→          <span class="font-bold">{{ k.concluidos_hoje }}</span>
+   111→        </div>
+   112→        <div class="flex items-center justify-between text-xs">
+   113→          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>Atrasados</span>
+   114→          <span class="font-bold text-red-600">{{ k.atrasados }}</span>
+   115→        </div>
+   116→      </div>
+   117→    </div>
+   118→  </div>
+   119→
+   120→  {# Carga por Setor #}
+   121→  <div class="prodsys-card p-4 mb-5">
+   122→    <h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+   123→      <i class="fa-solid fa-industry text-blue-500"></i>
+   124→      Carga por Setor
+   125→      <span class="ml-auto text-xs font-normal text-gray-400">operacoes ativas</span>
+   126→    </h3>
+   127→    {% if dados_ger.por_setor %}
+   128→    <div class="overflow-x-auto">
+   129→      <table class="w-full text-sm">
+   130→        <thead class="text-xs uppercase tracking-wider text-gray-500 border-b border-gray-100">
+   131→          <tr>
+   132→            <th class="px-3 py-2 text-left">Setor</th>
+   133→            <th class="px-3 py-2 text-center">Pendentes</th>
+   134→            <th class="px-3 py-2 text-center">Em Andamento</th>
+   135→            <th class="px-3 py-2 text-center">Pausados</th>
+   136→            <th class="px-3 py-2 text-center">Concl. Hoje</th>
+   137→            <th class="px-3 py-2 text-center">Total</th>
+   138→            <th class="px-3 py-2 text-left" style="min-width:140px">Carga</th>
+   139→          </tr>
+   140→        </thead>
+   141→        <tbody class="divide-y divide-gray-50">
+   142→          {% set max_carga = (dados_ger.por_setor | map(attribute='total_ops') | max) or 1 %}
+   143→          {% for s in dados_ger.por_setor %}
+   144→          {% if s.total_ops and s.total_ops > 0 %}
+   145→          <tr class="hover:bg-gray-50">
+   146→            <td class="px-3 py-2.5">
+   147→              <div class="flex items-center gap-2">
+   148→                <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:{{ s.cor_hex }}"></span>
+   149→                <span class="font-bold text-gray-800">{{ s.nome_departamento }}</span>
+   150→              </div>
+   151→            </td>
+   152→            <td class="px-3 py-2.5 text-center font-bold text-blue-600">{{ s.pendentes or 0 }}</td>
+   153→            <td class="px-3 py-2.5 text-center font-bold text-orange-500">{{ s.em_andamento or 0 }}</td>
+   154→            <td class="px-3 py-2.5 text-center font-bold text-amber-600">{{ s.pausados or 0 }}</td>
+   155→            <td class="px-3 py-2.5 text-center font-bold text-green-600">{{ s.concluidas_hoje or 0 }}</td>
+   156→            <td class="px-3 py-2.5 text-center font-black text-gray-700">{{ s.total_ops }}</td>
+   157→            <td class="px-3 py-2.5">
+   158→              <div class="flex items-center gap-2">
+   159→                <div class="flex-1 h-2.5 rounded-full bg-gray-100 overflow-hidden">
+   160→                  {% set carga_pct = (s.total_ops * 100 / max_carga)|round(0) %}
+   161→                  <div class="h-full rounded-full transition-all" style="width:{{ carga_pct }}%;background:{{ s.cor_hex }}"></div>
+   162→                </div>
+   163→                <span class="text-[10px] text-gray-400 w-8 text-right">{{ carga_pct }}%</span>
+   164→              </div>
+   165→            </td>
+   166→          </tr>
+   167→          {% endif %}
+   168→          {% endfor %}
+   169→        </tbody>
+   170→      </table>
+   171→    </div>
+   172→    {% else %}
+   173→    <div class="text-center py-6 text-gray-400 text-sm">Nenhum dado disponivel</div>
+   174→    {% endif %}
+   175→  </div>
+   176→</div>
+   177→
+   178→{# ═══════════════ TAB 2: ATRASADOS ═══════════════ #}
+   179→<div id="tab-atrasados" class="tab-panel hidden">
+   180→  <div class="prodsys-card p-4">
+   181→    <div class="flex items-center justify-between mb-4">
+   182→      <h3 class="text-sm font-bold text-gray-700 flex items-center gap-2">
+   183→        <i class="fa-solid fa-triangle-exclamation text-red-500"></i>
+   184→        Lotes em Atraso
+   185→      </h3>
+   186→      <span class="bg-red-500 text-white text-xs font-black px-3 py-1 rounded-full">{{ lotes_atrasados|length }} lotes</span>
+   187→    </div>
+   188→    {% if lotes_atrasados %}
+   189→    <div class="overflow-x-auto">
+   190→      <table class="w-full text-sm">
+   191→        <thead class="text-xs uppercase tracking-wider text-red-700 bg-red-50 border-b border-red-200">
+   192→          <tr>
+   193→            <th class="px-3 py-2.5 text-left">Lote</th>
+   194→            <th class="px-3 py-2.5 text-left">Descricao</th>
+   195→            <th class="px-3 py-2.5 text-center">Qtd</th>
+   196→            <th class="px-3 py-2.5 text-left">Setor</th>
+   197→            <th class="px-3 py-2.5 text-center">Previsao</th>
+   198→            <th class="px-3 py-2.5 text-center">Dias Atraso</th>
+   199→            <th class="px-3 py-2.5 text-center">Prioridade</th>
+   200→            <th class="px-3 py-2.5 text-center">Status</th>
+   201→          </tr>
+   202→        </thead>
+   203→        <tbody class="divide-y divide-gray-50">
+   204→          {% for l in lotes_atrasados %}
+   205→          <tr class="hover:bg-red-50/50 {{ 'bg-red-50' if l.prioridade == 'urgente' }}">
+   206→            <td class="px-3 py-2.5 font-bold text-blue-700">{{ l.lote_codigo or l.ordem }}</td>
+   207→            <td class="px-3 py-2.5 text-gray-700 max-w-[250px] truncate" title="{{ l.descricao_produto or '' }}">{{ l.descricao_produto or '—' }}</td>
+   208→            <td class="px-3 py-2.5 text-center font-bold">{{ '%d' | format(l.qtde_ordem or 0) }}</td>
+   209→            <td class="px-3 py-2.5 text-gray-600">{{ l.departamento_atual or '—' }}</td>
+   210→            <td class="px-3 py-2.5 text-center text-red-600 font-bold">{{ l.data_previsao_erp.strftime('%d/%m/%Y') if l.data_previsao_erp else '—' }}</td>
+   211→            <td class="px-3 py-2.5 text-center">
+   212→              <span class="bg-red-500 text-white text-xs font-black px-2.5 py-1 rounded-full">{{ l.dias_atraso }}d</span>
+   213→            </td>
+   214→            <td class="px-3 py-2.5 text-center">
+   215→              {% if l.prioridade %}<span class="badge-priority {{ l.prioridade|lower }}">{{ l.prioridade|upper }}</span>{% else %}—{% endif %}
+   216→            </td>
+   217→            <td class="px-3 py-2.5 text-center">
+   218→              <span class="badge-status {{ l.status }}">{{ l.status.replace('_',' ')|title if l.status else '—' }}</span>
+   219→            </td>
+   220→          </tr>
+   221→          {% endfor %}
+   222→        </tbody>
+   223→      </table>
+   224→    </div>
+   225→    {% else %}
+   226→    <div class="text-center py-12">
+   227→      <i class="fa-solid fa-circle-check text-5xl text-green-400 mb-3"></i>
+   228→      <p class="text-green-600 font-bold text-lg">Nenhum lote em atraso!</p>
+   229→    </div>
+   230→    {% endif %}
+   231→  </div>
+   232→</div>
+   233→
+   234→{# ═══════════════ TAB 3: PRODUCAO POR PERIODO ═══════════════ #}
+   235→<div id="tab-periodo" class="tab-panel hidden">
+   236→
+   237→  {# Filtros #}
+   238→  <div class="prodsys-card p-4 mb-4">
+   239→    <div class="flex flex-wrap items-end gap-3">
+   240→      <div class="flex flex-col gap-1">
+   241→        <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Data Inicio</label>
+   242→        <input type="date" id="filtroDtInicio" value="{{ data_30d }}"
+   243→          class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+   244→      </div>
+   245→      <div class="flex flex-col gap-1">
+   246→        <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Data Fim</label>
+   247→        <input type="date" id="filtroDtFim" value="{{ now.strftime('%Y-%m-%d') if now else '' }}"
+   248→          class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+   249→      </div>
+   250→      <button onclick="buscarProducaoPeriodo()" class="btn-touch btn-finish text-sm" style="min-height:42px">
+   251→        <i class="fa-solid fa-magnifying-glass"></i> Buscar
+   252→      </button>
+   253→    </div>
+   254→  </div>
+   255→
+   256→  {# KPIs dinamicos #}
+   257→  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4" id="periodoKpis">
+   258→    <div class="kpi-card">
+   259→      <div class="kpi-icon" style="background:#dbeafe;color:#1d4ed8"><i class="fa-solid fa-list-ol"></i></div>
+   260→      <div>
+   261→        <div class="kpi-num text-blue-700" id="pKpiTotal">—</div>
+   262→        <div class="kpi-lbl">Total Lotes</div>
+   263→      </div>
+   264→    </div>
+   265→    <div class="kpi-card">
+   266→      <div class="kpi-icon" style="background:#ffedd5;color:#c2410c"><i class="fa-solid fa-gears"></i></div>
+   267→      <div>
+   268→        <div class="kpi-num text-orange-600" id="pKpiEmProducao">—</div>
+   269→        <div class="kpi-lbl">Em Producao</div>
+   270→      </div>
+   271→    </div>
+   272→    <div class="kpi-card">
+   273→      <div class="kpi-icon" style="background:#dcfce7;color:#15803d"><i class="fa-solid fa-circle-check"></i></div>
+   274→      <div>
+   275→        <div class="kpi-num text-green-600" id="pKpiFinalizados">—</div>
+   276→        <div class="kpi-lbl">Finalizados</div>
+   277→      </div>
+   278→    </div>
+   279→    <div class="kpi-card">
+   280→      <div class="kpi-icon" style="background:#dbeafe;color:#1d4ed8"><i class="fa-solid fa-boxes-stacked"></i></div>
+   281→      <div>
+   282→        <div class="kpi-num text-blue-700" id="pKpiPecas">—</div>
+   283→        <div class="kpi-lbl">Pecas</div>
+   284→      </div>
+   285→    </div>
+   286→    <div class="kpi-card">
+   287→      <div class="kpi-icon" style="background:#fee2e2;color:#b91c1c"><i class="fa-solid fa-triangle-exclamation"></i></div>
+   288→      <div>
+   289→        <div class="kpi-num text-red-600" id="pKpiAtrasados">—</div>
+   290→        <div class="kpi-lbl">Atrasados</div>
+   291→      </div>
+   292→    </div>
+   293→    <div class="kpi-card">
+   294→      <div class="kpi-icon" style="background:#f3e8ff;color:#7c3aed"><i class="fa-solid fa-clock"></i></div>
+   295→      <div>
+   296→        <div class="kpi-num text-purple-600" id="pKpiTempo">—</div>
+   297→        <div class="kpi-lbl">Tempo Medio</div>
+   298→      </div>
+   299→    </div>
+   300→  </div>
+   301→
+   302→  {# Tabela #}
+   303→  <div class="prodsys-card p-4">
+   304→    <h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+   305→      <i class="fa-solid fa-list-check text-green-500"></i>
+   306→      Lotes no Periodo
+   307→    </h3>
+   308→    <div id="periodoLoader" class="text-center py-3 text-gray-400 hidden">
+   309→      <i class="fa-solid fa-spinner fa-spin mr-2"></i> Buscando...
+   310→    </div>
+   311→    <div id="periodoTabelaWrap">
+   312→      <p class="text-gray-400 text-center py-8">Clique em <strong>Buscar</strong> para carregar os dados.</p>
+   313→    </div>
+   314→  </div>
+   315→</div>
+   316→
+   317→{# ═══════════════ TAB 4: SERRALHERIA (TOTEM) ═══════════════ #}
+   318→<div id="tab-serralheria" class="tab-panel hidden">
+   319→
+   320→  {# Filtros serralheria #}
+   321→  <div class="prodsys-card p-4 mb-4">
+   322→    <div class="flex flex-wrap items-end gap-3">
+   323→      <div class="flex flex-col gap-1">
+   324→        <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Data Inicio</label>
+   325→        <input type="date" id="serrDtInicio" value="{{ data_30d }}"
+   326→          class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+   327→      </div>
+   328→      <div class="flex flex-col gap-1">
+   329→        <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Data Fim</label>
+   330→        <input type="date" id="serrDtFim" value="{{ now.strftime('%Y-%m-%d') if now else '' }}"
+   331→          class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+   332→      </div>
+   333→      <button onclick="buscarSerralheriaPeriodo()" class="btn-touch btn-finish text-sm" style="min-height:42px">
+   334→        <i class="fa-solid fa-magnifying-glass"></i> Buscar
+   335→      </button>
+   336→    </div>
+   337→  </div>
+   338→
+   339→  {# Resumo por Setor + Operador #}
+   340→  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
+   341→    <div class="prodsys-card p-4">
+   342→      <h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+   343→        <i class="fa-solid fa-industry text-blue-500"></i>
+   344→        Producao por Setor
+   345→      </h3>
+   346→      {% if serralheria.por_setor %}
+   347→      <div class="overflow-x-auto">
+   348→        <table class="w-full text-sm">
+   349→          <thead class="text-xs uppercase tracking-wider text-gray-500 border-b border-gray-100">
+   350→            <tr>
+   351→              <th class="px-3 py-2 text-left">Setor</th>
+   352→              <th class="px-3 py-2 text-center">Total</th>
+   353→              <th class="px-3 py-2 text-center">Finalizadas</th>
+   354→              <th class="px-3 py-2 text-center">Em Producao</th>
+   355→              <th class="px-3 py-2 text-center">Pecas</th>
+   356→            </tr>
+   357→          </thead>
+   358→          <tbody class="divide-y divide-gray-50">
+   359→            {% for s in serralheria.por_setor %}
+   360→            <tr class="hover:bg-gray-50">
+   361→              <td class="px-3 py-2.5 font-bold text-gray-800">{{ s.setor }}</td>
+   362→              <td class="px-3 py-2.5 text-center font-bold">{{ s.total }}</td>
+   363→              <td class="px-3 py-2.5 text-center font-bold text-green-600">{{ s.finalizadas }}</td>
+   364→              <td class="px-3 py-2.5 text-center font-bold text-orange-500">{{ s.em_producao }}</td>
+   365→              <td class="px-3 py-2.5 text-center font-bold text-blue-600">{{ '%d' | format(s.total_pecas or 0) }}</td>
+   366→            </tr>
+   367→            {% endfor %}
+   368→          </tbody>
+   369→        </table>
+   370→      </div>
+   371→      {% else %}
+   372→      <div class="text-center py-6 text-gray-400 text-sm">Sem dados de serralheria</div>
+   373→      {% endif %}
+   374→    </div>
+   375→
+   376→    <div class="prodsys-card p-4">
+   377→      <h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+   378→        <i class="fa-solid fa-user-gear text-indigo-500"></i>
+   379→        Producao por Operador
+   380→      </h3>
+   381→      {% if serralheria.por_operador %}
+   382→      <div class="overflow-x-auto max-h-[400px] overflow-y-auto">
+   383→        <table class="w-full text-sm">
+   384→          <thead class="text-xs uppercase tracking-wider text-gray-500 border-b border-gray-100 sticky top-0 bg-white">
+   385→            <tr>
+   386→              <th class="px-3 py-2 text-left">Operador</th>
+   387→              <th class="px-3 py-2 text-left">Setor</th>
+   388→              <th class="px-3 py-2 text-center">Finaliz.</th>
+   389→              <th class="px-3 py-2 text-center">Em Prod.</th>
+   390→              <th class="px-3 py-2 text-center">Pecas</th>
+   391→            </tr>
+   392→          </thead>
+   393→          <tbody class="divide-y divide-gray-50">
+   394→            {% for o in serralheria.por_operador %}
+   395→            <tr class="hover:bg-gray-50">
+   396→              <td class="px-3 py-2.5 font-bold text-gray-800">{{ o.operador }}</td>
+   397→              <td class="px-3 py-2.5 text-gray-600">{{ o.setor }}</td>
+   398→              <td class="px-3 py-2.5 text-center font-bold text-green-600">{{ o.finalizadas }}</td>
+   399→              <td class="px-3 py-2.5 text-center font-bold text-orange-500">{{ o.em_producao }}</td>
+   400→              <td class="px-3 py-2.5 text-center font-bold text-blue-600">{{ '%d' | format(o.total_pecas_produzidas or 0) }}</td>
+   401→            </tr>
+   402→            {% endfor %}
+   403→          </tbody>
+   404→        </table>
+   405→      </div>
+   406→      {% else %}
+   407→      <div class="text-center py-6 text-gray-400 text-sm">Sem dados de operadores</div>
+   408→      {% endif %}
+   409→    </div>
+   410→  </div>
+   411→
+   412→  {# Detalhamento por periodo #}
+   413→  <div class="prodsys-card p-4">
+   414→    <h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+   415→      <i class="fa-solid fa-clock-rotate-left text-orange-500"></i>
+   416→      Detalhamento por Periodo
+   417→    </h3>
+   418→    <div id="serrLoader" class="text-center py-3 text-gray-400 hidden">
+   419→      <i class="fa-solid fa-spinner fa-spin mr-2"></i> Buscando...
+   420→    </div>
+   421→    <div id="serrTabelaWrap">
+   422→      <p class="text-gray-400 text-center py-8">Clique em <strong>Buscar</strong> para carregar os dados do periodo.</p>
+   423→    </div>
+   424→  </div>
+   425→</div>
+   426→
+   427→{% endblock %}
+   428→
+   429→{% block extra_head %}
+   430→<style>
+   431→.tab-btn {
+   432→  display: inline-flex; align-items: center; gap: 6px;
+   433→  padding: 8px 16px; border-radius: 10px; font-size: 0.8rem; font-weight: 700;
+   434→  color: #64748b; background: transparent; border: none; cursor: pointer;
+   435→  transition: all 0.15s; white-space: nowrap;
+   436→}
+   437→.tab-btn:hover { background: #f1f5f9; color: #334155; }
+   438→.tab-btn.active { background: #2563eb; color: #fff; }
+   439→.tab-panel.hidden { display: none; }
+   440→</style>
+   441→{% endblock %}
+   442→
+   443→{% block scripts %}
+   444→<script>
+   445→/* ─── Tab Switching ─── */
+   446→function switchTab(name) {
+   447→  var panels = document.querySelectorAll('.tab-panel');
+   448→  for (var i = 0; i < panels.length; i++) panels[i].classList.add('hidden');
+   449→  var btns = document.querySelectorAll('.tab-btn');
+   450→  for (var i = 0; i < btns.length; i++) btns[i].classList.remove('active');
+   451→  var panel = document.getElementById('tab-' + name);
+   452→  if (panel) panel.classList.remove('hidden');
+   453→  var btn = document.getElementById('btn-tab-' + name);
+   454→  if (btn) btn.classList.add('active');
+   455→}
+   456→
+   457→/* ─── Grafico 30 dias ─── */
+   458→var ctx30 = document.getElementById('chart30dias');
+   459→if (ctx30) {
+   460→  var dados30 = {{ producao_30d | tojson }};
+   461→  var labels30 = [];
+   462→  var vals30 = [];
+   463→  var pecas30 = [];
+   464→  for (var i = 29; i >= 0; i--) {
+   465→    var d = new Date(); d.setDate(d.getDate() - i);
+   466→    var ds = d.toISOString().split('T')[0];
+   467→    labels30.push(d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'}));
+   468→    vals30.push(0);
+   469→    pecas30.push(0);
+   470→  }
+   471→  for (var j = 0; j < dados30.length; j++) {
+   472→    var diaStr = dados30[j].dia;
+   473→    var idx = -1;
+   474→    for (var k = 0; k < 30; k++) {
+   475→      var dd = new Date(); dd.setDate(dd.getDate() - (29 - k));
+   476→      if (dd.toISOString().split('T')[0] === diaStr) { idx = k; break; }
+   477→    }
+   478→    if (idx >= 0) {
+   479→      vals30[idx] = dados30[j].lotes;
+   480→      pecas30[idx] = dados30[j].pecas;
+   481→    }
+   482→  }
+   483→  new Chart(ctx30, {
+   484→    type: 'bar',
+   485→    data: {
+   486→      labels: labels30,
+   487→      datasets: [
+   488→        { label: 'Lotes', data: vals30, backgroundColor: 'rgba(37,99,235,0.7)', borderRadius: 4, borderSkipped: false, order: 2 },
+   489→        { label: 'Pecas', data: pecas30, type: 'line', borderColor: '#16a34a', backgroundColor: 'rgba(22,163,74,0.1)', fill: true, tension: 0.3, pointRadius: 2, order: 1 }
+   490→      ]
+   491→    },
+   492→    options: {
+   493→      responsive: true, maintainAspectRatio: false,
+   494→      plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } } },
+   495→      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } }, x: { ticks: { maxRotation: 45, font: { size: 10 } } } }
+   496→    }
+   497→  });
+   498→}
+   499→
+   500→/* ─── Grafico Status (Doughnut) ─── */
+   501→var ctxS = document.getElementById('chartStatus');
+   502→if (ctxS) {
+   503→  new Chart(ctxS, {
+   504→    type: 'doughnut',
+   505→    data: {
+   506→      labels: ['Aguardando', 'Em Producao', 'Concluidos Hoje', 'Atrasados'],
+   507→      datasets: [{ data: [
+   508→        {{ k.aguardando_liberacao + k.aguardando_inicio }},
+   509→        {{ k.em_producao }},
+   510→        {{ k.concluidos_hoje }},
+   511→        {{ k.atrasados }}
+   512→      ], backgroundColor: ['#fbbf24', '#f97316', '#22c55e', '#ef4444'], borderWidth: 0 }]
+   513→    },
+   514→    options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { display: false } } }
+   515→  });
+   516→}
+   517→
+   518→/* ─── Producao por Periodo (AJAX) ─── */
+   519→function buscarProducaoPeriodo() {
+   520→  var di = document.getElementById('filtroDtInicio').value;
+   521→  var df = document.getElementById('filtroDtFim').value;
+   522→  if (!di || !df) return;
+   523→
+   524→  document.getElementById('periodoLoader').classList.remove('hidden');
+   525→  document.getElementById('periodoTabelaWrap').innerHTML = '';
+   526→
+   527→  fetch('/api/relatorios/producao_periodo?data_inicio=' + di + '&data_fim=' + df)
+   528→    .then(function(r) { return r.json(); })
+   529→    .then(function(data) {
+   530→      document.getElementById('periodoLoader').classList.add('hidden');
+   531→      if (data.error) {
+   532→        document.getElementById('periodoTabelaWrap').innerHTML = '<p class="text-red-600 text-center py-3 text-sm">Erro: ' + data.error + '</p>';
+   533→        return;
+   534→      }
+   535→      var kp = data.kpis;
+   536→      document.getElementById('pKpiTotal').textContent = kp.total_lotes || 0;
+   537→      document.getElementById('pKpiEmProducao').textContent = kp.total_em_producao || 0;
+   538→      document.getElementById('pKpiFinalizados').textContent = kp.total_finalizados || 0;
+   539→      document.getElementById('pKpiPecas').textContent = Math.round(Number(kp.total_pecas) || 0);
+   540→      document.getElementById('pKpiAtrasados').textContent = kp.atrasados_agora || 0;
+   541→      document.getElementById('pKpiTempo').textContent = Math.round(kp.tempo_medio_dias || 0) + 'd';
+   542→
+   543→      if (data.lotes.length === 0) {
+   544→        document.getElementById('periodoTabelaWrap').innerHTML = '<p class="text-gray-400 text-center py-8">Nenhum lote encontrado neste periodo.</p>';
+   545→        return;
+   546→      }
+   547→      var statusColors = {'em_producao':'bg-orange-100 text-orange-700','pausado':'bg-red-100 text-red-700','finalizado':'bg-green-100 text-green-700','liberado':'bg-blue-100 text-blue-700','importado':'bg-gray-100 text-gray-600'};
+   548→      var statusLabels = {'em_producao':'Em Producao','pausado':'Pausado','finalizado':'Finalizado','liberado':'Liberado','importado':'Importado'};
+   549→      var prioColors = {'urgente':'text-red-600 font-black','alta':'text-orange-600 font-bold','media':'text-yellow-600','baixa':'text-gray-400'};
+   550→      var html = '<div class="overflow-x-auto"><table class="w-full text-sm"><thead class="text-xs uppercase tracking-wider text-blue-700 bg-blue-50 border-b border-blue-200"><tr>' +
+   551→        '<th class="px-3 py-2.5 text-left">Lote</th><th class="px-3 py-2.5 text-left">Descricao</th><th class="px-3 py-2.5 text-center">Qtd</th><th class="px-3 py-2.5 text-center">Status</th><th class="px-3 py-2.5 text-left">Setor</th><th class="px-3 py-2.5 text-center">Previsao</th><th class="px-3 py-2.5 text-center">Dias</th></tr></thead><tbody class="divide-y divide-gray-50">';
+   552→      for (var i = 0; i < data.lotes.length; i++) {
+   553→        var l = data.lotes[i];
+   554→        var sc = statusColors[l.status] || 'bg-gray-100 text-gray-600';
+   555→        var sl = statusLabels[l.status] || l.status || '—';
+   556→        var pc = prioColors[l.prioridade] || '';
+   557→        var prevStr = (l.data_previsao_erp || '').substring(0, 10);
+   558→        html += '<tr class="hover:bg-gray-50"><td class="px-3 py-2.5 font-bold text-blue-700">' + (l.lote_codigo || l.ordem || '') + '</td>' +
+   559→          '<td class="px-3 py-2.5 text-gray-700 max-w-[200px] truncate">' + (l.descricao_produto || '—') + '</td>' +
+   560→          '<td class="px-3 py-2.5 text-center font-bold">' + (Math.round(Number(l.qtde_ordem) || 0)) + '</td>' +
+   561→          '<td class="px-3 py-2.5 text-center"><span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ' + sc + '">' + sl + '</span></td>' +
+   562→          '<td class="px-3 py-2.5 text-gray-600 text-xs">' + (l.departamento_atual || '—') + '</td>' +
+   563→          '<td class="px-3 py-2.5 text-center text-xs ' + pc + '">' + (prevStr || '—') + '</td>' +
+   564→          '<td class="px-3 py-2.5 text-center font-bold">' + (l.dias_producao || '—') + '</td></tr>';
+   565→      }
+   566→      html += '</tbody></table></div>';
+   567→      document.getElementById('periodoTabelaWrap').innerHTML = html;
+   568→    })
+   569→    .catch(function(e) {
+   570→      document.getElementById('periodoLoader').classList.add('hidden');
+   571→      document.getElementById('periodoTabelaWrap').innerHTML = '<p class="text-red-600 text-center py-3 text-sm">Erro de conexao</p>';
+   572→    });
+   573→}
+   574→
+   575→/* ─── Serralheria por Periodo (AJAX) ─── */
+   576→function buscarSerralheriaPeriodo() {
+   577→  var di = document.getElementById('serrDtInicio').value;
+   578→  var df = document.getElementById('serrDtFim').value;
+   579→  if (!di || !df) return;
+   580→
+   581→  document.getElementById('serrLoader').classList.remove('hidden');
+   582→  document.getElementById('serrTabelaWrap').innerHTML = '';
+   583→
+   584→  fetch('/api/relatorios/serralheria_periodo?data_inicio=' + di + '&data_fim=' + df)
+   585→    .then(function(r) { return r.json(); })
+   586→    .then(function(data) {
+   587→      document.getElementById('serrLoader').classList.add('hidden');
+   588→      if (data.error) {
+   589→        document.getElementById('serrTabelaWrap').innerHTML = '<p class="text-red-600 text-center py-3 text-sm">Erro: ' + data.error + '</p>';
+   590→        return;
+   591→      }
+   592→      if (data.dados.length === 0) {
+   593→        document.getElementById('serrTabelaWrap').innerHTML = '<p class="text-gray-400 text-center py-8">Nenhuma producao no periodo.</p>';
+   594→        return;
+   595→      }
+   596→      var html = '<div class="overflow-x-auto"><table class="w-full text-sm"><thead class="text-xs uppercase tracking-wider text-amber-700 bg-amber-50 border-b border-amber-200"><tr>' +
+   597→        '<th class="px-3 py-2.5 text-left">Data</th><th class="px-3 py-2.5 text-left">Lote</th><th class="px-3 py-2.5 text-left">Peca</th><th class="px-3 py-2.5 text-left">Operador</th><th class="px-3 py-2.5 text-left">Setor</th><th class="px-3 py-2.5 text-center">Qtd Ordem</th><th class="px-3 py-2.5 text-center">Qtd Feita</th><th class="px-3 py-2.5 text-center">Status</th><th class="px-3 py-2.5 text-left">Tempo</th></tr></thead><tbody class="divide-y divide-gray-50">';
+   598→      for (var i = 0; i < data.dados.length; i++) {
+   599→        var r = data.dados[i];
+   600→        var statusBadge = r.status === 'finalizado'
+   601→          ? '<span class="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded-full">FINALIZADO</span>'
+   602→          : '<span class="bg-orange-100 text-orange-700 text-[10px] font-bold px-2 py-0.5 rounded-full">EM PRODUCAO</span>';
+   603→        var dataInicio = r.data_inicio ? r.data_inicio.substring(0, 16) : '—';
+   604→        html += '<tr class="hover:bg-gray-50">' +
+   605→          '<td class="px-3 py-2.5 text-xs text-gray-500">' + dataInicio + '</td>' +
+   606→          '<td class="px-3 py-2.5 font-bold text-blue-700">' + (r.lote || '') + '</td>' +
+   607→          '<td class="px-3 py-2.5 text-gray-700">' + (r.produto || '') + '</td>' +
+   608→          '<td class="px-3 py-2.5 text-gray-600">' + (r.operador || '') + '</td>' +
+   609→          '<td class="px-3 py-2.5 text-gray-600">' + (r.setor || '') + '</td>' +
+   610→          '<td class="px-3 py-2.5 text-center font-bold">' + (Math.round(Number(r.qtde_ordem) || 0)) + '</td>' +
+   611→          '<td class="px-3 py-2.5 text-center font-bold text-green-600">' + (Math.round(Number(r.qtd_produzida) || 0)) + '</td>' +
+   612→          '<td class="px-3 py-2.5 text-center">' + statusBadge + '</td>' +
+   613→          '<td class="px-3 py-2.5 text-xs text-gray-400">' + (r.tempo_gasto || '—') + '</td></tr>';
+   614→      }
+   615→      html += '</tbody></table></div>';
+   616→      document.getElementById('serrTabelaWrap').innerHTML = html;
+   617→    })
+   618→    .catch(function(e) {
+   619→      document.getElementById('serrLoader').classList.add('hidden');
+   620→      document.getElementById('serrTabelaWrap').innerHTML = '<p class="text-red-600 text-center py-3 text-sm">Erro de conexao</p>';
+   621→    });
+   622→}
+   623→</script>
+   624→{% endblock %}
