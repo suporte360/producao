@@ -1424,6 +1424,21 @@ class DatabaseMySQL:
             (op_ordem,)
         )
 
+    def get_separacao_componentes_multi(self, ordens):
+        """Retorna status de separação por componente de várias OPs (otimizado para TV).
+        Retorna dict: {(op_ordem, codigo): status}"""
+        if not ordens:
+            return {}
+        placeholders = ','.join(['%s'] * len(ordens))
+        rows = self.query(
+            "SELECT op_ordem, codigo, status FROM separacao_componentes WHERE op_ordem IN (%s)" % placeholders,
+            tuple(ordens)
+        )
+        result = {}
+        for r in rows:
+            result[(int(r['op_ordem']), str(r['codigo']).strip().upper())] = r['status']
+        return result
+
     def set_separacao_componentes(self, op_ordem, codigos, usuario_id):
         """Marca componentes como separados. Cria registros se não existem."""
         for cod in codigos:

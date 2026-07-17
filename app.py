@@ -1749,6 +1749,18 @@ def api_separacao_materiais():
     except Exception as e:
         print('[SEP MATS] Erro conectar ERP:', e)
 
+    # Busca status por componente de TODAS as OPs pendentes/separando (para TV)
+    todas_ordens_pend = []
+    for lc, info in lote_map.items():
+        for o in info['ordens']:
+            if o['separacao_status'] in ('pendente', 'separando'):
+                todas_ordens_pend.append(int(o['ordem']))
+    comp_status_map = {}
+    try:
+        comp_status_map = db.get_separacao_componentes_multi(todas_ordens_pend)
+    except Exception:
+        comp_status_map = {}
+
     resultado = []
     stats = {'total': 0, 'pendentes': 0, 'separando': 0, 'separados': 0, 'urgentes': 0}
 
@@ -1764,7 +1776,9 @@ def api_separacao_materiais():
         if not ofs_pendentes and not ofs_separadas:
             continue
 
-        # Pega OFs do ERP para buscar materiais (so das OFs pendentes/separando)
+        # OFs que estao "separando" (para destacar componentes ativos na TV)
+        ofs_separando_nums = [int(o['ordem']) for o in ofs_pendentes if o['separacao_status'] == 'separando']
+        # Todas as OFs pendentes/separando para buscar materiais
         ordens_pendentes_nums = [int(o['ordem']) for o in ofs_pendentes]
         materiais_erp = []
         if pg and ordens_pendentes_nums:
@@ -1792,6 +1806,20 @@ def api_separacao_materiais():
                 }
             agrupados[cod]['qtd_necessaria'] += float(m.get('quantidade') or 0)
         comps = sorted(agrupados.values(), key=lambda x: x['codigo'])
+
+        # Atribui status por componente para a TV
+        for comp in comps:
+            cod_upper = comp['codigo'].strip().upper()
+            comp['status_tv'] = 'pendente'
+            # Verifica se alguma OP "separando" tem esse componente separado
+            for op_num in ofs_separando_nums:
+                st = comp_status_map.get((op_num, cod_upper))
+                if st == 'separado':
+                    comp['status_tv'] = 'separado'
+                    break
+            # Se está em OP "separando" mas componente ainda não foi separado → destaca
+            if comp['status_tv'] == 'pendente' and ofs_separando_nums:
+                comp['status_tv'] = 'separando'
 
         # Status do lote: se tem OFs pendentes = separando/separando, se so separadas = separado
         if ofs_pendentes:

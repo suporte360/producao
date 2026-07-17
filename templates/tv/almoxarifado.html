@@ -168,7 +168,9 @@
     }
     .op-mat-row {
       display:flex; align-items:center; gap:8px;
-      padding:2px 0; font-size:.72rem;
+      padding:3px 0; font-size:.72rem;
+      border-radius:4px;
+      transition: all .3s;
     }
     .op-mat-row .mat-cod {
       font-family:'Courier New',monospace; color:#60a5fa; font-size:.68rem;
@@ -177,6 +179,29 @@
     .op-mat-row .mat-desc { color:#cbd5e1; flex:1; }
     .op-mat-row .mat-qtd { color:#e2e8f0; font-weight:700; min-width:60px; text-align:right; }
     .op-mat-row .mat-und { color:var(--muted); font-size:.6rem; min-width:24px; }
+    .op-mat-row .mat-icon { min-width:20px; text-align:center; font-size:.7rem; }
+
+    /* Componente sendo separado AGORA — destaque forte */
+    .op-mat-row.comp-separando {
+      background: rgba(34,211,238,0.12);
+      padding: 5px 6px;
+      border-left: 3px solid #22d3ee;
+      animation: pulseCompSep 1.8s ease-in-out infinite;
+    }
+    .op-mat-row.comp-separando .mat-cod { color:#67e8f9; font-weight:800; }
+    .op-mat-row.comp-separando .mat-desc { color:#ecfeff; font-weight:700; }
+    .op-mat-row.comp-separando .mat-qtd { color:#67e8f9; font-weight:900; font-size:.8rem; }
+    @keyframes pulseCompSep {
+      0%, 100% { background: rgba(34,211,238,0.08); }
+      50%      { background: rgba(34,211,238,0.20); }
+    }
+
+    /* Componente já separado — verde */
+    .op-mat-row.comp-separado {
+      opacity: 0.55;
+    }
+    .op-mat-row.comp-separado .mat-cod { color:#4ade80; }
+    .op-mat-row.comp-separado .mat-desc { color:#94a3b8; text-decoration: line-through; }
     .op-dept { font-size:.6rem; padding:1px 7px; border-radius:7px; background:rgba(255,255,255,0.08); color:#94a3b8; font-weight:600; }
 
     .op-status-badge {
@@ -498,10 +523,21 @@ function renderLotes(lotes) {
       matsHtml = '<div class="op-mats"><div class="op-mats-title"><i class="fa-solid fa-screwdriver-wrench" style="margin-right:4px"></i>' + totalComps + ' componente' + (totalComps !== 1 ? 's' : '') + ' para separar</div>';
       for (var j = 0; j < comps.length; j++) {
         var c = comps[j];
-        matsHtml += '<div class="op-mat-row">' +
+        var st = c.status_tv || 'pendente';
+        var rowCls = 'op-mat-row';
+        var icon = '';
+        if (st === 'separando') {
+          rowCls += ' comp-separando';
+          icon = '<span class="mat-icon" style="color:#22d3ee"><i class="fa-solid fa-hand"></i></span>';
+        } else if (st === 'separado') {
+          rowCls += ' comp-separado';
+          icon = '<span class="mat-icon" style="color:#4ade80"><i class="fa-solid fa-check"></i></span>';
+        }
+        matsHtml += '<div class="' + rowCls + '">' +
+          icon +
           '<span class="mat-cod">' + c.codigo + '</span>' +
           '<span class="mat-desc">' + c.descricao + '</span>' +
-          '<span class="mat-qtd">' + c.qtd_necessaria + '</span>' +
+          '<span class="mat-qtd">' + (c.qtd_necessaria || 0).toFixed(2) + '</span>' +
           '<span class="mat-und">' + c.unidade + '</span>' +
         '</div>';
       }
