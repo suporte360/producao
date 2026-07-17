@@ -97,7 +97,7 @@ except Exception:
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     """)
 
-# Operadores da Serralheria — so insere se a tabela estiver vazia
+# Operadores por setor — so insere se a tabela estiver vazia
 OPERADORES_SERRALHERIA = [
     ('Gabriel',      'CORTE'),
     ('Erivaldo',     'SERRALHERIA'),
@@ -109,6 +109,13 @@ OPERADORES_SERRALHERIA = [
     ('Leonardo',     'SOLDA'),
     ('José Barbosa', 'DOBRA'),
     ('Jhonatas',     'DOBRA'),
+    ('Operador 1',   'MONTAGEM'),
+    ('Operador 2',   'MONTAGEM'),
+    ('Operador 1',   'ACABAMENTO'),
+    ('Operador 1',   'POLIMENTO'),
+    ('Operador 1',   'EMBALAGEM'),
+    ('Operador 1',   'PINTURA'),
+    ('Operador 1',   'EXPEDICAO'),
 ]
 try:
     total = db.query_one("SELECT COUNT(*) as c FROM serralheria_usuarios")
@@ -118,11 +125,25 @@ try:
                 "INSERT INTO serralheria_usuarios (nome, setor, ativo) VALUES (%s, %s, 1)",
                 (nome, setor)
             )
-        print('[OK] Operadores serralheria iniciais criados: %d' % len(OPERADORES_SERRALHERIA))
+        print('[OK] Operadores iniciais criados: %d' % len(OPERADORES_SERRALHERIA))
     else:
-        print('[OK] Operadores serralheria: %d existentes (preservados)' % total['c'])
+        # Verifica setores que nao tem operador e insere genericos
+        setores_existentes = set()
+        for r in db.query("SELECT DISTINCT setor FROM serralheria_usuarios"):
+            setores_existentes.add((r['setor'] or '').upper().strip())
+        setores_necessarios = {'MONTAGEM','ACABAMENTO','POLIMENTO','EMBALAGEM','PINTURA','EXPEDICAO'}
+        faltando = setores_necessarios - setores_existentes
+        if faltando:
+            for nome, setor in OPERADORES_SERRALHERIA:
+                if setor.upper().strip() in faltando:
+                    db.execute(
+                        "INSERT IGNORE INTO serralheria_usuarios (nome, setor, ativo) VALUES (%s, %s, 1)",
+                        (nome, setor)
+                    )
+            print('[OK] Operadores adicionados para setores: %s' % ', '.join(faltando))
+        print('[OK] Operadores: %d existentes (preservados)' % total['c'])
 except Exception as e:
-    print('[WARN] Operadores serralheria: %s' % e)
+    print('[WARN] Operadores: %s' % e)
 
 # Migration: limpar nomes serra* antigos da tabela de producao do totem
 try:

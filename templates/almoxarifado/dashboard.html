@@ -734,7 +734,8 @@ function carregarMateriaisOF() {
         if (!ofs[i].materiais[j].tem_no_estoque) semEstoque++;
       }
     }
-    document.getElementById('kpiMateriaisPend').textContent = totalMats;
+    var kpiPend = document.getElementById('kpiMateriaisPend');
+    if (kpiPend) kpiPend.textContent = totalMats;
     document.getElementById('kpiMatSemEstoque').textContent = semEstoque;
     document.getElementById('kpiMateriaisBadge').textContent = totalMats;
 
