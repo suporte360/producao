@@ -1374,6 +1374,12 @@ def api_materiais_pendentes():
     # Pega todos os codigo_produto das OFs ativas para excluir peças fabricadas do BOM
     codigos_fabricados = db.get_codigos_produtos_ofs_ativas()
 
+    # Exclui materiais marcados como "não separar do almoxarifado"
+    try:
+        codigos_excluidos = db.get_codigos_excluidos_set()
+    except Exception:
+        codigos_excluidos = set()
+
     mats_por_of = {}
     for m in materiais_erp:
         of_num = m.get('ordem')
@@ -1394,6 +1400,9 @@ def api_materiais_pendentes():
             # Pula peças que são fabricadas em outras OFs (ex: alça, suporte, etc.)
             if cod in codigos_fabricados:
                 continue
+            # Pula materiais excluídos da separação (feitos no próprio setor)
+            if cod.upper().strip() in codigos_excluidos:
+                continue
             est = estoque_map.get(cod)
             mats_com.append({
                 'codigo': cod,
@@ -1408,7 +1417,7 @@ def api_materiais_pendentes():
             resultado.append({
                 'ordem': lote['ordem'],
                 'produto': lote.get('descricao_produto') or lote.get('lote_descricao') or '',
-                'quantidade': lote.get('quantidade'),
+                'quantidade': float(lote.get('quantidade') or 0),
                 'prioridade': lote.get('prioridade'),
                 'departamento': lote.get('departamento'),
                 'materiais': mats_com

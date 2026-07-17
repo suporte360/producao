@@ -368,7 +368,7 @@ function carregarResumoEstoque() {
   });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', function() {
   carregarResumoEstoque();
   carregarMateriaisOF();
   carregarSeparacaoOPs();
@@ -720,18 +720,20 @@ function restaurarExcluido(codigo) {
 
 // ════════════════ MATERIAIS DAS OFs ════════════════
 function carregarMateriaisOF() {
-  fetch('/api/almoxarifado/materiais-pendentes').then(r => r.json()).then(d => {
+  fetch('/api/almoxarifado/materiais-pendentes').then(function(r) { return r.json(); }).then(function(d) {
     if (d.status !== 'success') return;
-    const ofs = d.ofs || [];
-    const el = document.getElementById('listaMateriaisOF');
+    var ofs = d.ofs || [];
+    var el = document.getElementById('listaMateriaisOF');
 
     // Atualiza KPIs
-    let totalMats = 0;
-    let semEstoque = 0;
-    ofs.forEach(of => {
-      totalMats += of.materiais.length;
-      of.materiais.forEach(m => { if (!m.tem_no_estoque) semEstoque++; });
-    });
+    var totalMats = 0;
+    var semEstoque = 0;
+    for (var i = 0; i < ofs.length; i++) {
+      totalMats += ofs[i].materiais.length;
+      for (var j = 0; j < ofs[i].materiais.length; j++) {
+        if (!ofs[i].materiais[j].tem_no_estoque) semEstoque++;
+      }
+    }
     document.getElementById('kpiMateriaisPend').textContent = totalMats;
     document.getElementById('kpiMatSemEstoque').textContent = semEstoque;
     document.getElementById('kpiMateriaisBadge').textContent = totalMats;
@@ -740,28 +742,34 @@ function carregarMateriaisOF() {
       el.innerHTML = '<div class="prodsys-card p-4 text-center text-sm text-gray-400"><i class="fa-solid fa-circle-check text-green-400 mr-1"></i>Nenhuma OF liberada pendente de materiais brutos.</div>';
       return;
     }
-    el.innerHTML = ofs.map(of => {
-      const prioridadeCor = {urgente:'border-red-500',alta:'border-orange-400',media:'border-yellow-400'};
-      const borda = prioridadeCor[of.prioridade] || 'border-indigo-300';
-      const matsHtml = of.materiais.map(m => {
-        const ok = m.tem_no_estoque;
-        const statusIcon = ok
-          ? '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded-full"><i class="fa-solid fa-check"></i>' + m.qtd_disponivel.toFixed(2) + ' ' + m.unidade + '</span>'
+    var html = '';
+    for (var i = 0; i < ofs.length; i++) {
+      var of = ofs[i];
+      var prioridadeCor = {urgente:'border-red-500',alta:'border-orange-400',media:'border-yellow-400'};
+      var borda = prioridadeCor[of.prioridade] || 'border-indigo-300';
+      var matsHtml = '';
+      for (var j = 0; j < of.materiais.length; j++) {
+        var m = of.materiais[j];
+        var ok = m.tem_no_estoque;
+        var statusIcon = ok
+          ? '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded-full"><i class="fa-solid fa-check"></i>' + (m.qtd_disponivel || 0).toFixed(2) + ' ' + (m.unidade || 'UN') + '</span>'
           : '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full"><i class="fa-solid fa-minus"></i>sem estoque</span>';
-        return '<div class="flex items-center justify-between gap-2 py-1.5 border-b border-gray-50 last:border-0">' +
+        matsHtml += '<div class="flex items-center justify-between gap-2 py-1.5 border-b border-gray-50 last:border-0">' +
           '<div class="min-w-0 flex-1"><div class="text-xs font-medium text-gray-700 truncate" title="' + (m.descricao||'').replace(/"/g,'&quot;') + '">' + (m.descricao || m.codigo) + '</div>' +
-          '<div class="text-[10px] text-gray-400">' + m.codigo + ' · precisa: ' + m.qtd_necessaria.toFixed(4) + ' ' + m.unidade + '</div></div>' +
+          '<div class="text-[10px] text-gray-400">' + m.codigo + ' · precisa: ' + (m.qtd_necessaria || 0).toFixed(4) + ' ' + (m.unidade || 'UN') + '</div></div>' +
           statusIcon + '</div>';
-      }).join('');
-      return '<div class="prodsys-card border-l-4 ' + borda + ' overflow-hidden mb-3">' +
+      }
+      html += '<div class="prodsys-card border-l-4 ' + borda + ' overflow-hidden mb-3">' +
         '<div class="px-4 py-2.5 bg-gray-50/50 flex items-center justify-between">' +
           '<div class="min-w-0 flex-1"><div class="flex items-center gap-2"><span class="text-xs font-bold text-blue-700">OF #' + of.ordem + '</span>' +
           (of.prioridade ? '<span class="badge-priority ' + of.prioridade + '">' + of.prioridade.toUpperCase() + '</span>' : '') +
           '</div><div class="text-sm font-black text-gray-800 truncate">' + (of.produto || '—') + '</div></div>' +
           '<div class="text-xs text-gray-400 flex-shrink-0">' + (of.materiais.length) + ' materiais</div></div>' +
         '<div class="px-4">' + matsHtml + '</div></div>';
-    }).join('');
-  }).catch(() => {
+    }
+    el.innerHTML = html;
+  }).catch(function(err) {
+    console.error('Erro materiais-pendentes:', err);
     document.getElementById('listaMateriaisOF').innerHTML = '<div class="prodsys-card p-4 text-center text-sm text-red-400">Erro ao carregar materiais.</div>';
   });
 }
