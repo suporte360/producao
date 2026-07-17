@@ -769,8 +769,11 @@ function carregarMateriaisOF() {
     }
     el.innerHTML = html;
   }).catch(function(err) {
+    var msg = 'Erro ao carregar materiais.';
+    if (err instanceof SyntaxError) msg += ' (resposta invalida do servidor)';
+    else if (err.message) msg += ' (' + err.message + ')';
     console.error('Erro materiais-pendentes:', err);
-    document.getElementById('listaMateriaisOF').innerHTML = '<div class="prodsys-card p-4 text-center text-sm text-red-400">Erro ao carregar materiais.</div>';
+    document.getElementById('listaMateriaisOF').innerHTML = '<div class="prodsys-card p-4 text-center text-sm text-red-400">' + msg + '</div>';
   });
 }
 </script>

@@ -1361,7 +1361,11 @@ def api_buscar_produto_erp(codigo):
 @role_required('admin', 'gerente', 'almoxarifado')
 def api_materiais_pendentes():
     """Materiais necessarios para OFs liberadas, filtrando peças fabricadas (so materiais brutos)."""
-    lotes = db.get_lotes_liberados_pendentes()
+    try:
+        lotes = db.get_lotes_liberados_pendentes()
+    except Exception as e:
+        print('[MAT PEND] Erro lotes:', e)
+        return jsonify({'status': 'success', 'ofs': []})
     if not lotes:
         return jsonify({'status': 'success', 'ofs': []})
     ordens = [l['ordem'] for l in lotes]
@@ -1422,7 +1426,20 @@ def api_materiais_pendentes():
                 'departamento': lote.get('departamento'),
                 'materiais': mats_com
             })
-    return jsonify({'status': 'success', 'ofs': resultado})
+    try:
+        return jsonify({'status': 'success', 'ofs': resultado})
+    except Exception as e:
+        print('[MAT PEND] Erro jsonify:', e)
+        # Fallback: converte tudo para string segura
+        for r in resultado:
+            for m in r.get('materiais', []):
+                for k, v in list(m.items()):
+                    if not isinstance(v, (str, int, float, bool, type(None))):
+                        m[k] = str(v)
+            for k, v in list(r.items()):
+                if not isinstance(v, (str, int, float, bool, type(None), list)):
+                    r[k] = str(v)
+        return jsonify({'status': 'success', 'ofs': resultado})
 
 @app.route('/api/estoque/<int:item_id>/separar-fabrica', methods=['POST'])
 @login_required
