@@ -202,7 +202,7 @@ class DatabaseMySQL:
             INNER JOIN operacoes_producao op ON op.lote_ordem = l.ordem
             WHERE op.departamento = %s
               AND op.status IN ('pendente', 'em_andamento', 'pausado')
-              AND l.status NOT IN ('cancelado', 'finalizado')
+              AND l.status IN ('liberado', 'em_producao', 'pausado')
               AND op.id = (
                   SELECT MIN(op3.id)
                   FROM operacoes_producao op3
@@ -367,7 +367,7 @@ class DatabaseMySQL:
             LEFT JOIN ordens_fabricacao of2 ON op.of_numero = of2.of_numero
             LEFT JOIN usuarios u ON op.usuario_inicio_id = u.id
             WHERE op.departamento = %s
-              AND l.status NOT IN ('cancelado', 'finalizado')
+              AND l.status IN ('liberado', 'em_producao', 'pausado')
         """
         params = [departamento]
         if status:
@@ -655,6 +655,7 @@ class DatabaseMySQL:
             LEFT JOIN ordens_fabricacao of2 ON k.of_numero = of2.of_numero
             LEFT JOIN usuarios u ON k.operador_id = u.id
             WHERE 1=1
+              AND (l.status IS NULL OR l.status IN ('liberado', 'em_producao', 'pausado'))
         """
         params = []
         if departamento:
@@ -676,7 +677,9 @@ class DatabaseMySQL:
                    SUM(CASE WHEN k.prioridade = 'urgente' THEN 1 ELSE 0 END) as urgentes,
                    SUM(CASE WHEN k.prioridade = 'alta' THEN 1 ELSE 0 END) as altas
             FROM kanban_cards k
+            LEFT JOIN lotes_producao l ON k.lote_ordem = l.ordem
             WHERE k.etapa != 'concluido'
+              AND (l.status IS NULL OR l.status IN ('liberado', 'em_producao', 'pausado'))
         """
         params = []
         if departamento:
