@@ -705,7 +705,7 @@ class DatabaseMySQL:
         sql = """
             SELECT COUNT(*) as total FROM lotes_producao
             WHERE data_previsao_erp < CURDATE()
-              AND status NOT IN ('finalizado', 'cancelado')
+              AND status IN ('liberado', 'em_producao', 'pausado')
         """
         params = []
         if departamento:
