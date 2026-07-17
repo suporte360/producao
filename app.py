@@ -1555,12 +1555,18 @@ def api_componentes_separacao(ordem):
             codigos_fabricados = db.get_codigos_produtos_ofs_ativas()
         except Exception:
             codigos_fabricados = set()
+        try:
+            codigos_excluidos = db.get_codigos_excluidos_set()
+        except Exception:
+            codigos_excluidos = set()
         agrupados = {}
         for m in mats:
             cod = str(m.get('produto') or '')
             if cod.upper().startswith('PC-') or cod.upper().startswith('PC '):
                 continue
             if cod in codigos_fabricados:
+                continue
+            if cod.upper().strip() in codigos_excluidos:
                 continue
             if cod not in agrupados:
                 agrupados[cod] = {
@@ -1699,6 +1705,12 @@ def api_separacao_materiais():
     except Exception:
         codigos_fabricados = set()
 
+    # Exclui materiais marcados como "não separar do almoxarifado"
+    try:
+        codigos_excluidos = db.get_codigos_excluidos_set()
+    except Exception:
+        codigos_excluidos = set()
+
     # Agrupa OPs por lote_codigo (preserva ordem de prioridade)
     from collections import OrderedDict
     lote_map = OrderedDict()
@@ -1759,6 +1771,8 @@ def api_separacao_materiais():
             if cod.upper().startswith('PC-') or cod.upper().startswith('PC '):
                 continue
             if cod in codigos_fabricados:
+                continue
+            if cod.upper().strip() in codigos_excluidos:
                 continue
             if cod not in agrupados:
                 agrupados[cod] = {
@@ -1825,6 +1839,44 @@ def api_novas_liberacoes():
     ultima = request.args.get('ultima')  # ISO datetime
     lotes = db.get_novas_liberacoes(ultima_data=ultima if ultima else None)
     return jsonify({'status': 'success', 'lotes': lotes, 'count': len(lotes)})
+
+# ── Materiais Excluídos da Separação ──────────────────────
+
+@app.route('/api/almoxarifado/exclusoes-separacao')
+@login_required
+@role_required('admin', 'gerente', 'almoxarifado')
+def api_listar_exclusoes_separacao():
+    """Lista materiais excluídos da separação."""
+    itens = db.get_materiais_excluidos()
+    return jsonify({'status': 'success', 'itens': itens})
+
+@app.route('/api/almoxarifado/exclusoes-separacao', methods=['POST'])
+@login_required
+@role_required('admin', 'gerente', 'almoxarifado')
+def api_adicionar_exclusao_separacao():
+    """Adiciona material à lista de exclusão da separação."""
+    data = request.json or {}
+    codigo = data.get('codigo', '').strip()
+    if not codigo:
+        return jsonify({'status': 'error', 'message': 'Código obrigatório'}), 400
+    descricao = data.get('descricao', '')
+    motivo = data.get('motivo', 'Feito no próprio setor')
+    db.add_material_excluido(codigo, descricao, motivo, session.get('usuario_id'))
+    db.add_log(session['usuario_id'], 'excluir_material_separacao',
+               'Material %s excluído da separação: %s' % (codigo, motivo),
+               'materiais_excluidos_separacao', codigo)
+    return jsonify({'status': 'success', 'message': 'Material %s excluído da separação' % codigo})
+
+@app.route('/api/almoxarifado/exclusoes-separacao/<path:codigo>', methods=['DELETE'])
+@login_required
+@role_required('admin', 'gerente', 'almoxarifado')
+def api_remover_exclusao_separacao(codigo):
+    """Remove material da lista de exclusão."""
+    db.remove_material_excluido(codigo)
+    db.add_log(session['usuario_id'], 'incluir_material_separacao',
+               'Material %s voltou para separação' % codigo,
+               'materiais_excluidos_separacao', codigo)
+    return jsonify({'status': 'success', 'message': 'Material %s voltou para separação' % codigo})
 
 @app.route('/api/kanban/cards')
 @login_required

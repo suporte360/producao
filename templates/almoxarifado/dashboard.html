@@ -77,6 +77,17 @@
   </div>
 </section>
 
+{# ═══════════════ MATERIAIS EXCLUÍDOS DA SEPARAÇÃO ═══════════════ #}
+<section class="mb-5" id="secaoExcluidos">
+  <h2 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2 cursor-pointer select-none" onclick="toggleSecaoExcluidos()">
+    <span class="inline-block w-2.5 h-2.5 rounded-full bg-red-400"></span>
+    Materiais Excluídos da Separação
+    <span class="ml-1 bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-[10px]" id="kpiExcluidosBadge">0</span>
+    <i class="fa-solid fa-chevron-down text-[10px] text-gray-400 ml-1 transition-transform" id="excluidosChevron"></i>
+  </h2>
+  <div id="listaExcluidos" class="hidden"></div>
+</section>
+
 {# ═══════════════ REQUISIÇÕES PENDENTES ═══════════════ #}
 {% if requisicoes %}
 <section class="mb-5">
@@ -455,7 +466,9 @@ function abrirModalSepararComp(ordem) {
       html += '<label class="flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors ' + bgCls + '">' +
         '<input type="checkbox" class="sep-comp-chk w-4 h-4 rounded accent-cyan-600 flex-shrink-0" data-codigo="' + c.codigo.replace(/"/g, '&quot;') + '" ' + chk + ' onchange="atualizarSepCompCount()">' +
         '<div class="min-w-0 flex-1">' +
-          '<div class="flex items-center"><span class="text-xs font-mono font-bold text-blue-700">' + c.codigo + '</span>' + badge + '</div>' +
+          '<div class="flex items-center"><span class="text-xs font-mono font-bold text-blue-700">' + c.codigo + '</span>' + badge +
+          '<button onclick="event.stopPropagation();toggleExcluirSeparar(\'' + c.codigo.replace(/'/g, "\\'") + '\',\'' + (c.descricao || '').replace(/'/g, "\\'") + '\',this)" title="Não separar do almoxarifado (feito no setor)" class="ml-1 p-0.5 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition" style="font-size:11px"><i class="fa-solid fa-ban"></i></button>' +
+          '</div>' +
           '<div class="text-xs text-gray-600 truncate">' + (c.descricao || '—') + '</div>' +
           '<div class="text-[10px] text-gray-400">Qtd: ' + c.qtd_necessaria + ' ' + c.unidade + '</div>' +
         '</div></label>';
@@ -631,6 +644,78 @@ function mudarSeparacao(ordem, novoStatus) {
       }
     })
     .catch(function() { showToast('Erro de conexão', 'error'); });
+}
+
+/* ── Toggle: Excluir material da separação do almoxarifado ── */
+function toggleExcluirSeparar(codigo, descricao, btn) {
+  if (!confirm('Excluir ' + codigo + ' da separação do almoxarifado?\nEsse material NÃO aparecerá mais na lista de separação.\nEle continua aparecendo na produção/setor normalmente.')) return;
+  fetch('/api/almoxarifado/exclusoes-separacao', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({codigo: codigo, descricao: descricao, motivo: 'Feito no próprio setor'})
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.status === 'success') {
+      if (btn) {
+        btn.closest('label').style.opacity = '0.3';
+        btn.closest('label').style.textDecoration = 'line-through';
+        btn.style.color = '#ef4444';
+      }
+      showToast(codigo + ' excluído da separação');
+      carregarExcluidos();
+    } else {
+      showToast('Erro: ' + (d.message || ''), 'error');
+    }
+  }).catch(function() { showToast('Erro de conexão', 'error'); });
+}
+
+function toggleSecaoExcluidos() {
+  var el = document.getElementById('listaExcluidos');
+  var chev = document.getElementById('excluidosChevron');
+  if (el.classList.contains('hidden')) {
+    el.classList.remove('hidden');
+    chev.style.transform = 'rotate(180deg)';
+    carregarExcluidos();
+  } else {
+    el.classList.add('hidden');
+    chev.style.transform = '';
+  }
+}
+
+function carregarExcluidos() {
+  fetch('/api/almoxarifado/exclusoes-separacao').then(function(r) { return r.json(); }).then(function(d) {
+    var itens = d.itens || [];
+    document.getElementById('kpiExcluidosBadge').textContent = itens.length;
+    if (!itens.length) {
+      document.getElementById('listaExcluidos').innerHTML = '<div class="prodsys-card p-3 text-center text-xs text-gray-400">Nenhum material excluído</div>';
+      return;
+    }
+    var html = '<div class="prodsys-card divide-y divide-gray-100">';
+    for (var i = 0; i < itens.length; i++) {
+      var it = itens[i];
+      html += '<div class="flex items-center gap-3 px-3 py-2 text-xs">' +
+        '<span class="font-mono font-bold text-gray-700 w-24 flex-shrink-0">' + it.codigo + '</span>' +
+        '<span class="text-gray-500 flex-1 truncate">' + (it.descricao || '') + '</span>' +
+        '<span class="text-gray-400 text-[10px] hidden sm:inline">' + (it.motivo || '') + '</span>' +
+        '<button onclick="restaurarExcluido(\'' + it.codigo.replace(/'/g, "\\'") + '\')" class="text-gray-400 hover:text-green-600 hover:bg-green-50 p-1 rounded transition" title="Restaurar para separação"><i class="fa-solid fa-rotate-left"></i></button>' +
+        '</div>';
+    }
+    html += '</div>';
+    document.getElementById('listaExcluidos').innerHTML = html;
+  }).catch(function() {});
+}
+
+function restaurarExcluido(codigo) {
+  if (!confirm('Restaurar ' + codigo + ' para a separação do almoxarifado?')) return;
+  fetch('/api/almoxarifado/exclusoes-separacao/' + encodeURIComponent(codigo), {method: 'DELETE'})
+  .then(function(r) { return r.json(); }).then(function(d) {
+    if (d.status === 'success') {
+      showToast(codigo + ' restaurado para separação');
+      carregarExcluidos();
+      carregarSeparacaoOPs();
+    } else {
+      showToast('Erro: ' + (d.message || ''), 'error');
+    }
+  }).catch(function() { showToast('Erro de conexão', 'error'); });
 }
 
 // ════════════════ MATERIAIS DAS OFs ════════════════

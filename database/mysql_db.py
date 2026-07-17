@@ -1454,3 +1454,47 @@ class DatabaseMySQL:
             )
         return True
 
+    # ── Materiais Excluídos da Separação ──────────────────────
+
+    def criar_tabela_materiais_excluidos(self):
+        """Cria tabela de materiais que não precisam de separação do almoxarifado."""
+        self.execute("""
+            CREATE TABLE IF NOT EXISTS materiais_excluidos_separacao (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                codigo VARCHAR(100) NOT NULL,
+                descricao VARCHAR(200),
+                motivo VARCHAR(200) DEFAULT 'Feito no próprio setor',
+                usuario_id INT NULL,
+                criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uk_codigo (codigo)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """)
+        return True
+
+    def get_materiais_excluidos(self):
+        """Retorna todos os materiais excluídos da separação."""
+        self.criar_tabela_materiais_excluidos()
+        return self.query("SELECT e.*, u.nome AS usuario_nome FROM materiais_excluidos_separacao e LEFT JOIN usuarios u ON e.usuario_id = u.id ORDER BY e.codigo")
+
+    def get_codigos_excluidos_set(self):
+        """Retorna set() com todos os códigos excluídos (para filtro rápido)."""
+        self.criar_tabela_materiais_excluidos()
+        rows = self.query("SELECT codigo FROM materiais_excluidos_separacao")
+        return {str(r['codigo']).strip().upper() for r in rows}
+
+    def add_material_excluido(self, codigo, descricao='', motivo='Feito no próprio setor', usuario_id=None):
+        """Adiciona um material à lista de exclusão."""
+        self.criar_tabela_materiais_excluidos()
+        return self.execute(
+            "INSERT INTO materiais_excluidos_separacao (codigo, descricao, motivo, usuario_id) VALUES (%s, %s, %s, %s) "
+            "ON DUPLICATE KEY UPDATE descricao=VALUES(descricao), motivo=VALUES(motivo), usuario_id=VALUES(usuario_id)",
+            (codigo.strip().upper(), descricao[:200], motivo[:200], usuario_id)
+        )
+
+    def remove_material_excluido(self, codigo):
+        """Remove um material da lista de exclusão."""
+        return self.execute(
+            "DELETE FROM materiais_excluidos_separacao WHERE codigo = %s",
+            (codigo.strip().upper(),)
+        )
+
