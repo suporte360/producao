@@ -699,13 +699,20 @@ def api_pecas(lotcod):
 
             setores = []
             seen = set()
+            meu_setor_depts = SETORES_SUB.get(SETOR, (SETOR,))
             for op in ops:
-                if op.get('departamento') and op['departamento'] in SETORES_SUB.get(SETOR, (SETOR,)):
-                    desc = (op.get('descricao_operacao') or '').strip() or op['departamento']
-                    key = desc  # usa descricao_operacao como identificador unico
-                    if key not in seen:
-                        seen.add(key)
-                        setores.append({'setor': op['departamento'], 'descricao': desc})
+                desc = (op.get('descricao_operacao') or '').strip() or op['departamento'] or ''
+                dept = (op.get('departamento') or '').strip()
+                if not desc:
+                    continue
+                key = desc
+                if key not in seen:
+                    seen.add(key)
+                    setores.append({
+                        'setor': dept or desc,
+                        'descricao': desc,
+                        'meu_setor': dept in meu_setor_depts
+                    })
 
             peca_cod = str(p.get('codigo', '')).strip()
             nome_real = _get_produto_nome(peca_cod)
@@ -785,6 +792,7 @@ def api_iniciar():
         usuario_id = data.get('usuario_id')
         usuario_nome = data.get('usuario_nome')
         setor = data.get('setor', SETOR)
+        departamento = data.get('departamento', '')
         pecas = data.get('pecas', [])
 
         if not lotcod or not usuario_id:
@@ -795,9 +803,10 @@ def api_iniciar():
             'CORTE': 'CORTE', 'DOBRA': 'DOBRA', 'SOLDA': 'SOLDA',
             'ACABAMENTO': 'ACABAMENTO', 'MONTAGEM': 'MONTAGEM',
             'FUNILARIA': 'FUNILARIA', 'PINTURA': 'PINTURA',
-            'EMBALAGEM': 'EMBALAGEM',
+            'EMBALAGEM': 'EMBALAGEM', 'SERRALHERIA': 'SERRALHERIA',
         }
-        dept = setor_para_dept.get(setor, setor)
+        # Prioridade: departamento enviado pelo frontend > mapeamento > fallback
+        dept = departamento or setor_para_dept.get(setor, setor)
 
         for peca in pecas:
             db_execute(

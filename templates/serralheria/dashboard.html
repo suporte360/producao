@@ -171,6 +171,9 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 .setor-group-card{background:#16213e;border:2px solid #2a2a5a;border-radius:14px;overflow:hidden;transition:all .2s}
 .setor-group-header{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:2px;padding:10px 12px 6px;text-align:center;border-bottom:1px solid rgba(255,255,255,.06)}
 .setor-group-body{display:flex;flex-direction:column;padding:8px}
+.setor-btn.setor-outro{opacity:.35;pointer-events:none;border-color:#222;background:rgba(255,255,255,.01)}
+.setor-group-card.setor-outro{opacity:.45;border-color:#222;background:#0d1520}
+.peca-setor-tag.outro-setor{opacity:.4;font-size:10px;border-style:dashed}
 .setor-btn{background:rgba(255,255,255,.03);border:1.5px solid #2a2a5a;border-radius:10px;padding:20px 10px;text-align:center;cursor:pointer;font-size:15px;font-weight:700;color:#e0e0e0;transition:all .2s;text-transform:uppercase;letter-spacing:1px}
 .setor-btn:active{border-color:var(--accent);background:#1e2a4e}
 .setor-btn .setor-icon{font-size:26px;margin-bottom:6px}
@@ -324,6 +327,7 @@ var currentLote = null;
 var currentPecas = [];
 var currentPecasAtivas = {};
 var selectedSetor = null;
+var selectedDept = null;
 var selectedPecas = [];
 var ultimaPecaClicada = null;
 var ultimaPecaAtivas = [];
@@ -499,7 +503,7 @@ function renderPecas(data){
   }
 
   function _getSetorKey(s){return (typeof s==='object'&&s)?s.descricao:s;}
-  var disponiveis=0;for(var k=0;k<pecas.length;k++){var ap=currentPecasAtivas[pecas[k].codigo];var apArr=ap&&ap.length?ap:[];var ps=pecas[k].setores||[];var hasPending2=false;for(var ss=0;ss<ps.length;ss++){var found2=false;var psKey=_getSetorKey(ps[ss]);for(var aa=0;aa<apArr.length;aa++){if(apArr[aa].setor===psKey){found2=true;break;}}if(!found2){hasPending2=true;break;}}if(hasPending2)disponiveis++;}
+  var disponiveis=0;for(var k=0;k<pecas.length;k++){var ap=currentPecasAtivas[pecas[k].codigo];var apArr=ap&&ap.length?ap:[];var ps=pecas[k].setores||[];var hasPending2=false;for(var ss=0;ss<ps.length;ss++){if(typeof ps[ss]==='object'&&!ps[ss].meu_setor)continue;var found2=false;var psKey=_getSetorKey(ps[ss]);for(var aa=0;aa<apArr.length;aa++){if(apArr[aa].setor===psKey){found2=true;break;}}if(!found2){hasPending2=true;break;}}if(hasPending2)disponiveis++;}
   html+='<div class="section-title">Pecas para Fabricar ('+disponiveis+' de '+pecas.length+')</div>';
 
   for(var i=0;i<pecas.length;i++){
@@ -512,7 +516,7 @@ function renderPecas(data){
     var pecaSetores=p.setores||[];
     /* Calcular setores pendentes */
     var pendingSetores=[];
-    for(var s=0;s<pecaSetores.length;s++){var sKey=_getSetorKey(pecaSetores[s]);var sFound=false;for(var a=0;a<ativasArr.length;a++){if(ativasArr[a].setor===sKey){sFound=true;break;}}if(!sFound)pendingSetores.push(pecaSetores[s]);}
+    for(var s=0;s<pecaSetores.length;s++){if(typeof pecaSetores[s]==='object'&&!pecaSetores[s].meu_setor)continue;var sKey=_getSetorKey(pecaSetores[s]);var sFound=false;for(var a=0;a<ativasArr.length;a++){if(ativasArr[a].setor===sKey){sFound=true;break;}}if(!sFound)pendingSetores.push(pecaSetores[s]);}
     var hasAtivo=ativasArr.length>0;
     var hasPending=pendingSetores.length>0;
     var allDone=hasAtivo&&!hasPending;
@@ -562,7 +566,8 @@ function renderPecas(data){
       for(var s=0;s<pecaSetores.length;s++){
         var sKey=_getSetorKey(pecaSetores[s]);var tagDone=false;for(var a=0;a<ativasArr.length;a++){if(ativasArr[a].setor===sKey){tagDone=true;break;}}
         var sLabel=(typeof pecaSetores[s]==='object')?pecaSetores[s].descricao:pecaSetores[s];
-        setorTags+='<span class="peca-setor-tag'+(tagDone?' done':'')+'">'+esc(sLabel)+'</span>';
+        var isMine2=!(typeof pecaSetores[s]==='object'&&!pecaSetores[s].meu_setor);
+        setorTags+='<span class="peca-setor-tag'+(tagDone?' done':'')+(isMine2?'':' outro-setor')+'">'+esc(sLabel)+'</span>';
       }
       setorTags+='</div>';
     }
@@ -607,14 +612,18 @@ function renderPecas(data){
 function abrirSetor(pecaCodigo,pecaSetores,ativasArr){
   ultimaPecaClicada=pecaCodigo;
   ultimaPecaAtivas=ativasArr||[];
-  if(!pecaSetores||pecaSetores.length===0){pecaSetores=[{setor:'SERRALHERIA',descricao:'SERRALHERIA'},{setor:'SERRALHERIA',descricao:'DOBRA'}];}
+  if(!pecaSetores||pecaSetores.length===0){pecaSetores=[{setor:'SERRALHERIA',descricao:'SERRALHERIA',meu_setor:true},{setor:'SERRALHERIA',descricao:'DOBRA',meu_setor:true}];}
   var icons={'SERRALHERIA':'&#9986;','DOBRA':'&#8634;','CORTAR':'&#9986;','CURVAR':'&#8634;','SOLDA':'&#9899;','SOLDAR':'&#9899;','ACABAMENTO':'&#10003;','PINTURA':'&#127912;','MONTAGEM':'&#128295;','EMBALAGEM':'&#128230;'};
   var setorColors={'SERRALHERIA':'#f59e0b','DOBRA':'#a855f7','CORTAR':'#f59e0b','CURVAR':'#a855f7','SOLDA':'#ef4444','SOLDAR':'#ef4444','ACABAMENTO':'#22c55e','PINTURA':'#ec4899','MONTAGEM':'#3b82f6','EMBALAGEM':'#06b6d4'};
-  /* Separar ativos dos pendentes */
+  /* Separar ativos dos pendentes (apenas meu_setor) */
   var ativosMap={};for(var a=0;a<ultimaPecaAtivas.length;a++){ativosMap[ultimaPecaAtivas[a].setor]=ultimaPecaAtivas[a].usuario;}
-  var hasAtivos=ultimaPecaAtivas.length>0;
-  var hasPendentes=false;
-  for(var i=0;i<pecaSetores.length;i++){if(!ativosMap[pecaSetores[i]]){hasPendentes=true;break;}}
+  var hasAtivos=false;var hasPendentes=false;
+  for(var i=0;i<pecaSetores.length;i++){
+    var isItemMine=!(typeof pecaSetores[i]==='object'&&!pecaSetores[i].meu_setor);
+    var sKey=_getSetorKey(pecaSetores[i]);
+    if(isItemMine&&ativosMap[sKey])hasAtivos=true;
+    if(isItemMine&&!ativosMap[sKey])hasPendentes=true;
+  }
   /* Atualizar titulo */
   var tituloEl=document.getElementById('dialogSetorTitle');
   var descEl=document.getElementById('dialogSetorDesc');
@@ -628,8 +637,10 @@ function abrirSetor(pecaCodigo,pecaSetores,ativasArr){
     var sKey=_getSetorKey(item);
     var sDept=(typeof item==='object')?item.setor:sKey;
     var sLabel=(typeof item==='object')?item.descricao:sKey;
-    if(!grupos[sDept]){grupos[sDept]={dept:sDept,items:[]};}
-    grupos[sDept].items.push({key:sKey,dept:sDept,label:sLabel});
+    var isMine=!(typeof item==='object'&&!item.meu_setor);
+    if(!grupos[sDept]){grupos[sDept]={dept:sDept,items:[],meu_setor:false};}
+    grupos[sDept].items.push({key:sKey,dept:sDept,label:sLabel,meu_setor:isMine});
+    if(isMine)grupos[sDept].meu_setor=true;
   }
   var html='<div class="setor-grid">';
   var grupoKeys=[];
@@ -638,11 +649,27 @@ function abrirSetor(pecaCodigo,pecaSetores,ativasArr){
     var grupo=grupos[grupoKeys[gi]];
     var deptName=grupo.dept;
     var itens=grupo.items;
+    var isGrupoMine=grupo.meu_setor;
     var isGrouped=itens.length>1;
     var grupoIcon=icons[deptName]||'&#9881;';
-    var grupoColor=setorColors[deptName]||'#60a5fa';
-    if(isGrouped){
-      /* Card agrupado: nome do setor no topo, mini-cards das sub-ops abaixo */
+    var grupoColor=isGrupoMine?(setorColors[deptName]||'#60a5fa'):'#555';
+    if(!isGrupoMine){
+      /* Setor de outro departamento - mostra apagado, nao clicavel */
+      if(isGrouped){
+        html+='<div class="setor-group-card setor-outro" style="grid-column:span 1;">';
+        html+='<div class="setor-group-header" style="color:'+grupoColor+'">'+grupoIcon+' '+esc(deptName)+'</div>';
+        html+='<div class="setor-group-body">';
+        for(var ii=0;ii<itens.length;ii++){
+          var sub=itens[ii];
+          html+='<div class="setor-btn setor-outro" style="margin:0;padding:10px 8px;"><div class="setor-icon" style="color:#555">'+(icons[sub.label]||'&#9881;')+'</div><span style="color:#555">'+esc(sub.label)+'</span></div>';
+        }
+        html+='</div></div>';
+      }else{
+        var item=itens[0];
+        html+='<div class="setor-btn setor-outro" style="cursor:default;"><div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:1px">'+esc(item.dept)+'</div><div class="setor-icon" style="color:#555">'+(icons[item.label]||icons[item.dept]||'&#9881;')+'</div><span style="color:#555">'+esc(item.label)+'</span></div>';
+      }
+    }else if(isGrouped){
+      /* Card agrupado do meu setor: header com nome do dept, mini-cards das sub-ops */
       html+='<div class="setor-group-card" style="grid-column:span 1;">';
       html+='<div class="setor-group-header" style="color:'+grupoColor+'">'+grupoIcon+' '+esc(deptName)+'</div>';
       html+='<div class="setor-group-body">';
@@ -654,12 +681,12 @@ function abrirSetor(pecaCodigo,pecaSetores,ativasArr){
         if(subUsuario){
           html+='<div class="setor-btn ativo" style="margin:0;padding:12px 8px;"><div class="setor-icon">'+subIcon+'</div>'+esc(sub.label)+'<div class="setor-info">Em producao - '+esc(subUsuario)+'</div><button class="setor-finalizar" onclick="finalizarSetorPeca(\''+esc(pecaCodigo)+'\',\''+sub.key+'\')">FINALIZAR '+esc(sub.label)+'</button></div>';
         }else{
-          html+='<div class="setor-btn" onclick="selecionarSetor(\''+sub.key+'\')" style="margin:0;padding:12px 8px;"><div class="setor-icon" style="color:'+subColor+'">'+subIcon+'</div><span style="color:'+subColor+'">'+esc(sub.label)+'</span></div>';
+          html+='<div class="setor-btn" onclick="selecionarSetor(\''+sub.key+'\',\''+sub.dept+'\')" style="margin:0;padding:12px 8px;"><div class="setor-icon" style="color:'+subColor+'">'+subIcon+'</div><span style="color:'+subColor+'">'+esc(sub.label)+'</span></div>';
         }
       }
       html+='</div></div>';
     }else{
-      /* Card simples (1 item no grupo) */
+      /* Card simples do meu setor (1 item) */
       var item=itens[0];
       var sKey=item.key;
       var sDept=item.dept;
@@ -669,7 +696,7 @@ function abrirSetor(pecaCodigo,pecaSetores,ativasArr){
       if(usuario){
         html+='<div class="setor-btn ativo"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px">'+esc(sDept)+'</div><div class="setor-icon">'+iconStr+'</div>'+esc(sLabel)+'<div class="setor-info">Em producao - '+esc(usuario)+'</div><button class="setor-finalizar" onclick="finalizarSetorPeca(\''+esc(pecaCodigo)+'\',\''+sKey+'\')">FINALIZAR '+esc(sLabel)+'</button></div>';
       }else{
-        html+='<div class="setor-btn" onclick="selecionarSetor(\''+sKey+'\')"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px">'+esc(sDept)+'</div><div class="setor-icon">'+iconStr+'</div>'+esc(sLabel)+'</div>';
+        html+='<div class="setor-btn" onclick="selecionarSetor(\''+sKey+'\',\''+sDept+'\')"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px">'+esc(sDept)+'</div><div class="setor-icon">'+iconStr+'</div>'+esc(sLabel)+'</div>';
       }
     }
   }
@@ -698,8 +725,9 @@ function _fecharTodosDialogs(){
   var dc=document.getElementById('dialogConfirm');
   if(dc)dc.classList.remove('active');
 }
-function selecionarSetor(setor){
+function selecionarSetor(setor,dept){
   selectedSetor=setor;
+  selectedDept=dept||setor;
   selectedPecas=ultimaPecaClicada?[ultimaPecaClicada]:[];
   if(setorTimer){clearTimeout(setorTimer);setorTimer=null;}
   document.getElementById('dialogSetor').classList.remove('active');
@@ -794,7 +822,7 @@ function loadUsuarios(){
 
 function selecionarUsuario(id,nome){
   var pecas=[];for(var i=0;i<currentPecas.length;i++){if(selectedPecas.indexOf(currentPecas[i].codigo)>=0)pecas.push({ordem:currentPecas[i].ordem,codigo:currentPecas[i].codigo});}
-  fetch('/api/iniciar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lote:currentLote,usuario_id:id,usuario_nome:nome,setor:selectedSetor,pecas:pecas})}).then(function(r){return r.json();}).then(function(data){if(data.success)showScreen(1);else alert('Erro: '+(data.error||'Erro desconhecido'));}).catch(function(e){alert('Erro de conexao');});
+  fetch('/api/iniciar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lote:currentLote,usuario_id:id,usuario_nome:nome,setor:selectedSetor,departamento:selectedDept,pecas:pecas})}).then(function(r){return r.json();}).then(function(data){if(data.success)showScreen(1);else alert('Erro: '+(data.error||'Erro desconhecido'));}).catch(function(e){alert('Erro de conexao');});
 }
 
 function entrarModoFinalizar(){finalizarMode=true;selectedPecasFinalizar=[];selectedSetor=null;selectedPecas=[];renderPecas({pecas:currentPecas,pecas_ativas:currentPecasAtivas,descricao:document.querySelector('.section-title')?document.querySelector('.section-title').textContent:''});}
