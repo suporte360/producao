@@ -277,6 +277,37 @@ def _build_lotes_filter():
     return where, join, params
 
 
+def _load_setores_totem():
+    """Carrega SETORES_TOTEM dinamicamente: departamentos + descricoes de operacoes.
+    Exemplo SERRALHERIA: ('SERRALHERIA', 'DOBRA', 'CORTAR', 'CURVAR', ...)
+    Assim o filtro funciona tanto com deptos antigos quanto com descricoes novas."""
+    global SETORES_TOTEM
+    try:
+        deptos = SETORES_SUB.get(SETOR, (SETOR,))
+        rows = db_query(
+            "SELECT DISTINCT departamento, descricao_operacao "
+            "FROM operacoes_producao "
+            "WHERE departamento IN %s",
+            (deptos,)
+        )
+        setores = set()
+        for r in rows:
+            d = (r['departamento'] or '').strip()
+            desc = (r.get('descricao_operacao') or '').strip()
+            if d:
+                setores.add(d)
+            if desc and desc != d:
+                setores.add(desc)
+        # Sempre inclui os departamentos base (para dados antigos)
+        for d in deptos:
+            setores.add(d)
+        SETORES_TOTEM = tuple(setores)
+        print('[OK] SETORES_TOTEM (%s): %s' % (SETOR, SETORES_TOTEM))
+    except Exception as e:
+        print('[WARN] SETORES_TOTEM fallback: %s' % e)
+        SETORES_TOTEM = SETORES_SUB.get(SETOR, (SETOR,))
+
+
 def init_db():
     """Verifica tabelas serralheria_producao e serralheria_usuarios existem.
     NAO cria tabelas, NAO faz seed de usuarios (admin gerencia via 5002).
@@ -297,6 +328,7 @@ def init_db():
 
     _load_produto_cache()
     _refresh_lotes_ativos()
+    _load_setores_totem()
     print('[OK] Totem %s inicializado (tabelas compartilhadas, cache carregado)' % SETOR)
 
 
@@ -665,10 +697,15 @@ def api_pecas(lotcod):
                 ORDER BY sequencia
             """, (p['of_numero'],))
 
-            setores = list(set(
-                op['departamento'] for op in ops
-                if op.get('departamento') and op['departamento'] in SETORES_TOTEM
-            ))
+            setores = []
+            seen = set()
+            for op in ops:
+                if op.get('departamento') and op['departamento'] in SETORES_SUB.get(SETOR, (SETOR,)):
+                    desc = (op.get('descricao_operacao') or '').strip() or op['departamento']
+                    key = desc  # usa descricao_operacao como identificador unico
+                    if key not in seen:
+                        seen.add(key)
+                        setores.append({'setor': op['departamento'], 'descricao': desc})
 
             peca_cod = str(p.get('codigo', '')).strip()
             nome_real = _get_produto_nome(peca_cod)
