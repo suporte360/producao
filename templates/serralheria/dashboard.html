@@ -602,9 +602,9 @@ function renderPecas(data){
 function abrirSetor(pecaCodigo,pecaSetores,ativasArr){
   ultimaPecaClicada=pecaCodigo;
   ultimaPecaAtivas=ativasArr||[];
-  if(!pecaSetores||pecaSetores.length===0){pecaSetores=['CORTE','DOBRA','SOLDA','ACABAMENTO'];}
-  var icons={'CORTE':'&#9986;','DOBRA':'&#8634;','SOLDA':'&#9899;','ACABAMENTO':'&#10003;'};
-  var labels={'ACABAMENTO':'ACABAM.'};
+  if(!pecaSetores||pecaSetores.length===0){pecaSetores=['SERRALHERIA','DOBRA'];}
+  var icons={'SERRALHERIA':'&#9986;','DOBRA':'&#8634;','SOLDA':'&#9899;','ACABAMENTO':'&#10003;','PINTURA':'&#127912;','MONTAGEM':'&#128295;','EMBALAGEM':'&#128230;'};
+  var labels={'SERRALHERIA':'SERRALH.','DOBRA':'DOBRA','ACABAMENTO':'ACABAM.'};
   /* Separar ativos dos pendentes */
   var ativosMap={};for(var a=0;a<ultimaPecaAtivas.length;a++){ativosMap[ultimaPecaAtivas[a].setor]=ultimaPecaAtivas[a].usuario;}
   var hasAtivos=ultimaPecaAtivas.length>0;

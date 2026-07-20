@@ -37,7 +37,7 @@ else:
     SETOR = os.environ.get('SETOR', 'PINTURA').upper().strip()
     PORT = int(os.environ.get('PORT', '5004'))
 
-VALID_SETORES = ('PINTURA', 'MONTAGEM', 'EMBALAGEM')
+VALID_SETORES = ('PINTURA', 'MONTAGEM', 'EMBALAGEM', 'ACABAMENTO', 'CORTE', 'SERRALHERIA', 'FUNILARIA', 'POLIMENTO')
 if SETOR not in VALID_SETORES:
     print('[ERRO] SETOR invalido: %s (esperado: %s)' % (SETOR, ', '.join(VALID_SETORES)))
     sys.exit(1)
@@ -71,12 +71,24 @@ _produto_cache = {}
 _lotes_ativos = set()
 
 # Cada instancia do totem trata apenas do seu proprio setor
-SETORES_TOTEM = (SETOR,)
+# Mapeamento de setor principal -> sub-setores (departamentos nas operacoes_producao)
+# Departamentos reais no banco: SERRALHERIA, DOBRA, ACABAMENTO, MONTAGEM, EMBALAGEM
+SETORES_SUB = {
+    'SERRALHERIA':  ('SERRALHERIA', 'DOBRA'),
+    'PINTURA':      ('PINTURA',),
+    'MONTAGEM':     ('MONTAGEM', 'ACABAMENTO'),
+    'EMBALAGEM':    ('EMBALAGEM',),
+    'ACABAMENTO':   ('ACABAMENTO',),
+    'CORTE':        ('SERRALHERIA', 'DOBRA'),
+    'FUNILARIA':    ('FUNILARIA',),
+    'POLIMENTO':    ('POLIMENTO',),
+}
+SETORES_TOTEM = SETORES_SUB.get(SETOR, (SETOR,))
 
 # Mapeamento de setores ERP -> Sistema Local (mesmo do app.py)
 MAPEAMENTO_SETORES = {
     'ALMOXARIFADO': 'ALMOXARIFADO',
-    'SERRALHERIA':  'CORTE',
+    'SERRALHERIA':  'SERRALHERIA',
     'FUNILARIA':    'FUNILARIA',
     'PINTURA':      'PINTURA',
     'POLIMENTO':    'ACABAMENTO',
@@ -718,9 +730,8 @@ def api_usuarios():
     try:
         usuarios = db_query(
             "SELECT MIN(id) as id, nome, MAX(setor) as setor "
-            "FROM serralheria_usuarios WHERE ativo = 1 AND setor = %s "
-            "GROUP BY nome ORDER BY nome",
-            (SETOR,)
+            "FROM serralheria_usuarios WHERE ativo = 1 "
+            "GROUP BY nome ORDER BY nome"
         )
         return jsonify({'usuarios': usuarios})
     except Exception as e:

@@ -97,7 +97,7 @@ except Exception:
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     """)
 
-# Operadores por setor — so insere se a tabela estiver vazia
+# Operadores da Serralheria — so insere se a tabela estiver vazia
 OPERADORES_SERRALHERIA = [
     ('Gabriel',      'CORTE'),
     ('Erivaldo',     'SERRALHERIA'),
@@ -109,13 +109,6 @@ OPERADORES_SERRALHERIA = [
     ('Leonardo',     'SOLDA'),
     ('José Barbosa', 'DOBRA'),
     ('Jhonatas',     'DOBRA'),
-    ('Operador 1',   'MONTAGEM'),
-    ('Operador 2',   'MONTAGEM'),
-    ('Operador 1',   'ACABAMENTO'),
-    ('Operador 1',   'POLIMENTO'),
-    ('Operador 1',   'EMBALAGEM'),
-    ('Operador 1',   'PINTURA'),
-    ('Operador 1',   'EXPEDICAO'),
 ]
 try:
     total = db.query_one("SELECT COUNT(*) as c FROM serralheria_usuarios")
@@ -125,25 +118,11 @@ try:
                 "INSERT INTO serralheria_usuarios (nome, setor, ativo) VALUES (%s, %s, 1)",
                 (nome, setor)
             )
-        print('[OK] Operadores iniciais criados: %d' % len(OPERADORES_SERRALHERIA))
+        print('[OK] Operadores serralheria iniciais criados: %d' % len(OPERADORES_SERRALHERIA))
     else:
-        # Verifica setores que nao tem operador e insere genericos
-        setores_existentes = set()
-        for r in db.query("SELECT DISTINCT setor FROM serralheria_usuarios"):
-            setores_existentes.add((r['setor'] or '').upper().strip())
-        setores_necessarios = {'MONTAGEM','ACABAMENTO','POLIMENTO','EMBALAGEM','PINTURA','EXPEDICAO'}
-        faltando = setores_necessarios - setores_existentes
-        if faltando:
-            for nome, setor in OPERADORES_SERRALHERIA:
-                if setor.upper().strip() in faltando:
-                    db.execute(
-                        "INSERT IGNORE INTO serralheria_usuarios (nome, setor, ativo) VALUES (%s, %s, 1)",
-                        (nome, setor)
-                    )
-            print('[OK] Operadores adicionados para setores: %s' % ', '.join(faltando))
-        print('[OK] Operadores: %d existentes (preservados)' % total['c'])
+        print('[OK] Operadores serralheria: %d existentes (preservados)' % total['c'])
 except Exception as e:
-    print('[WARN] Operadores: %s' % e)
+    print('[WARN] Operadores serralheria: %s' % e)
 
 # Migration: limpar nomes serra* antigos da tabela de producao do totem
 try:
@@ -1382,11 +1361,7 @@ def api_buscar_produto_erp(codigo):
 @role_required('admin', 'gerente', 'almoxarifado')
 def api_materiais_pendentes():
     """Materiais necessarios para OFs liberadas, filtrando peças fabricadas (so materiais brutos)."""
-    try:
-        lotes = db.get_lotes_liberados_pendentes()
-    except Exception as e:
-        print('[MAT PEND] Erro lotes:', e)
-        return jsonify({'status': 'success', 'ofs': []})
+    lotes = db.get_lotes_liberados_pendentes()
     if not lotes:
         return jsonify({'status': 'success', 'ofs': []})
     ordens = [l['ordem'] for l in lotes]
@@ -1399,12 +1374,6 @@ def api_materiais_pendentes():
     # Pega todos os codigo_produto das OFs ativas para excluir peças fabricadas do BOM
     codigos_fabricados = db.get_codigos_produtos_ofs_ativas()
 
-    # Exclui materiais marcados como "não separar do almoxarifado"
-    try:
-        codigos_excluidos = db.get_codigos_excluidos_set()
-    except Exception:
-        codigos_excluidos = set()
-
     mats_por_of = {}
     for m in materiais_erp:
         of_num = m.get('ordem')
@@ -1412,10 +1381,41 @@ def api_materiais_pendentes():
             mats_por_of[of_num] = []
         mats_por_of[of_num].append(m)
     todos_codigos = list(set(str(m.get('produto') or '') for m in materiais_erp if m.get('produto')))
+
+    # Estoque: prioridade SQLite ERP (mesmo dado do TV), fallback estoque_interno
+    sqlite_map = {}
+    try:
+        import sqlite3 as sqlite3_mod
+        SQLITE_PATH = "/opt/painel_estoque/estoque.db"
+        conn = sqlite3_mod.connect(SQLITE_PATH)
+        conn.row_factory = sqlite3_mod.Row
+        cur = conn.cursor()
+        ph = ','.join(['?'] * len(todos_codigos))
+        cur.execute(
+            "SELECT TRIM(codigo) as codigo, saldo_atual, descricao "
+            "FROM produtos WHERE TRIM(codigo) IN (%s)" % ph,
+            todos_codigos
+        )
+        for r in cur.fetchall():
+            cod = str(r['codigo']).strip()
+            sqlite_map[cod] = {
+                'qtd_atual': float(r['saldo_atual'] or 0),
+                'descricao': (r['descricao'] or '')[:80]
+            }
+        conn.close()
+    except Exception as e:
+        print('[ERRO] SQLite estoque (materiais-pendentes): %s' % e)
+
     estoque_map = {}
     for cod in todos_codigos:
-        item = db.get_estoque_por_codigo(cod, tipo='almoxarifado')
-        estoque_map[cod] = item
+        # Se tem saldo no ERP (SQLite), usa esse
+        if cod in sqlite_map and sqlite_map[cod]['qtd_atual'] > 0:
+            estoque_map[cod] = sqlite_map[cod]
+        else:
+            # Fallback: estoque_interno (MariaDB)
+            item = db.get_estoque_por_codigo(cod, tipo='almoxarifado')
+            if item:
+                estoque_map[cod] = item
     resultado = []
     for lote in lotes:
         mats = mats_por_of.get(lote['ordem'], [])
@@ -1424,9 +1424,6 @@ def api_materiais_pendentes():
             cod = str(m.get('produto') or '')
             # Pula peças que são fabricadas em outras OFs (ex: alça, suporte, etc.)
             if cod in codigos_fabricados:
-                continue
-            # Pula materiais excluídos da separação (feitos no próprio setor)
-            if cod.upper().strip() in codigos_excluidos:
                 continue
             est = estoque_map.get(cod)
             mats_com.append({
@@ -1442,25 +1439,12 @@ def api_materiais_pendentes():
             resultado.append({
                 'ordem': lote['ordem'],
                 'produto': lote.get('descricao_produto') or lote.get('lote_descricao') or '',
-                'quantidade': float(lote.get('quantidade') or 0),
+                'quantidade': lote.get('quantidade'),
                 'prioridade': lote.get('prioridade'),
                 'departamento': lote.get('departamento'),
                 'materiais': mats_com
             })
-    try:
-        return jsonify({'status': 'success', 'ofs': resultado})
-    except Exception as e:
-        print('[MAT PEND] Erro jsonify:', e)
-        # Fallback: converte tudo para string segura
-        for r in resultado:
-            for m in r.get('materiais', []):
-                for k, v in list(m.items()):
-                    if not isinstance(v, (str, int, float, bool, type(None))):
-                        m[k] = str(v)
-            for k, v in list(r.items()):
-                if not isinstance(v, (str, int, float, bool, type(None), list)):
-                    r[k] = str(v)
-        return jsonify({'status': 'success', 'ofs': resultado})
+    return jsonify({'status': 'success', 'ofs': resultado})
 
 @app.route('/api/estoque/<int:item_id>/separar-fabrica', methods=['POST'])
 @login_required
@@ -1787,18 +1771,6 @@ def api_separacao_materiais():
     except Exception as e:
         print('[SEP MATS] Erro conectar ERP:', e)
 
-    # Busca status por componente de TODAS as OPs pendentes/separando (para TV)
-    todas_ordens_pend = []
-    for lc, info in lote_map.items():
-        for o in info['ordens']:
-            if o['separacao_status'] in ('pendente', 'separando'):
-                todas_ordens_pend.append(int(o['ordem']))
-    comp_status_map = {}
-    try:
-        comp_status_map = db.get_separacao_componentes_multi(todas_ordens_pend)
-    except Exception:
-        comp_status_map = {}
-
     resultado = []
     stats = {'total': 0, 'pendentes': 0, 'separando': 0, 'separados': 0, 'urgentes': 0}
 
@@ -1814,9 +1786,7 @@ def api_separacao_materiais():
         if not ofs_pendentes and not ofs_separadas:
             continue
 
-        # OFs que estao "separando" (para destacar componentes ativos na TV)
-        ofs_separando_nums = [int(o['ordem']) for o in ofs_pendentes if o['separacao_status'] == 'separando']
-        # Todas as OFs pendentes/separando para buscar materiais
+        # Pega OFs do ERP para buscar materiais (so das OFs pendentes/separando)
         ordens_pendentes_nums = [int(o['ordem']) for o in ofs_pendentes]
         materiais_erp = []
         if pg and ordens_pendentes_nums:
@@ -1844,20 +1814,6 @@ def api_separacao_materiais():
                 }
             agrupados[cod]['qtd_necessaria'] += float(m.get('quantidade') or 0)
         comps = sorted(agrupados.values(), key=lambda x: x['codigo'])
-
-        # Atribui status por componente para a TV
-        for comp in comps:
-            cod_upper = comp['codigo'].strip().upper()
-            comp['status_tv'] = 'pendente'
-            # Verifica se alguma OP "separando" tem esse componente separado
-            for op_num in ofs_separando_nums:
-                st = comp_status_map.get((op_num, cod_upper))
-                if st == 'separado':
-                    comp['status_tv'] = 'separado'
-                    break
-            # Se está em OP "separando" mas componente ainda não foi separado → destaca
-            if comp['status_tv'] == 'pendente' and ofs_separando_nums:
-                comp['status_tv'] = 'separando'
 
         # Status do lote: se tem OFs pendentes = separando/separando, se so separadas = separado
         if ofs_pendentes:
