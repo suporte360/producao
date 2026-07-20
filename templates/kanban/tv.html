@@ -449,7 +449,7 @@ const SETORES = [
 const STATUS_CONFIG = [
   { key:'aguardando',  label:'Aguardando',  icon:'fa-hourglass-start' },
   { key:'em_producao', label:'Em Produção', icon:'fa-gear'            },
-  { key:'pausado',     label:'Pausados',    icon:'fa-pause'           },
+
   { key:'concluido',   label:'Concluídos',  icon:'fa-circle-check'   },
 ];
 
@@ -564,9 +564,7 @@ function buildCard(card) {
   if (card.etapa === 'em_producao' && operador) {
     timerHtml = '<span class="kc-timer" style="color:#4ade80"><i class="fa-solid fa-user" style="font-size:.5rem;margin-right:3px"></i>' + operador + '</span>';
   }
-  var pausaBadge = card.etapa === 'pausado'
-    ? '<span style="display:inline-flex;align-items:center;gap:3px;font-size:.5rem;font-weight:800;padding:1px 6px;border-radius:9999px;background:rgba(245,158,11,.2);color:#f59e0b"><i class="fa-solid fa-pause" style="font-size:.45rem"></i>PAUSADO</span>'
-    : '';
+  var pausaBadge = '';
   var badge = '<span class="badge-p ' + prio + '">' + ((card.prioridade || 'MEDIA')).toUpperCase() + '</span>';
   var pecaCode = card.cod_peca || '';
   var pecaName = card.nome_peca || '';
@@ -719,7 +717,6 @@ function loadData() {
     document.getElementById('tickerMsg').textContent =
       'Última atualização: ' + new Date().toLocaleTimeString('pt-BR') +
       ' | Em produção: ' + (stats.em_producao||0) +
-      ' | Pausados: '    + (stats.pausado||0) +
       ' | Concluídos hoje: ' + concluidos;
   }).catch(err => {
     document.getElementById('tickerMsg').textContent = 'Erro ao carregar dados: ' + err;

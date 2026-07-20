@@ -168,7 +168,10 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 .dialog-btns .sim{background:#00e676;color:#000}
 .dialog-btns .nao{background:#2a2a5a;color:#aaa}
 .setor-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:16px}
-.setor-btn{background:#16213e;border:2px solid #2a2a5a;border-radius:14px;padding:20px 10px;text-align:center;cursor:pointer;font-size:15px;font-weight:700;color:#e0e0e0;transition:all .2s;text-transform:uppercase;letter-spacing:1px}
+.setor-group-card{background:#16213e;border:2px solid #2a2a5a;border-radius:14px;overflow:hidden;transition:all .2s}
+.setor-group-header{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:2px;padding:10px 12px 6px;text-align:center;border-bottom:1px solid rgba(255,255,255,.06)}
+.setor-group-body{display:flex;flex-direction:column;padding:8px}
+.setor-btn{background:rgba(255,255,255,.03);border:1.5px solid #2a2a5a;border-radius:10px;padding:20px 10px;text-align:center;cursor:pointer;font-size:15px;font-weight:700;color:#e0e0e0;transition:all .2s;text-transform:uppercase;letter-spacing:1px}
 .setor-btn:active{border-color:var(--accent);background:#1e2a4e}
 .setor-btn .setor-icon{font-size:26px;margin-bottom:6px}
 .setor-btn.ativo{border-color:#00e676;background:rgba(0,230,118,.08);cursor:default}
@@ -606,7 +609,7 @@ function abrirSetor(pecaCodigo,pecaSetores,ativasArr){
   ultimaPecaAtivas=ativasArr||[];
   if(!pecaSetores||pecaSetores.length===0){pecaSetores=[{setor:'SERRALHERIA',descricao:'SERRALHERIA'},{setor:'SERRALHERIA',descricao:'DOBRA'}];}
   var icons={'SERRALHERIA':'&#9986;','DOBRA':'&#8634;','CORTAR':'&#9986;','CURVAR':'&#8634;','SOLDA':'&#9899;','SOLDAR':'&#9899;','ACABAMENTO':'&#10003;','PINTURA':'&#127912;','MONTAGEM':'&#128295;','EMBALAGEM':'&#128230;'};
-  var labels={};
+  var setorColors={'SERRALHERIA':'#f59e0b','DOBRA':'#a855f7','CORTAR':'#f59e0b','CURVAR':'#a855f7','SOLDA':'#ef4444','SOLDAR':'#ef4444','ACABAMENTO':'#22c55e','PINTURA':'#ec4899','MONTAGEM':'#3b82f6','EMBALAGEM':'#06b6d4'};
   /* Separar ativos dos pendentes */
   var ativosMap={};for(var a=0;a<ultimaPecaAtivas.length;a++){ativosMap[ultimaPecaAtivas[a].setor]=ultimaPecaAtivas[a].usuario;}
   var hasAtivos=ultimaPecaAtivas.length>0;
@@ -618,18 +621,56 @@ function abrirSetor(pecaCodigo,pecaSetores,ativasArr){
   if(hasAtivos&&hasPendentes){tituloEl.textContent=pecaCodigo+' - Producao por Setor';descEl.textContent='Setores em producao e pendentes';}
   else if(hasAtivos){tituloEl.textContent=pecaCodigo+' - Todos os Setores Ativos';descEl.textContent='Clique em FINALIZAR para encerrar';}
   else{tituloEl.textContent=pecaCodigo+' - Escolha o Setor';descEl.textContent='Selecione o setor para iniciar a producao';}
-  var html='<div class="setor-grid">';
+  /* Agrupar itens por setor (departamento) */
+  var grupos={};
   for(var i=0;i<pecaSetores.length;i++){
     var item=pecaSetores[i];
     var sKey=_getSetorKey(item);
     var sDept=(typeof item==='object')?item.setor:sKey;
     var sLabel=(typeof item==='object')?item.descricao:sKey;
-    var usuario=ativosMap[sKey];
-    var iconStr=icons[sLabel]||icons[sDept]||'&#9881;';
-    if(usuario){
-      html+='<div class="setor-btn ativo"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px">'+esc(sDept)+'</div><div class="setor-icon">'+iconStr+'</div>'+(labels[sLabel]||sLabel)+'<div class="setor-info">Em producao - '+esc(usuario)+'</div><button class="setor-finalizar" onclick="finalizarSetorPeca(\''+esc(pecaCodigo)+'\',\''+sKey+'\')">FINALIZAR '+esc(sLabel)+'</button></div>';
+    if(!grupos[sDept]){grupos[sDept]={dept:sDept,items:[]};}
+    grupos[sDept].items.push({key:sKey,dept:sDept,label:sLabel});
+  }
+  var html='<div class="setor-grid">';
+  var grupoKeys=[];
+  for(var gk in grupos){if(grupos.hasOwnProperty(gk)){grupoKeys.push(gk);}}
+  for(var gi=0;gi<grupoKeys.length;gi++){
+    var grupo=grupos[grupoKeys[gi]];
+    var deptName=grupo.dept;
+    var itens=grupo.items;
+    var isGrouped=itens.length>1;
+    var grupoIcon=icons[deptName]||'&#9881;';
+    var grupoColor=setorColors[deptName]||'#60a5fa';
+    if(isGrouped){
+      /* Card agrupado: nome do setor no topo, mini-cards das sub-ops abaixo */
+      html+='<div class="setor-group-card" style="grid-column:span 1;">';
+      html+='<div class="setor-group-header" style="color:'+grupoColor+'">'+grupoIcon+' '+esc(deptName)+'</div>';
+      html+='<div class="setor-group-body">';
+      for(var ii=0;ii<itens.length;ii++){
+        var sub=itens[ii];
+        var subIcon=icons[sub.label]||icons[sub.dept]||'&#9881;';
+        var subColor=setorColors[sub.label]||grupoColor;
+        var subUsuario=ativosMap[sub.key];
+        if(subUsuario){
+          html+='<div class="setor-btn ativo" style="margin:0;padding:12px 8px;"><div class="setor-icon">'+subIcon+'</div>'+esc(sub.label)+'<div class="setor-info">Em producao - '+esc(subUsuario)+'</div><button class="setor-finalizar" onclick="finalizarSetorPeca(\''+esc(pecaCodigo)+'\',\''+sub.key+'\')">FINALIZAR '+esc(sub.label)+'</button></div>';
+        }else{
+          html+='<div class="setor-btn" onclick="selecionarSetor(\''+sub.key+'\')" style="margin:0;padding:12px 8px;"><div class="setor-icon" style="color:'+subColor+'">'+subIcon+'</div><span style="color:'+subColor+'">'+esc(sub.label)+'</span></div>';
+        }
+      }
+      html+='</div></div>';
     }else{
-      html+='<div class="setor-btn" onclick="selecionarSetor(\''+sKey+'\')"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px">'+esc(sDept)+'</div><div class="setor-icon">'+iconStr+'</div>'+(labels[sLabel]||sLabel)+'</div>';
+      /* Card simples (1 item no grupo) */
+      var item=itens[0];
+      var sKey=item.key;
+      var sDept=item.dept;
+      var sLabel=item.label;
+      var usuario=ativosMap[sKey];
+      var iconStr=icons[sLabel]||icons[sDept]||'&#9881;';
+      if(usuario){
+        html+='<div class="setor-btn ativo"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px">'+esc(sDept)+'</div><div class="setor-icon">'+iconStr+'</div>'+esc(sLabel)+'<div class="setor-info">Em producao - '+esc(usuario)+'</div><button class="setor-finalizar" onclick="finalizarSetorPeca(\''+esc(pecaCodigo)+'\',\''+sKey+'\')">FINALIZAR '+esc(sLabel)+'</button></div>';
+      }else{
+        html+='<div class="setor-btn" onclick="selecionarSetor(\''+sKey+'\')"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px">'+esc(sDept)+'</div><div class="setor-icon">'+iconStr+'</div>'+esc(sLabel)+'</div>';
+      }
     }
   }
   html+='</div>';

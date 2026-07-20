@@ -111,7 +111,6 @@
             <th>Setor</th>
             <th class="text-center">Pendentes</th>
             <th class="text-center">Em Andamento</th>
-            <th class="text-center">Pausados</th>
             <th class="text-center">Concl. Hoje</th>
             <th class="text-center">Total</th>
             <th style="min-width:150px">Carga</th>
@@ -128,7 +127,6 @@
             </td>
             <td class="text-center text-primary fw-bold">{{ s.pendentes or 0 }}</td>
             <td class="text-center fw-bold" style="color:#fd7e14">{{ s.em_andamento or 0 }}</td>
-            <td class="text-center text-warning fw-bold">{{ s.pausados or 0 }}</td>
             <td class="text-center text-success fw-bold">{{ s.concluidas_hoje or 0 }}</td>
             <td class="text-center fw-black">{{ s.total_ops }}</td>
             <td>
