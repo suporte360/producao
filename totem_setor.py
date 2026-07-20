@@ -816,8 +816,8 @@ def api_iniciar():
                 (peca.get('ordem'), lotcod, peca['codigo'], peca.get('ordem'),
                  usuario_id, usuario_nome, setor)
             )
-            # Sincroniza operacoes_producao -> em_andamento
-            _sync_op_status(peca.get('ordem'), dept, 'em_andamento')
+            # Sincroniza operacoes_producao -> em_andamento (setor = descricao_operacao)
+            _sync_op_status(peca.get('ordem'), dept, 'em_andamento', descricao_operacao=setor)
 
         app.logger.info(
             'Producao iniciada: lote=%s usuario=%s setor=%s pecas=%d',
@@ -896,27 +896,48 @@ def _sync_lote_status(of_numero, novo_status):
             )
 
 
-def _sync_op_status(of_numero, departamento, novo_status):
-    """Sincroniza operacoes_producao, kanban_cards e lotes_producao quando totem inicia/finaliza."""
+def _sync_op_status(of_numero, departamento, novo_status, descricao_operacao=None):
+    """Sincroniza operacoes_producao, kanban_cards e lotes_producao quando totem inicia/finaliza.
+    descricao_operacao: quando fornecido, filtra a operacao especifica (ex: 'CORTAR')
+                        em vez de atualizar TODAS as ops do departamento."""
     if not of_numero or not departamento:
         return
     try:
-        # 1. Atualiza operacoes_producao
-        db_execute(
-            "UPDATE operacoes_producao SET status = %s, data_inicio = COALESCE(data_inicio, NOW()), "
-            "data_fim = CASE WHEN %s = 'concluido' THEN NOW() ELSE data_fim END "
-            "WHERE of_numero = %s AND departamento = %s AND status != 'concluido'",
-            (novo_status, novo_status, of_numero, departamento)
-        )
-        # 2. Atualiza kanban_cards
+        # 1. Atualiza operacoes_producao (filtra por descricao quando disponivel)
+        if descricao_operacao:
+            db_execute(
+                "UPDATE operacoes_producao SET status = %s, data_inicio = COALESCE(data_inicio, NOW()), "
+                "data_fim = CASE WHEN %s = 'concluido' THEN NOW() ELSE data_fim END "
+                "WHERE of_numero = %s AND departamento = %s AND descricao_operacao = %s "
+                "AND status != 'concluido'",
+                (novo_status, novo_status, of_numero, departamento, descricao_operacao)
+            )
+        else:
+            db_execute(
+                "UPDATE operacoes_producao SET status = %s, data_inicio = COALESCE(data_inicio, NOW()), "
+                "data_fim = CASE WHEN %s = 'concluido' THEN NOW() ELSE data_fim END "
+                "WHERE of_numero = %s AND departamento = %s AND status != 'concluido'",
+                (novo_status, novo_status, of_numero, departamento)
+            )
+        # 2. Atualiza kanban_cards (usa JOIN com operacoes_producao para pegar o operacao_id exato)
         etapa_map = {'em_andamento': 'em_producao', 'concluido': 'concluido', 'pendente': 'aguardando'}
         nova_etapa = etapa_map.get(novo_status)
         if nova_etapa:
-            db_execute(
-                "UPDATE kanban_cards SET etapa = %s, atualizado_em = NOW() "
-                "WHERE of_numero = %s AND departamento = %s AND etapa != 'concluido'",
-                (nova_etapa, of_numero, departamento)
-            )
+            if descricao_operacao:
+                db_execute(
+                    "UPDATE kanban_cards kc "
+                    "INNER JOIN operacoes_producao op ON kc.operacao_id = op.id "
+                    "SET kc.etapa = %s, kc.atualizado_em = NOW() "
+                    "WHERE op.of_numero = %s AND op.departamento = %s "
+                    "AND op.descricao_operacao = %s AND kc.etapa != 'concluido'",
+                    (nova_etapa, of_numero, departamento, descricao_operacao)
+                )
+            else:
+                db_execute(
+                    "UPDATE kanban_cards SET etapa = %s, atualizado_em = NOW() "
+                    "WHERE of_numero = %s AND departamento = %s AND etapa != 'concluido'",
+                    (nova_etapa, of_numero, departamento)
+                )
         # 3. Sincroniza lotes_producao (status + departamento_atual)
         _sync_lote_status(of_numero, novo_status)
         _atualizar_departamento_lote_from_of(of_numero)
@@ -976,14 +997,21 @@ def api_finalizar():
                 qtd_ja_feita = _int(row['qtd_produzida'])
                 restante = qtd_total - qtd_ja_feita
 
+                # Busca departamento real da operacao no banco (nao usa setor_para_dept)
+                op_row = db_query_one(
+                    "SELECT departamento FROM operacoes_producao "
+                    "WHERE of_numero = %s AND descricao_operacao = %s LIMIT 1",
+                    (row['of_numero'], setor)
+                )
+                dept = op_row['departamento'] if op_row else departamento
+
                 if qtd_total <= 0:
                     # Sem qtde_ordem, finaliza direto
                     db_execute(
                         "UPDATE serralheria_producao SET status='finalizado', data_fim=NOW() "
                         "WHERE id=%s", (row['id'],)
                     )
-                    dept = setor_para_dept.get(setor, setor)
-                    _sync_op_status(row['of_numero'], dept, 'concluido')
+                    _sync_op_status(row['of_numero'], dept, 'concluido', descricao_operacao=setor)
                     continue
 
                 # Validacao: quantidade nao pode exceder o restante
@@ -1006,8 +1034,7 @@ def api_finalizar():
                         "WHERE id=%s",
                         (qtd_total, row['id'])
                     )
-                    dept = setor_para_dept.get(setor, setor)
-                    _sync_op_status(row['of_numero'], dept, 'concluido')
+                    _sync_op_status(row['of_numero'], dept, 'concluido', descricao_operacao=setor)
                     app.logger.info('Lote %s peca %s setor %s: FINALIZADA (%d/%d)', lotcod, pcod, setor, nova_qtd, qtd_total)
                 else:
                     # Finalizacao parcial: acumula e mantem em_producao
@@ -1034,8 +1061,15 @@ def api_finalizar():
                 [lotcod] + pecas
             )
             for row in rows:
-                dept = setor_para_dept.get(row.get('setor',''), row.get('setor',''))
-                _sync_op_status(row.get('of_numero'), dept, 'concluido')
+                # Busca dept real no banco e passa descricao_operacao
+                descricao = row.get('setor', '')
+                op_row = db_query_one(
+                    "SELECT departamento FROM operacoes_producao "
+                    "WHERE of_numero = %s AND descricao_operacao = %s LIMIT 1",
+                    (row.get('of_numero'), descricao)
+                )
+                dept = op_row['departamento'] if op_row else descricao
+                _sync_op_status(row.get('of_numero'), dept, 'concluido', descricao_operacao=descricao)
             app.logger.info('Lote %s: %d peca(s) finalizada(s) no totem', lotcod, len(pecas))
         else:
             # Finalizar todas as pecas do lote
@@ -1050,8 +1084,15 @@ def api_finalizar():
                 (lotcod,)
             )
             for row in rows:
-                dept = setor_para_dept.get(row.get('setor',''), row.get('setor',''))
-                _sync_op_status(row.get('of_numero'), dept, 'concluido')
+                # Busca dept real no banco e passa descricao_operacao
+                descricao = row.get('setor', '')
+                op_row = db_query_one(
+                    "SELECT departamento FROM operacoes_producao "
+                    "WHERE of_numero = %s AND descricao_operacao = %s LIMIT 1",
+                    (row.get('of_numero'), descricao)
+                )
+                dept = op_row['departamento'] if op_row else descricao
+                _sync_op_status(row.get('of_numero'), dept, 'concluido', descricao_operacao=descricao)
             app.logger.info('Lote %s finalizado no totem', lotcod)
 
         return jsonify({'success': True, 'mensagem': 'Producao finalizada!'})
