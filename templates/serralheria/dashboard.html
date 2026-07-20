@@ -323,6 +323,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 </div>
 
 <script>
+var TOTEM_SETOR = '{% if setor_nome %}{{ setor_nome }}{% else %}SERRALHERIA{% endif %}';
 var currentLote = null;
 var currentPecas = [];
 var currentPecasAtivas = {};
@@ -372,6 +373,7 @@ function updateClock() {
 setInterval(updateClock,1000); updateClock();
 
 function esc(s){if(!s)return'';var d=document.createElement('div');d.appendChild(document.createTextNode(String(s)));return d.innerHTML;}
+function escJS(s){if(!s)return'';return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
 
 function animateValue(el,end){
   var startVal=parseInt(el.textContent)||0;if(startVal===end)return;
@@ -610,101 +612,84 @@ function renderPecas(data){
 }
 
 function abrirSetor(pecaCodigo,pecaSetores,ativasArr){
+  try{
   ultimaPecaClicada=pecaCodigo;
   ultimaPecaAtivas=ativasArr||[];
   if(!pecaSetores||pecaSetores.length===0){pecaSetores=[{setor:'SERRALHERIA',descricao:'SERRALHERIA',meu_setor:true},{setor:'SERRALHERIA',descricao:'DOBRA',meu_setor:true}];}
-  var icons={'SERRALHERIA':'&#9986;','DOBRA':'&#8634;','CORTAR':'&#9986;','CURVAR':'&#8634;','SOLDA':'&#9899;','SOLDAR':'&#9899;','ACABAMENTO':'&#10003;','PINTURA':'&#127912;','MONTAGEM':'&#128295;','EMBALAGEM':'&#128230;'};
+  var icons={'SERRALHERIA':'\u2692','DOBRA':'\u21BA','CORTAR':'\u2692','CURVAR':'\u21BA','SOLDA':'\u2609','SOLDAR':'\u2609','ACABAMENTO':'\u2713','PINTURA':'\uD83C\uDFA8','MONTAGEM':'\uD83D\uDD27','EMBALAGEM':'\uD83D\uDCE6'};
   var setorColors={'SERRALHERIA':'#f59e0b','DOBRA':'#a855f7','CORTAR':'#f59e0b','CURVAR':'#a855f7','SOLDA':'#ef4444','SOLDAR':'#ef4444','ACABAMENTO':'#22c55e','PINTURA':'#ec4899','MONTAGEM':'#3b82f6','EMBALAGEM':'#06b6d4'};
-  /* Separar ativos dos pendentes (apenas meu_setor) */
-  var ativosMap={};for(var a=0;a<ultimaPecaAtivas.length;a++){ativosMap[ultimaPecaAtivas[a].setor]=ultimaPecaAtivas[a].usuario;}
-  var hasAtivos=false;var hasPendentes=false;
+  /* Mapa de ativos: key=descricao_operacao, value=usuario */
+  var ativosMap={};
+  for(var a=0;a<ultimaPecaAtivas.length;a++){ativosMap[ultimaPecaAtivas[a].setor]=ultimaPecaAtivas[a].usuario;}
+  /* Separar em dois grupos: MEU SETOR (clicaveis) e OUTROS (cinza) */
+  var meuSetorOps=[];  /* {key, dept, label, icon, color} */
+  var outroSetorOps=[];
+  var hasAtivos=false;
+  var hasPendentes=false;
   for(var i=0;i<pecaSetores.length;i++){
-    var isItemMine=!(typeof pecaSetores[i]==='object'&&!pecaSetores[i].meu_setor);
-    var sKey=_getSetorKey(pecaSetores[i]);
-    if(isItemMine&&ativosMap[sKey])hasAtivos=true;
-    if(isItemMine&&!ativosMap[sKey])hasPendentes=true;
+    var item=pecaSetores[i];
+    var sKey=(typeof item==='object'&&item)?item.descricao:item;
+    var sDept=(typeof item==='object')?item.setor:sKey;
+    var sLabel=(typeof item==='object')?item.descricao:sKey;
+    var isMine=(typeof item==='object')?!!item.meu_setor:true;
+    var entry={key:sKey,dept:sDept,label:sLabel};
+    if(isMine){
+      meuSetorOps.push(entry);
+      if(ativosMap[sKey])hasAtivos=true; else hasPendentes=true;
+    }else{
+      outroSetorOps.push(entry);
+    }
   }
-  /* Atualizar titulo */
+  /* Titulo do dialog */
   var tituloEl=document.getElementById('dialogSetorTitle');
   var descEl=document.getElementById('dialogSetorDesc');
   if(hasAtivos&&hasPendentes){tituloEl.textContent=pecaCodigo+' - Producao por Setor';descEl.textContent='Setores em producao e pendentes';}
   else if(hasAtivos){tituloEl.textContent=pecaCodigo+' - Todos os Setores Ativos';descEl.textContent='Clique em FINALIZAR para encerrar';}
-  else{tituloEl.textContent=pecaCodigo+' - Escolha o Setor';descEl.textContent='Selecione o setor para iniciar a producao';}
-  /* Agrupar itens por setor (departamento) */
-  var grupos={};
-  for(var i=0;i<pecaSetores.length;i++){
-    var item=pecaSetores[i];
-    var sKey=_getSetorKey(item);
-    var sDept=(typeof item==='object')?item.setor:sKey;
-    var sLabel=(typeof item==='object')?item.descricao:sKey;
-    var isMine=!(typeof item==='object'&&!item.meu_setor);
-    if(!grupos[sDept]){grupos[sDept]={dept:sDept,items:[],meu_setor:false};}
-    grupos[sDept].items.push({key:sKey,dept:sDept,label:sLabel,meu_setor:isMine});
-    if(isMine)grupos[sDept].meu_setor=true;
-  }
+  else{tituloEl.textContent=pecaCodigo+' - Escolha a Operacao';descEl.textContent='Selecione a operacao para iniciar';}
+  /* Gerar HTML */
   var html='<div class="setor-grid">';
-  var grupoKeys=[];
-  for(var gk in grupos){if(grupos.hasOwnProperty(gk)){grupoKeys.push(gk);}}
-  for(var gi=0;gi<grupoKeys.length;gi++){
-    var grupo=grupos[grupoKeys[gi]];
-    var deptName=grupo.dept;
-    var itens=grupo.items;
-    var isGrupoMine=grupo.meu_setor;
-    var isGrouped=itens.length>1;
-    var grupoIcon=icons[deptName]||'&#9881;';
-    var grupoColor=isGrupoMine?(setorColors[deptName]||'#60a5fa'):'#555';
-    if(!isGrupoMine){
-      /* Setor de outro departamento - mostra apagado, nao clicavel */
-      if(isGrouped){
-        html+='<div class="setor-group-card setor-outro" style="grid-column:span 1;">';
-        html+='<div class="setor-group-header" style="color:'+grupoColor+'">'+grupoIcon+' '+esc(deptName)+'</div>';
-        html+='<div class="setor-group-body">';
-        for(var ii=0;ii<itens.length;ii++){
-          var sub=itens[ii];
-          html+='<div class="setor-btn setor-outro" style="margin:0;padding:10px 8px;"><div class="setor-icon" style="color:#555">'+(icons[sub.label]||'&#9881;')+'</div><span style="color:#555">'+esc(sub.label)+'</span></div>';
-        }
-        html+='</div></div>';
+  /* Grupo MEU SETOR: header + sub-ops em mini-cards */
+  if(meuSetorOps.length>0){
+    html+='<div class="setor-group-card" style="grid-column:span '+(outroSetorOps.length>0?'1':'2')+';">';
+    html+='<div class="setor-group-header" style="color:var(--accent)">'+esc(TOTEM_SETOR)+'</div>';
+    html+='<div class="setor-group-body">';
+    for(var mi=0;mi<meuSetorOps.length;mi++){
+      var op=meuSetorOps[mi];
+      var opIcon=icons[op.label]||icons[op.dept]||'\u2699';
+      var opColor=setorColors[op.label]||setorColors[op.dept]||'var(--accent)';
+      var opUsuario=ativosMap[op.key];
+      if(opUsuario){
+        html+='<div class="setor-btn ativo" style="margin:0;padding:12px 8px;">';
+        html+='<div class="setor-icon">'+opIcon+'</div>';
+        html+='<span>'+op.label+'</span>';
+        html+='<div class="setor-info">Em producao - '+opUsuario+'</div>';
+        html+='<button class="setor-finalizar" onclick="finalizarSetorPeca(\''+escJS(pecaCodigo)+'\',\''+escJS(op.key)+'\')">FINALIZAR '+op.label+'</button>';
+        html+='</div>';
       }else{
-        var item=itens[0];
-        html+='<div class="setor-btn setor-outro" style="cursor:default;"><div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:1px">'+esc(item.dept)+'</div><div class="setor-icon" style="color:#555">'+(icons[item.label]||icons[item.dept]||'&#9881;')+'</div><span style="color:#555">'+esc(item.label)+'</span></div>';
-      }
-    }else if(isGrouped){
-      /* Card agrupado do meu setor: header com nome do dept, mini-cards das sub-ops */
-      html+='<div class="setor-group-card" style="grid-column:span 1;">';
-      html+='<div class="setor-group-header" style="color:'+grupoColor+'">'+grupoIcon+' '+esc(deptName)+'</div>';
-      html+='<div class="setor-group-body">';
-      for(var ii=0;ii<itens.length;ii++){
-        var sub=itens[ii];
-        var subIcon=icons[sub.label]||icons[sub.dept]||'&#9881;';
-        var subColor=setorColors[sub.label]||grupoColor;
-        var subUsuario=ativosMap[sub.key];
-        if(subUsuario){
-          html+='<div class="setor-btn ativo" style="margin:0;padding:12px 8px;"><div class="setor-icon">'+subIcon+'</div>'+esc(sub.label)+'<div class="setor-info">Em producao - '+esc(subUsuario)+'</div><button class="setor-finalizar" onclick="finalizarSetorPeca(\''+esc(pecaCodigo)+'\',\''+sub.key+'\')">FINALIZAR '+esc(sub.label)+'</button></div>';
-        }else{
-          html+='<div class="setor-btn" onclick="selecionarSetor(\''+sub.key+'\',\''+sub.dept+'\')" style="margin:0;padding:12px 8px;"><div class="setor-icon" style="color:'+subColor+'">'+subIcon+'</div><span style="color:'+subColor+'">'+esc(sub.label)+'</span></div>';
-        }
-      }
-      html+='</div></div>';
-    }else{
-      /* Card simples do meu setor (1 item) */
-      var item=itens[0];
-      var sKey=item.key;
-      var sDept=item.dept;
-      var sLabel=item.label;
-      var usuario=ativosMap[sKey];
-      var iconStr=icons[sLabel]||icons[sDept]||'&#9881;';
-      if(usuario){
-        html+='<div class="setor-btn ativo"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px">'+esc(sDept)+'</div><div class="setor-icon">'+iconStr+'</div>'+esc(sLabel)+'<div class="setor-info">Em producao - '+esc(usuario)+'</div><button class="setor-finalizar" onclick="finalizarSetorPeca(\''+esc(pecaCodigo)+'\',\''+sKey+'\')">FINALIZAR '+esc(sLabel)+'</button></div>';
-      }else{
-        html+='<div class="setor-btn" onclick="selecionarSetor(\''+sKey+'\',\''+sDept+'\')"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px">'+esc(sDept)+'</div><div class="setor-icon">'+iconStr+'</div>'+esc(sLabel)+'</div>';
+        html+='<div class="setor-btn" onclick="selecionarSetor(\''+escJS(op.key)+'\',\''+escJS(op.dept)+'\')" style="margin:0;padding:12px 8px;">';
+        html+='<div class="setor-icon" style="color:'+opColor+'">'+opIcon+'</div>';
+        html+='<span style="color:'+opColor+'">'+esc(op.label)+'</span>';
+        html+='</div>';
       }
     }
+    html+='</div></div>';
+  }
+  /* Outros setores: cinza, nao clicaveis */
+  for(var oi=0;oi<outroSetorOps.length;oi++){
+    var oop=outroSetorOps[oi];
+    var oIcon=icons[oop.label]||icons[oop.dept]||'\u2699';
+    html+='<div class="setor-btn setor-outro" style="cursor:default;">';
+    html+='<div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:1px">'+esc(oop.dept)+'</div>';
+    html+='<div class="setor-icon" style="color:#555">'+oIcon+'</div>';
+    html+='<span style="color:#555">'+esc(oop.label)+'</span>';
+    html+='</div>';
   }
   html+='</div>';
   document.getElementById('setorBtnsDynamic').innerHTML=html;
   document.getElementById('dialogSetor').classList.add('active');
   if(setorTimer)clearTimeout(setorTimer);
   setorTimer=setTimeout(fecharSetor,SETOR_TIMEOUT);
+  }catch(erro){console.error('abrirSetor erro:',erro);_debugToast('Erro ao abrir setores');}
 }
 function fecharSetor(){
   if(setorTimer){clearTimeout(setorTimer);setorTimer=null;}
