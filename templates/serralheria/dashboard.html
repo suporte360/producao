@@ -89,15 +89,16 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 .lote-card{background:#16213e;border:2px solid #2a2a5a;border-radius:14px;padding:16px;margin-bottom:12px;cursor:pointer;transition:border-color .2s;display:flex;align-items:center;gap:12px}
 .lote-card:active{border-color:var(--accent)}
 .lote-card.ativo{border-color:#00e676}
-.lote-card.sob-medida{background:rgba(220,38,38,.45);border-color:#ef4444;animation:sobMedidaPulse 2.5s ease-in-out infinite}
+.lote-card.sob-medida{background:rgba(220,38,38,.45);border-color:#ef4444;animation:sobMedidaPulse 4s ease-in-out infinite}
 .lote-card.sob-medida.ativo{border-color:#ef4444}
 .lote-card.sob-medida .lote-qty-wrap{background:rgba(220,38,38,.3);border-color:#ef4444}
-@keyframes sobMedidaPulse{0%,100%{background:rgba(220,38,38,.3)}50%{background:rgba(220,38,38,.6)}}
+@keyframes sobMedidaPulse{0%,100%{background-color:rgba(220,38,38,.2)!important}50%{background-color:rgba(220,38,38,.5)!important}}
 .lote-card .lote-left{flex:1;min-width:0}
 .lote-card .lote-header{display:flex;align-items:baseline;gap:8px;margin-bottom:3px}
 .lote-card .lote-codigo{font-size:24px;font-weight:700;color:var(--accent);flex-shrink:0}
 .lote-card .lote-desc-inline{font-size:17px;color:#aaa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
 .lote-card .lote-prod-row{font-size:17px;color:#ccc;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lote-produto-pai{margin-top:4px;font-size:15px;display:flex;align-items:baseline;gap:6px}.lote-produto-pai .pp-nome{color:#aaa;font-size:14px}
 .lote-card .lote-info{display:flex;gap:14px;font-size:16px;color:#888;flex-wrap:wrap;margin-top:3px}
 .lote-card .lote-qty{font-size:30px;font-weight:800;color:#fff;line-height:1.2;text-align:center;flex-shrink:0}
 .lote-card .lote-qty-label{font-size:12px;color:rgba(255,255,255,.8);text-transform:uppercase;letter-spacing:1px;text-align:center}
@@ -324,6 +325,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;b
 
 <script>
 var TOTEM_SETOR = '{% if setor_nome %}{{ setor_nome }}{% else %}SERRALHERIA{% endif %}';
+var currentSobMedida=false;
 var currentLote = null;
 var currentPecas = [];
 var currentPecasAtivas = {};
@@ -455,15 +457,19 @@ function loadLotes(){
       var l=data.lotes[i];
       var borderClass=(l.status_producao==='em_producao'?' ativo':'')+(l.sob_medida?' sob-medida':'');
       var badge=l.status_producao==='em_producao'?'<span class="badge badge-prod">Produzindo - '+esc(l.operador)+'</span>':'';
-      var descInline='';if(l.descricao){descInline=l.descricao.length>40?l.descricao.substring(0,40)+'...':l.descricao;}
-      html+='<div class="lote-card'+borderClass+'"'+(l.sob_medida?' style="box-shadow:0 0 18px rgba(239,68,68,.5)"':'')+' onclick="verLote(\''+esc(l.lotcod)+'\')">'
+      var ppHtml='';
+      if(l.produto_final){
+        var ppNome=l.produto_nome||'';
+        ppHtml='<div class="lote-produto-pai"><span style="color:#ef4444;font-weight:700">'+esc(l.produto_final)+'</span><span class="pp-nome">'+esc(ppNome)+'</span></div>';
+      }
+      html+='<div class="lote-card'+borderClass+'"'+(l.sob_medida?' style="box-shadow:0 0 20px rgba(239,68,68,.6)"':'')+' onclick="verLote(\''+esc(l.lotcod)+'\')">'
         +'<div class="lote-left">'
         +'<div class="lote-header"><span class="lote-codigo">LOTE '+esc(l.lotcod)+'</span>'
-        +(descInline?'<span class="lote-desc-inline">'+esc(descInline)+'</span>':'')
         +badge+'</div>'
-        +(l.pecas_codigos?'<div class="lote-prod-row"><span style="color:#42a5f5;font-weight:700;font-size:14px">'+esc(l.pecas_codigos)+'</span>'+(l.sob_medida?' <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:9999px;background:#e9d5ff;color:#a855f7;vertical-align:middle">SOB MEDIDA</span>':'')+'</div>':'')
+        +(l.pecas_codigos?'<div class="lote-prod-row"><span style="color:#42a5f5;font-weight:700;font-size:14px">'+esc(l.pecas_codigos)+'</span></div>':'')
+        +ppHtml
         +'</div>'
-        +'<div class="lote-qty-wrap"><div class="lote-qty">'+(l.qtd_pecas||0)+'</div><div class="lote-qty-label">pecas</div></div>'
+        +'<div class="lote-qty-wrap"><div class="lote-qty">'+(l.qtd_produto_final||0)+'</div><div class="lote-qty-label">A PRODUZIR</div></div>'
         +'</div>';
     }
     document.getElementById('lotesList').innerHTML=html;
@@ -472,7 +478,7 @@ function loadLotes(){
 
 /* ══ VER LOTE -> Screen 3 (Pecas) ══ */
 function verLote(lotcod){
-  currentLote=lotcod;currentPecas=[];currentPecasAtivas={};selectedSetor=null;selectedPecas=[];
+  currentLote=lotcod;currentPecas=[];currentPecasAtivas={};selectedSetor=null;selectedPecas=[];currentSobMedida=false;
   document.getElementById('pecasTitle').textContent='PECAS - LOTE '+lotcod;
   document.getElementById('pecasContent').innerHTML='<div class="loading"><div class="spinner"></div><br>Carregando pecas...</div>';
   document.getElementById('pecasActions').innerHTML='';
