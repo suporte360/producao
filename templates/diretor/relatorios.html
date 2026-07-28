@@ -94,7 +94,7 @@
       </thead>
       <tbody class="divide-y divide-gray-50">
         {% for o in ordens_erp %}
-        {% set atrasada = o.data_previsao and o.data_previsao < now.date() %}
+        {% set atrasada = o.data_previsao and o.data_previsao < now %}
         <tr class="hover:bg-gray-50 {{ 'bg-red-50/40' if atrasada }}">
           <td class="px-3 py-2.5 font-bold text-blue-700 text-xs">{{ o.get('lote_codigo') or '—' }}</td>
           <td class="px-3 py-2.5 text-xs text-gray-700 max-w-[250px] truncate" title="{{ o.get('lote_descricao') or '' }}">{{ o.get('lote_descricao') or '—' }}</td>
@@ -142,7 +142,7 @@
       </thead>
       <tbody class="divide-y divide-gray-50">
         {% for l in dados_ger.atrasados %}
-        {% set dias_atraso = (now.date() - l.data_previsao_erp).days if l.data_previsao_erp else 0 %}
+        {% set dias_atraso = (now - l.data_previsao_erp).days if l.data_previsao_erp else 0 %}
         <tr class="hover:bg-red-50">
           <td class="px-3 py-2.5">
             <a href="{{ url_for('admin_lote_detalhe', ordem=l.ordem) }}" class="font-bold text-blue-700 hover:underline">#{{ l.ordem }}</a>
@@ -238,7 +238,7 @@
             </div>
           </div>
           {% if l.data_previsao_erp %}
-          {% set dias_ate = (l.data_previsao_erp - now.date()).days %}
+          {% set dias_ate = (l.data_previsao_erp - now).days %}
           <span class="text-[10px] font-bold {{ 'text-red-600' if dias_ate < 0 else ('text-amber-600' if dias_ate <= 3 else 'text-green-600') }}">
             {{ dias_ate }}d
           </span>

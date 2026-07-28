@@ -462,8 +462,8 @@ class DatabasePostgreSQL:
                 p.pedoperaca AS operacao,
                 NULLIF(TRIM(p.pedrepres), '') AS codigo_representante,
                 '-' AS nome_representante,
-                p.pedsitua AS situacao_codigo,
-                p.pedsitsit AS status_codigo,
+                TRIM(p.pedsitua) AS situacao_codigo,
+                TRIM(p.pedsitsit) AS status_codigo,
                 COALESCE(NULLIF(TRIM(p.pedordcomp),''), '') AS numero_carga,
                 COALESCE(NULLIF(TRIM(p.pedrep),''), '') AS pedido_representante,
                 p.pedvlrfat AS valor_faturado,
@@ -471,7 +471,12 @@ class DatabasePostgreSQL:
                 p.pedaprova AS aprovado,
                 p.peddtrepla AS data_reprogramacao,
                 p.peddtaalt AS data_alteracao,
-                p.pedusualt AS usuario_alterou
+                p.pedusualt AS usuario_alterou,
+                TRIM(p.pedrepres) AS vendedor,
+                -- Buscar OP vinculada via ordem
+                (SELECT o.ordem::integer FROM public.ordem o
+                 WHERE o.pedcod = p.pedido::TEXT OR o.lotcod = NULLIF(TRIM(p.pedoflote), '')
+                 LIMIT 1) AS ordem_producao
             FROM public.pedido p
             LEFT JOIN public.empresa e ON p.pedcliente::TEXT = e.empresa::TEXT
             WHERE 1=1
@@ -480,20 +485,20 @@ class DatabasePostgreSQL:
 
         # Filtro por status
         if status == 'aberto':
-            sql += " AND p.pedsitsit IN ('01','02','03','04')"
-            sql += " AND p.pedsitua != 'C'"
+            sql += " AND TRIM(p.pedsitsit) IN ('01','02','03','04')"
+            sql += " AND TRIM(p.pedsitua) != 'C'"
         elif status == 'producao':
-            sql += " AND p.pedsitsit IN ('03','04','06')"
-            sql += " AND p.pedsitua != 'C'"
+            sql += " AND TRIM(p.pedsitsit) IN ('03','04','06')"
+            sql += " AND TRIM(p.pedsitua) != 'C'"
         elif status == 'atendido':
-            sql += " AND p.pedsitsit IN ('05','07','08','09')"
+            sql += " AND TRIM(p.pedsitsit) IN ('05','07','08','09')"
         elif status == 'cancelado':
-            sql += " AND (p.pedsitsit = '10' OR p.pedsitua = 'C')"
+            sql += " AND (TRIM(p.pedsitsit) = '10' OR TRIM(p.pedsitua) = 'C')"
         elif status == 'atrasado':
             sql += " AND p.pedprevi IS NOT NULL"
             sql += " AND p.pedprevi < CURRENT_DATE"
-            sql += " AND p.pedsitsit IN ('01','02','03','04')"
-            sql += " AND p.pedsitua != 'C'"
+            sql += " AND TRIM(p.pedsitsit) IN ('01','02','03','04')"
+            sql += " AND TRIM(p.pedsitua) != 'C'"
 
         # Busca por texto
         if busca:
@@ -518,21 +523,30 @@ class DatabasePostgreSQL:
         return resultados
 
     def get_resumo_pedidos_erp(self):
-        """Retorna resumo rápido de pedidos para KPIs."""
+        """Retorna resumo rápido de pedidos para KPIs.
+        NOTA: Colunas do ERP têm valores com espaços (CHAR fixo).
+        Usamos TRIM para comparar corretamente.
+        """
         try:
             resultados = self.query("""
                 SELECT
                     COUNT(*) AS total_pedidos,
-                    SUM(CASE WHEN pedsitsit IN ('01','02') AND pedsitua != 'C' THEN 1 ELSE 0 END) AS em_aberto,
-                    SUM(CASE WHEN pedsitsit IN ('03','04') AND pedsitua != 'C' THEN 1 ELSE 0 END) AS em_producao,
-                    SUM(CASE WHEN pedsitsit = '05' AND pedsitua != 'C' THEN 1 ELSE 0 END) AS vinculados_of,
-                    SUM(CASE WHEN pedsitsit IN ('07','08','09') THEN 1 ELSE 0 END) AS atendidos,
-                    SUM(CASE WHEN pedsitsit = '10' OR pedsitua = 'C' THEN 1 ELSE 0 END) AS cancelados,
-                    SUM(CASE WHEN pedprevi IS NOT NULL AND pedprevi < CURRENT_DATE AND pedsitsit IN ('01','02','03','04') AND pedsitua != 'C' THEN 1 ELSE 0 END) AS atrasados,
-                    SUM(CASE WHEN pedprevi IS NOT NULL AND pedprevi BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days' AND pedsitsit IN ('01','02','03','04') AND pedsitua != 'C' THEN 1 ELSE 0 END) AS proximos_7dias,
+                    SUM(CASE WHEN TRIM(pedsitsit) IN ('01','02') AND TRIM(pedsitua) != 'C' THEN 1 ELSE 0 END) AS em_aberto,
+                    SUM(CASE WHEN TRIM(pedsitsit) IN ('03','04') AND TRIM(pedsitua) != 'C' THEN 1 ELSE 0 END) AS em_producao,
+                    SUM(CASE WHEN TRIM(pedsitsit) = '05' AND TRIM(pedsitua) != 'C' THEN 1 ELSE 0 END) AS vinculados_of,
+                    SUM(CASE WHEN TRIM(pedsitsit) IN ('07','08','09') THEN 1 ELSE 0 END) AS atendidos,
+                    SUM(CASE WHEN TRIM(pedsitsit) = '10' OR TRIM(pedsitua) = 'C' THEN 1 ELSE 0 END) AS cancelados,
+                    SUM(CASE WHEN pedprevi IS NOT NULL AND pedprevi < CURRENT_DATE AND TRIM(pedsitsit) IN ('01','02','03','04') AND TRIM(pedsitua) != 'C' THEN 1 ELSE 0 END) AS atrasados,
+                    SUM(CASE WHEN pedprevi IS NOT NULL AND pedprevi BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days' AND TRIM(pedsitsit) IN ('01','02','03','04') AND TRIM(pedsitua) != 'C' THEN 1 ELSE 0 END) AS proximos_7dias,
+                    SUM(CASE WHEN pedprevi IS NOT NULL AND TRIM(pedsitsit) IN ('03','04') THEN 1 ELSE 0 END) AS em_of_vinculo,
+                    SUM(CASE WHEN TRIM(pedsitua) = 'A' THEN 1 ELSE 0 END) AS situacao_a,
+                    SUM(CASE WHEN TRIM(pedsitua) = 'P' THEN 1 ELSE 0 END) AS situacao_p,
+                    SUM(CASE WHEN TRIM(pedsitua) = 'C' THEN 1 ELSE 0 END) AS situacao_c,
+                    SUM(CASE WHEN TRIM(pedsitua) = 'I' THEN 1 ELSE 0 END) AS situacao_i,
                     SUM(COALESCE(pedvlrfat, 0)) AS valor_total_faturado
                 FROM public.pedido
                 WHERE peddata >= CURRENT_DATE - INTERVAL '1 year'
+                  AND peddata IS NOT NULL
             """)
             r = resultados[0] if resultados else {}
             return {
@@ -545,12 +559,18 @@ class DatabasePostgreSQL:
                 'atrasados': int(r.get('atrasados', 0) or 0),
                 'proximos_7dias': int(r.get('proximos_7dias', 0) or 0),
                 'valor_total_faturado': float(r.get('valor_total_faturado', 0) or 0),
+                'situacao_a': int(r.get('situacao_a', 0) or 0),
+                'situacao_p': int(r.get('situacao_p', 0) or 0),
+                'situacao_c': int(r.get('situacao_c', 0) or 0),
+                'situacao_i': int(r.get('situacao_i', 0) or 0),
             }
         except Exception as e:
             print(f"Erro get_resumo_pedidos_erp: {e}")
+            import traceback; traceback.print_exc()
             return {
                 'total_pedidos':0,'em_aberto':0,'em_producao':0,'vinculados_of':0,
-                'atendidos':0,'cancelados':0,'atrasados':0,'proximos_7dias':0,'valor_total_faturado':0
+                'atendidos':0,'cancelados':0,'atrasados':0,'proximos_7dias':0,'valor_total_faturado':0,
+                'situacao_a':0,'situacao_p':0,'situacao_c':0,'situacao_i':0
             }
 
     def get_pedidos_erp_para_tv(self, limite=30):
@@ -559,6 +579,7 @@ class DatabasePostgreSQL:
         - Em produção (status 03, 04)
         - Atrasados
         - Próximos da entrega
+        NOTA: Colunas do ERP têm espaços (CHAR fixo), usamos TRIM.
         """
         resultados = self.query("""
             SELECT
@@ -566,15 +587,14 @@ class DatabasePostgreSQL:
                 p.peddata AS data_emissao,
                 p.pedprevi AS data_previsao,
                 COALESCE(NULLIF(TRIM(e.empnome),''), 'Não identificado') AS razao_social,
-                p.pedsitsit AS status_codigo,
-                p.pedsitua AS situacao,
+                TRIM(p.pedsitsit) AS status_codigo,
+                TRIM(p.pedsitua) AS situacao,
                 p.pedvlrfat AS valor_faturado,
-                -- Buscar OF vinculada
-                (SELECT lp.lotcod FROM public.loteprod lp
-                 WHERE lp.lotcod = p.pedoflote LIMIT 1) AS lote_producao,
+                p.pedoflote,
+                TRIM(p.pedrepres) AS vendedor,
                 -- Buscar OP vinculada via ordem
                 (SELECT o.ordem::integer FROM public.ordem o
-                 WHERE o.pedcod = p.pedido::TEXT OR o.lotcod = p.pedoflote
+                 WHERE o.pedcod = p.pedido::TEXT OR o.lotcod = NULLIF(TRIM(p.pedoflote), '')
                  LIMIT 1) AS ordem_producao,
                 -- Dias restantes
                 CASE
@@ -585,11 +605,12 @@ class DatabasePostgreSQL:
             FROM public.pedido p
             LEFT JOIN public.empresa e ON p.pedcliente::TEXT = e.empresa::TEXT
             WHERE p.peddata >= CURRENT_DATE - INTERVAL '90 days'
-              AND p.pedsitua != 'C'
-              AND p.pedsitsit IN ('01','02','03','04','05','06','07','08','09')
+              AND p.peddata IS NOT NULL
+              AND TRIM(p.pedsitua) != 'C'
+              AND TRIM(p.pedsitsit) IN ('01','02','03','04','05','06','07','08','09')
             ORDER BY
-                CASE WHEN p.pedsitsit IN ('03','04') THEN 0 ELSE 1 END,
-                CASE WHEN p.pedprevi < CURRENT_DATE THEN 0 ELSE 1 END,
+                CASE WHEN TRIM(p.pedsitsit) IN ('03','04') THEN 0 ELSE 1 END,
+                CASE WHEN p.pedprevi IS NOT NULL AND p.pedprevi < CURRENT_DATE THEN 0 ELSE 1 END,
                 p.pedprevi ASC,
                 p.pedido DESC
             LIMIT %s
