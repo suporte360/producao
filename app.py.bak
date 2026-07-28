@@ -6,10 +6,9 @@ app.py — Ponto de entrada principal v4.1
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from functools import wraps
 from datetime import datetime, timedelta
-from collections import defaultdict, OrderedDict, OrderedDict
+from collections import defaultdict
 import time
 import re
-import sqlite3
 
 from config.config import Config
 from database.mysql_db import DatabaseMySQL
@@ -574,6 +573,7 @@ def pcp_importar_erp():
             # produto_final_codigo ja vem correto do ordem3, so sobrescreve se pronome foi encontrado
             if prod and prod.get('nome_produto') and prod.get('codigo_produto'):
                 lote['produto_final_codigo'] = prod['codigo_produto']
+            lote['maior_ordem'] = prod.get('quantidade') if prod else None
             # busca a maior ordem numerica do lote
             ordens = pg.get_ordens_por_lote(lote['lote_codigo'])
             if ordens:
@@ -1385,9 +1385,10 @@ def api_materiais_pendentes():
     # Estoque: prioridade SQLite ERP (mesmo dado do TV), fallback estoque_interno
     sqlite_map = {}
     try:
+        import sqlite3 as sqlite3_mod
         SQLITE_PATH = "/opt/painel_estoque/estoque.db"
-        conn = sqlite3.connect(SQLITE_PATH)
-        conn.row_factory = sqlite3.Row
+        conn = sqlite3_mod.connect(SQLITE_PATH)
+        conn.row_factory = sqlite3_mod.Row
         cur = conn.cursor()
         ph = ','.join(['?'] * len(todos_codigos))
         cur.execute(
@@ -1678,12 +1679,13 @@ def api_almoxarifado_separacao():
 @app.route('/api/almoxarifado/estoque')
 def api_almoxarifado_estoque():
     """Estoque do almoxarifado — lê SQLite sincronizado do ERP."""
+    import sqlite3 as sqlite3_mod
     SQLITE_PATH = "/opt/painel_estoque/estoque.db"
     stats = {'CRITICO': 0, 'BAIXO': 0, 'OK': 0}
     produtos = []
     try:
-        conn = sqlite3.connect(SQLITE_PATH)
-        conn.row_factory = sqlite3.Row
+        conn = sqlite3_mod.connect(SQLITE_PATH)
+        conn.row_factory = sqlite3_mod.Row
         cur = conn.cursor()
         cur.execute("SELECT TRIM(codigo) as codigo, descricao, saldo_atual, estoque_minimo FROM produtos")
         rows = cur.fetchall()
@@ -1857,6 +1859,7 @@ def api_separacao_materiais():
             stats['separados'] += 1
         if prio in ('urgente', 'alta'):
             stats['urgentes'] += 1
+        stats['separados'] += len(ofs_separadas)
 
     return jsonify({'status': 'success', 'lotes': resultado, 'stats': stats})
 

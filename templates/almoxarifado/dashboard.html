@@ -372,6 +372,7 @@ document.addEventListener('DOMContentLoaded', function() {
   carregarResumoEstoque();
   carregarMateriaisOF();
   carregarSeparacaoOPs();
+  carregarExcluidos();
 });
 
 // ════════════════ SEPARACAO DE OPs (PC) com POPUP de componentes ════════════════
@@ -569,6 +570,7 @@ function confirmarFinalizar() {
       }
       fecharModalFinalizar();
       carregarSeparacaoOPs();
+  carregarExcluidos();
     } else {
       showToast('Erro: ' + (d.msg || ''), 'error');
       document.getElementById('btnConfirmarFin').disabled = false;
@@ -613,6 +615,7 @@ function confirmarSepararComponentes() {
       showToast(codigos.length + ' componente(s) separado(s)!');
       fecharModalSepararComp();
       carregarSeparacaoOPs();
+  carregarExcluidos();
     } else {
       showToast('Erro: ' + (d.msg || ''), 'error');
       document.getElementById('btnConfirmarSepComp').disabled = false;
@@ -639,6 +642,7 @@ function mudarSeparacao(ordem, novoStatus) {
       if (d.status === 'success') {
         showToast('OP #' + ordem + ' → ' + (statusLabel[novoStatus] || novoStatus) + '!');
         carregarSeparacaoOPs();
+  carregarExcluidos();
       } else {
         showToast('Erro ao atualizar', 'error');
       }
@@ -712,6 +716,7 @@ function restaurarExcluido(codigo) {
       showToast(codigo + ' restaurado para separação');
       carregarExcluidos();
       carregarSeparacaoOPs();
+  carregarExcluidos();
     } else {
       showToast('Erro: ' + (d.message || ''), 'error');
     }
