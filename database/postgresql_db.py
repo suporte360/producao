@@ -455,7 +455,7 @@ class DatabasePostgreSQL:
                 p.deposito,
                 p.pedcliente AS codigo_cliente,
                 COALESCE(NULLIF(TRIM(e.empnome),''), 'Não identificado') AS razao_social,
-                e.empdemtip AS tipo_cliente,
+                e.empdemptip AS tipo_cliente,
                 p.pedordcmp AS ordem_compra,
                 p.pedcondica AS condicao_pagamento,
                 p.pedtransp AS codigo_transportadora,
@@ -485,20 +485,20 @@ class DatabasePostgreSQL:
 
         # Filtro por status
         if status == 'aberto':
-            sql += " AND TRIM(p.pedsitsit) IN ('01','02','03','04')"
-            sql += " AND TRIM(p.pedsitua) != 'C'"
+            sql += " AND (TRIM(COALESCE(p.pedsitsit,'')) IN ('01','02','') )"
+            sql += " AND TRIM(COALESCE(p.pedsitua,'')) != 'C'"
         elif status == 'producao':
-            sql += " AND TRIM(p.pedsitsit) IN ('03','04','06')"
-            sql += " AND TRIM(p.pedsitua) != 'C'"
+            sql += " AND TRIM(COALESCE(p.pedsitsit,'')) IN ('03','04','06')"
+            sql += " AND TRIM(COALESCE(p.pedsitua,'')) != 'C'"
         elif status == 'atendido':
-            sql += " AND TRIM(p.pedsitsit) IN ('05','07','08','09')"
+            sql += " AND TRIM(COALESCE(p.pedsitsit,'')) IN ('05','07','08','09')"
         elif status == 'cancelado':
-            sql += " AND (TRIM(p.pedsitsit) = '10' OR TRIM(p.pedsitua) = 'C')"
+            sql += " AND (TRIM(COALESCE(p.pedsitsit,'')) = '10' OR TRIM(COALESCE(p.pedsitua,'')) = 'C')"
         elif status == 'atrasado':
             sql += " AND p.pedprevi IS NOT NULL"
             sql += " AND p.pedprevi < CURRENT_DATE"
-            sql += " AND TRIM(p.pedsitsit) IN ('01','02','03','04')"
-            sql += " AND TRIM(p.pedsitua) != 'C'"
+            sql += " AND (TRIM(COALESCE(p.pedsitsit,'')) IN ('01','02','03','04',''))"
+            sql += " AND TRIM(COALESCE(p.pedsitua,'')) != 'C'"
 
         # Busca por texto
         if busca:
@@ -526,23 +526,24 @@ class DatabasePostgreSQL:
         """Retorna resumo rápido de pedidos para KPIs.
         NOTA: Colunas do ERP têm valores com espaços (CHAR fixo).
         Usamos TRIM para comparar corretamente.
+        Pedidos sem status (vazio após TRIM) são considerados 'Em Aberto'.
         """
         try:
             resultados = self.query("""
                 SELECT
                     COUNT(*) AS total_pedidos,
-                    SUM(CASE WHEN TRIM(pedsitsit) IN ('01','02') AND TRIM(pedsitua) != 'C' THEN 1 ELSE 0 END) AS em_aberto,
-                    SUM(CASE WHEN TRIM(pedsitsit) IN ('03','04') AND TRIM(pedsitua) != 'C' THEN 1 ELSE 0 END) AS em_producao,
-                    SUM(CASE WHEN TRIM(pedsitsit) = '05' AND TRIM(pedsitua) != 'C' THEN 1 ELSE 0 END) AS vinculados_of,
-                    SUM(CASE WHEN TRIM(pedsitsit) IN ('07','08','09') THEN 1 ELSE 0 END) AS atendidos,
-                    SUM(CASE WHEN TRIM(pedsitsit) = '10' OR TRIM(pedsitua) = 'C' THEN 1 ELSE 0 END) AS cancelados,
-                    SUM(CASE WHEN pedprevi IS NOT NULL AND pedprevi < CURRENT_DATE AND TRIM(pedsitsit) IN ('01','02','03','04') AND TRIM(pedsitua) != 'C' THEN 1 ELSE 0 END) AS atrasados,
-                    SUM(CASE WHEN pedprevi IS NOT NULL AND pedprevi BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days' AND TRIM(pedsitsit) IN ('01','02','03','04') AND TRIM(pedsitua) != 'C' THEN 1 ELSE 0 END) AS proximos_7dias,
-                    SUM(CASE WHEN pedprevi IS NOT NULL AND TRIM(pedsitsit) IN ('03','04') THEN 1 ELSE 0 END) AS em_of_vinculo,
-                    SUM(CASE WHEN TRIM(pedsitua) = 'A' THEN 1 ELSE 0 END) AS situacao_a,
-                    SUM(CASE WHEN TRIM(pedsitua) = 'P' THEN 1 ELSE 0 END) AS situacao_p,
-                    SUM(CASE WHEN TRIM(pedsitua) = 'C' THEN 1 ELSE 0 END) AS situacao_c,
-                    SUM(CASE WHEN TRIM(pedsitua) = 'I' THEN 1 ELSE 0 END) AS situacao_i,
+                    SUM(CASE WHEN TRIM(COALESCE(pedsitsit,'')) IN ('01','02','') AND TRIM(COALESCE(pedsitua,'')) != 'C' THEN 1 ELSE 0 END) AS em_aberto,
+                    SUM(CASE WHEN TRIM(COALESCE(pedsitsit,'')) IN ('03','04') AND TRIM(COALESCE(pedsitua,'')) != 'C' THEN 1 ELSE 0 END) AS em_producao,
+                    SUM(CASE WHEN TRIM(COALESCE(pedsitsit,'')) = '05' AND TRIM(COALESCE(pedsitua,'')) != 'C' THEN 1 ELSE 0 END) AS vinculados_of,
+                    SUM(CASE WHEN TRIM(COALESCE(pedsitsit,'')) IN ('07','08','09') THEN 1 ELSE 0 END) AS atendidos,
+                    SUM(CASE WHEN TRIM(COALESCE(pedsitsit,'')) = '10' OR TRIM(COALESCE(pedsitua,'')) = 'C' THEN 1 ELSE 0 END) AS cancelados,
+                    SUM(CASE WHEN pedprevi IS NOT NULL AND pedprevi < CURRENT_DATE AND TRIM(COALESCE(pedsitsit,'')) IN ('01','02','03','04','') AND TRIM(COALESCE(pedsitua,'')) != 'C' THEN 1 ELSE 0 END) AS atrasados,
+                    SUM(CASE WHEN pedprevi IS NOT NULL AND pedprevi BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days' AND TRIM(COALESCE(pedsitsit,'')) IN ('01','02','03','04','') AND TRIM(COALESCE(pedsitua,'')) != 'C' THEN 1 ELSE 0 END) AS proximos_7dias,
+                    SUM(CASE WHEN pedprevi IS NOT NULL AND TRIM(COALESCE(pedsitsit,'')) IN ('03','04') THEN 1 ELSE 0 END) AS em_of_vinculo,
+                    SUM(CASE WHEN TRIM(COALESCE(pedsitua,'')) = 'A' THEN 1 ELSE 0 END) AS situacao_a,
+                    SUM(CASE WHEN TRIM(COALESCE(pedsitua,'')) = 'P' THEN 1 ELSE 0 END) AS situacao_p,
+                    SUM(CASE WHEN TRIM(COALESCE(pedsitua,'')) = 'C' THEN 1 ELSE 0 END) AS situacao_c,
+                    SUM(CASE WHEN TRIM(COALESCE(pedsitua,'')) = 'I' THEN 1 ELSE 0 END) AS situacao_i,
                     SUM(COALESCE(pedvlrfat, 0)) AS valor_total_faturado
                 FROM public.pedido
                 WHERE peddata >= CURRENT_DATE - INTERVAL '1 year'
