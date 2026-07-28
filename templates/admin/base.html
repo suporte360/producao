@@ -92,11 +92,11 @@
                     <a class="nav-link {{ 'active' if request.endpoint == 'admin_relatorios' }}" href="{{ url_for('admin_relatorios') }}">
                         <i class="bi bi-file-earmark-bar-graph me-2"></i> Relatórios
                     </a>
-                    <a class="nav-link {{ 'active' if request.endpoint == 'admin_acessos' }}" href="{{ url_for('admin_acessos') }}">
-                        <i class="bi bi-key me-2"></i> Acessos
-                    </a>
-                    <a class="nav-link {{ 'active' if request.endpoint == 'admin_logs' }}" href="{{ url_for('admin_logs') }}">
+                    <a class="nav-link {{ 'active' if request.endpoint == 'diretor_logs' }}" href="{{ url_for('diretor_logs') }}">
                         <i class="bi bi-journal-text me-2"></i> Logs
+                    </a>
+                    <a class="nav-link {{ 'active' if request.endpoint == 'diretor_acessos' }}" href="{{ url_for('diretor_acessos') }}">
+                        <i class="bi bi-key me-2"></i> Acessos
                     </a>
                 </nav>
             </div>

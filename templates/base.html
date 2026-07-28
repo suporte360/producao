@@ -109,6 +109,10 @@
                 <!-- DIRETORIA (admin, diretor) -->
                 {% if role in ['admin', 'diretor'] %}
                 <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 mt-3">Diretoria</p>
+                <a href="{{ url_for('diretor_relatorios') }}" class="nav-item {% if endpoint == 'diretor_relatorios' %}active{% endif %}">
+                    <i class="fa-solid fa-chart-pie text-indigo-400"></i>
+                    <span>Visão Geral</span>
+                </a>
                 <a href="{{ url_for('diretor_logs') }}" class="nav-item {% if endpoint == 'diretor_logs' %}active{% endif %}">
                     <i class="fa-solid fa-clock-rotate-left text-amber-400"></i>
                     <span>Logs do Sistema</span>

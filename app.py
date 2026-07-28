@@ -1067,7 +1067,7 @@ def _formatar_minutos(minutos):
 @login_required
 @role_required('admin', 'gerente', 'diretor')
 def diretor_relatorios():
-    """Relatórios de produção com métricas completas."""
+    """Visão Geral da Diretoria — Pedidos, atrasos, entregas e métricas."""
     stats = db.get_estatisticas_gerais()
     dados_ger = db.get_dashboard_gerente()
     # Busca dados do ERP para relatório
@@ -1075,15 +1075,19 @@ def diretor_relatorios():
     ordens_erp = []
     try:
         pg = DatabasePostgreSQL()
-        ordens_erp = pg.get_lotes_abertos() or []
+        ordens_erp = pg.get_lotes_agrupados_abertos() or []
         erp_stats['total'] = len(ordens_erp)
         for o in ordens_erp:
             prev = o.get('data_previsao')
-            prio = (o.get('prioridade') or '').lower()
-            if prev and prev.date() < datetime.now().date():
-                erp_stats['atrasadas'] += 1
-            elif prio == 'urgente':
-                erp_stats['urgentes'] += 1
+            if prev:
+                if hasattr(prev, 'date'):
+                    prev_date = prev.date()
+                else:
+                    prev_date = prev
+                if prev_date < datetime.now().date():
+                    erp_stats['atrasadas'] += 1
+                else:
+                    erp_stats['normais'] += 1
             else:
                 erp_stats['normais'] += 1
     except Exception:

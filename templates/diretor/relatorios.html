@@ -1,16 +1,32 @@
 {% extends "base.html" %}
-{% block title %}Relatórios — SALUTEM{% endblock %}
+{% block title %}Visão Geral da Diretoria — SALUTEM{% endblock %}
 {% block header_title %}
   <span class="flex items-center gap-2">
-    <i class="fa-solid fa-chart-pie text-blue-600"></i>
-    <span class="hidden sm:inline">Relatórios</span>
+    <i class="fa-solid fa-chart-pie text-indigo-600"></i>
+    <span class="hidden sm:inline">Visão Geral — Diretoria</span>
   </span>
 {% endblock %}
 
 {% block content %}
 {% set k = dados_ger.kpis %}
 
-{# ═══════════════ KPIs GERAIS ═══════════════ #}
+{# ═══════════════ ALERTA DE ATRASOS ═══════════════ #}
+{% if k.atrasados > 0 %}
+<div class="mb-4 rounded-xl border-l-4 border-red-500 bg-red-50 px-4 py-3 flex items-center gap-3">
+  <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+    <i class="fa-solid fa-triangle-exclamation text-red-600 text-lg"></i>
+  </div>
+  <div class="flex-1 min-w-0">
+    <div class="font-black text-red-800 text-sm">⚠ {{ k.atrasados }} OP(s) ATRASADA(S)</div>
+    <div class="text-xs text-red-700">Verifique a lista abaixo e priorize a ação</div>
+  </div>
+  <a href="#atrasados" class="btn-touch btn-danger text-xs px-3 py-2" style="min-height:auto">
+    Ver lista <i class="fa-solid fa-arrow-down"></i>
+  </a>
+</div>
+{% endif %}
+
+{# ═══════════════ KPIs PRINCIPAIS ═══════════════ #}
 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
   <div class="kpi-card">
     <div class="kpi-icon" style="background:#dbeafe;color:#1d4ed8"><i class="fa-solid fa-layer-group"></i></div>
@@ -41,22 +57,204 @@
     </div>
   </div>
   <div class="kpi-card">
-    <div class="kpi-icon" style="background:#fee2e2;color:#b91c1c"><i class="fa-solid fa-triangle-exclamation"></i></div>
-    <div>
-      <div class="kpi-num text-red-600">{{ k.atrasados }}</div>
-      <div class="kpi-lbl">Atrasados</div>
-    </div>
-  </div>
-  <div class="kpi-card">
     <div class="kpi-icon" style="background:#f3e8ff;color:#7c3aed"><i class="fa-solid fa-calendar-check"></i></div>
     <div>
       <div class="kpi-num text-purple-600">{{ k.concluidos_mes }}</div>
       <div class="kpi-lbl">Mês Atual</div>
     </div>
   </div>
+  <div class="kpi-card">
+    <div class="kpi-icon" style="background:#fee2e2;color:#b91c1c"><i class="fa-solid fa-triangle-exclamation"></i></div>
+    <div>
+      <div class="kpi-num text-red-600">{{ k.atrasados }}</div>
+      <div class="kpi-lbl">Atrasados</div>
+    </div>
+  </div>
 </div>
 
-{# ═══════════════ GRÁFICO PRODUÇÃO 7 DIAS ═══════════════ #}
+{# ═══════════════ PEDIDOS EM ABERTO (ERP) ═══════════════ #}
+<div class="prodsys-card overflow-hidden mb-5">
+  <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+    <i class="fa-solid fa-database text-cyan-500"></i>
+    <h3 class="text-sm font-bold text-gray-700">Pedidos em Aberto (ERP)</h3>
+    <span class="ml-auto bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-bold">{{ ordens_erp|length }}</span>
+  </div>
+  <div class="overflow-x-auto max-h-96 overflow-y-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider sticky top-0">
+        <tr>
+          <th class="px-3 py-2.5 text-left">Lote</th>
+          <th class="px-3 py-2.5 text-left">Descrição</th>
+          <th class="px-3 py-2.5 text-center">OPs</th>
+          <th class="px-3 py-2.5 text-center">Qtd Total</th>
+          <th class="px-3 py-2.5 text-center">Abertura</th>
+          <th class="px-3 py-2.5 text-center">Previsão</th>
+          <th class="px-3 py-2.5 text-center">Status</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-50">
+        {% for o in ordens_erp %}
+        {% set atrasada = o.data_previsao and o.data_previsao.date() < now.date() %}
+        <tr class="hover:bg-gray-50 {{ 'bg-red-50/40' if atrasada }}">
+          <td class="px-3 py-2.5 font-bold text-blue-700 text-xs">{{ o.get('lote_codigo') or '—' }}</td>
+          <td class="px-3 py-2.5 text-xs text-gray-700 max-w-[250px] truncate" title="{{ o.get('lote_descricao') or '' }}">{{ o.get('lote_descricao') or '—' }}</td>
+          <td class="px-3 py-2.5 text-center font-bold">{{ o.get('total_ofs', 0) }}</td>
+          <td class="px-3 py-2.5 text-center">{{ o.get('quantidade_total', 0) }}</td>
+          <td class="px-3 py-2.5 text-center text-xs text-gray-500">{{ o.get('data_abertura', '') }}</td>
+          <td class="px-3 py-2.5 text-center text-xs {{ 'text-red-600 font-bold' if atrasada else 'text-gray-500' }}">{{ o.get('data_previsao', '') }}</td>
+          <td class="px-3 py-2.5 text-center">
+            {% if atrasada %}<span class="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">ATRASADO</span>
+            {% elif o.get('status_erp') == 'EP' %}<span class="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">EM PRODUÇÃO</span>
+            {% elif o.get('status_erp') == 'ES' %}<span class="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">SEPARAÇÃO</span>
+            {% else %}<span class="text-[10px] font-bold text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full">{{ o.get('status_erp', '—') }}</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{# ═══════════════ OPs ATRASADAS (sistema local) ═══════════════ #}
+{% if dados_ger.atrasados %}
+<section id="atrasados" class="prodsys-card overflow-hidden mb-5 border-l-4 border-red-500">
+  <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between bg-red-50">
+    <h3 class="text-sm font-bold text-red-800 flex items-center gap-2">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+      OPs Atrasadas — Ação Necessária
+    </h3>
+    <span class="bg-red-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">{{ dados_ger.atrasados|length }}</span>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="text-xs uppercase tracking-wider text-gray-500 bg-gray-50 border-b border-gray-100">
+        <tr>
+          <th class="px-3 py-2 text-left">OP</th>
+          <th class="px-3 py-2 text-left">Produto</th>
+          <th class="px-3 py-2 text-center">Qtd</th>
+          <th class="px-3 py-2 text-center">Prioridade</th>
+          <th class="px-3 py-2 text-center">Previsão</th>
+          <th class="px-3 py-2 text-center">Atraso</th>
+          <th class="px-3 py-2 text-center">Status</th>
+          <th class="px-3 py-2 text-center">Setor Atual</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-50">
+        {% for l in dados_ger.atrasados %}
+        {% set dias_atraso = (now.date() - l.data_previsao_erp).days if l.data_previsao_erp else 0 %}
+        <tr class="hover:bg-red-50">
+          <td class="px-3 py-2.5">
+            <a href="{{ url_for('admin_lote_detalhe', ordem=l.ordem) }}" class="font-bold text-blue-700 hover:underline">#{{ l.ordem }}</a>
+            {% if l.lote_codigo %}<div class="text-[10px] text-gray-400">{{ l.lote_codigo }}</div>{% endif %}
+          </td>
+          <td class="px-3 py-2.5 text-gray-700 max-w-[200px] truncate">{{ l.descricao_produto or '—' }}</td>
+          <td class="px-3 py-2.5 text-center font-semibold">{{ l.qtde_ordem|round(0) }}</td>
+          <td class="px-3 py-2.5 text-center">
+            {% if l.prioridade %}<span class="badge-priority {{ l.prioridade|lower }}">{{ l.prioridade|upper }}</span>{% endif %}
+          </td>
+          <td class="px-3 py-2.5 text-center">
+            <div class="font-bold text-red-600">{{ l.data_previsao_erp|formatar_data_br }}</div>
+          </td>
+          <td class="px-3 py-2.5 text-center">
+            <span class="text-xs font-bold text-red-600">{{ dias_atraso }}d</span>
+          </td>
+          <td class="px-3 py-2.5 text-center">
+            <span class="badge-status {{ l.status }}">{{ l.status|replace('_',' ')|title }}</span>
+          </td>
+          <td class="px-3 py-2.5 text-center text-xs">
+            {% if l.departamento_atual %}
+            <span class="chip-dept dept-{{ l.departamento_atual }}">{{ l.departamento_atual }}</span>
+            {% else %}<span class="text-gray-300">—</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+{# ═══════════════ OPs PRÓXIMAS DA ENTREGA (próximos 7 dias) ═══════════════ #}
+{% if dados_ger.em_producao or dados_ger.proximas_ops %}
+<section class="prodsys-card overflow-hidden mb-5">
+  <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+    <i class="fa-solid fa-calendar-day text-amber-500"></i>
+    <h3 class="text-sm font-bold text-gray-700">Próximas Entregas e Em Produção</h3>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4">
+    {# Em Produção Agora #}
+    <div>
+      <h4 class="text-xs font-bold text-orange-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+        <span class="relative flex h-2 w-2">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
+        </span>
+        Em Produção Agora ({{ dados_ger.em_producao|length }})
+      </h4>
+      <div class="divide-y divide-gray-50">
+        {% if dados_ger.em_producao %}
+        {% for l in dados_ger.em_producao %}
+        <div class="py-2.5 flex items-center justify-between gap-2">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold text-blue-700">#{{ l.ordem }}</span>
+              {% if l.lote_codigo %}<span class="text-[10px] text-gray-400">{{ l.lote_codigo }}</span>{% endif %}
+              {% if l.prioridade %}<span class="badge-priority {{ l.prioridade|lower }} text-[10px]">{{ l.prioridade|upper }}</span>{% endif %}
+            </div>
+            <div class="text-sm font-medium text-gray-800 truncate">{{ l.descricao_produto or 'Produto' }}</div>
+            <div class="text-[10px] text-gray-400">
+              {{ l.qtde_ordem|round(0) }} peças · {{ l.departamento_atual or '—' }}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="py-6 text-center text-gray-400 text-sm">Nenhuma OP em produção</div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# Próximas a Iniciar #}
+    <div>
+      <h4 class="text-xs font-bold text-blue-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+        <i class="fa-solid fa-list-ol"></i>
+        Próximas a Iniciar ({{ dados_ger.proximas_ops|length }})
+      </h4>
+      <div class="divide-y divide-gray-50">
+        {% if dados_ger.proximas_ops %}
+        {% for l in dados_ger.proximas_ops %}
+        <div class="py-2.5 flex items-center justify-between gap-2">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold text-blue-700">#{{ l.ordem }}</span>
+              {% if l.lote_codigo %}<span class="text-[10px] text-gray-400">{{ l.lote_codigo }}</span>{% endif %}
+              {% if l.prioridade %}<span class="badge-priority {{ l.prioridade|lower }} text-[10px]">{{ l.prioridade|upper }}</span>{% endif %}
+            </div>
+            <div class="text-sm font-medium text-gray-800 truncate">{{ l.descricao_produto or 'Produto' }}</div>
+            <div class="text-[10px] text-gray-400">
+              {{ l.qtde_ordem|round(0) }} peças · Previsão: {{ l.data_previsao_erp|formatar_data_br if l.data_previsao_erp else '—' }}
+            </div>
+          </div>
+          {% if l.data_previsao_erp %}
+          {% set dias_ate = (l.data_previsao_erp - now.date()).days %}
+          <span class="text-[10px] font-bold {{ 'text-red-600' if dias_ate < 0 else ('text-amber-600' if dias_ate <= 3 else 'text-green-600') }}">
+            {{ dias_ate }}d
+          </span>
+          {% endif %}
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="py-6 text-center text-gray-400 text-sm">Nenhuma OP aguardando</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{# ═══════════════ GRÁFICOS ═══════════════ #}
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
   <div class="prodsys-card p-4 lg:col-span-2">
     <h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
@@ -83,8 +281,12 @@
         <span class="font-bold">{{ k.em_producao }}</span>
       </div>
       <div class="flex items-center justify-between text-xs">
-        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-green-500"></span>Concluídos</span>
+        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-green-500"></span>Finalizados Hoje</span>
         <span class="font-bold">{{ k.concluidos_hoje }}</span>
+      </div>
+      <div class="flex items-center justify-between text-xs">
+        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span>Mês Atual</span>
+        <span class="font-bold">{{ k.concluidos_mes }}</span>
       </div>
       <div class="flex items-center justify-between text-xs">
         <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>Atrasados</span>
@@ -149,119 +351,54 @@
   {% endif %}
 </div>
 
-{# ═══════════════ RESUMO ERP + USUARIOS ═══════════════ #}
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
-  <div class="prodsys-card p-4">
-    <h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-      <i class="fa-solid fa-database text-cyan-500"></i>
-      Resumo ERP
-    </h3>
-    <div class="grid grid-cols-2 gap-3">
-      <div class="bg-blue-50 rounded-xl p-3 text-center">
-        <div class="text-2xl font-black text-blue-700">{{ erp_stats.total }}</div>
-        <div class="text-xs text-blue-500 font-bold">Total Ordens</div>
-      </div>
-      <div class="bg-red-50 rounded-xl p-3 text-center">
-        <div class="text-2xl font-black text-red-600">{{ erp_stats.atrasadas }}</div>
-        <div class="text-xs text-red-500 font-bold">Atrasadas</div>
-      </div>
-      <div class="bg-orange-50 rounded-xl p-3 text-center">
-        <div class="text-2xl font-black text-orange-600">{{ erp_stats.urgentes }}</div>
-        <div class="text-xs text-orange-500 font-bold">Urgentes</div>
-      </div>
-      <div class="bg-green-50 rounded-xl p-3 text-center">
-        <div class="text-2xl font-black text-green-600">{{ erp_stats.normais }}</div>
-        <div class="text-xs text-green-500 font-bold">Normais</div>
-      </div>
+{# ═══════════════ RESUMO ERP ═══════════════ #}
+<div class="prodsys-card p-4 mb-5">
+  <h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+    <i class="fa-solid fa-database text-cyan-500"></i>
+    Resumo ERP — Lotes Abertos
+  </h3>
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    <div class="bg-blue-50 rounded-xl p-3 text-center">
+      <div class="text-2xl font-black text-blue-700">{{ erp_stats.total }}</div>
+      <div class="text-xs text-blue-500 font-bold">Total Ordens</div>
     </div>
-  </div>
-
-  <div class="prodsys-card p-4">
-    <h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-      <i class="fa-solid fa-users text-purple-500"></i>
-      Usuários Ativos
-    </h3>
-    <div class="space-y-2">
-      {% set roles_count = namespace(admin=0, gerente=0, pcp=0, diretor=0, almoxarifado=0, operador=0) %}
-      {% for u in usuarios %}
-        {% if u.role == 'admin' %}{% set roles_count.admin = roles_count.admin + 1 %}
-        {% elif u.role == 'gerente' %}{% set roles_count.gerente = roles_count.gerente + 1 %}
-        {% elif u.role == 'pcp' %}{% set roles_count.pcp = roles_count.pcp + 1 %}
-        {% elif u.role == 'diretor' %}{% set roles_count.diretor = roles_count.diretor + 1 %}
-        {% elif u.role == 'almoxarifado' %}{% set roles_count.almoxarifado = roles_count.almoxarifado + 1 %}
-        {% elif u.role == 'operador' %}{% set roles_count.operador = roles_count.operador + 1 %}
-        {% endif %}
-      {% endfor %}
-      <div class="flex items-center justify-between py-1.5 border-b border-gray-50">
-        <span class="text-xs font-bold text-gray-600">Admin</span>
-        <span class="text-sm font-black text-gray-800">{{ roles_count.admin }}</span>
-      </div>
-      <div class="flex items-center justify-between py-1.5 border-b border-gray-50">
-        <span class="text-xs font-bold text-gray-600">Diretor</span>
-        <span class="text-sm font-black text-indigo-600">{{ roles_count.diretor }}</span>
-      </div>
-      <div class="flex items-center justify-between py-1.5 border-b border-gray-50">
-        <span class="text-xs font-bold text-gray-600">Gerente</span>
-        <span class="text-sm font-black text-gray-800">{{ roles_count.gerente }}</span>
-      </div>
-      <div class="flex items-center justify-between py-1.5 border-b border-gray-50">
-        <span class="text-xs font-bold text-gray-600">PCP</span>
-        <span class="text-sm font-black text-gray-800">{{ roles_count.pcp }}</span>
-      </div>
-      <div class="flex items-center justify-between py-1.5 border-b border-gray-50">
-        <span class="text-xs font-bold text-gray-600">Almoxarifado</span>
-        <span class="text-sm font-black text-gray-800">{{ roles_count.almoxarifado }}</span>
-      </div>
-      <div class="flex items-center justify-between py-1.5">
-        <span class="text-xs font-bold text-gray-600">Operadores</span>
-        <span class="text-sm font-black text-gray-800">{{ roles_count.operador }}</span>
-      </div>
+    <div class="bg-red-50 rounded-xl p-3 text-center">
+      <div class="text-2xl font-black text-red-600">{{ erp_stats.atrasadas }}</div>
+      <div class="text-xs text-red-500 font-bold">Atrasadas</div>
+    </div>
+    <div class="bg-orange-50 rounded-xl p-3 text-center">
+      <div class="text-2xl font-black text-orange-600">{{ erp_stats.urgentes }}</div>
+      <div class="text-xs text-orange-500 font-bold">Urgentes</div>
+    </div>
+    <div class="bg-green-50 rounded-xl p-3 text-center">
+      <div class="text-2xl font-black text-green-600">{{ erp_stats.normais }}</div>
+      <div class="text-xs text-green-500 font-bold">Normais</div>
     </div>
   </div>
 </div>
 
-{# ═══════════════ ÚLTIMAS ORDENS ERP ═══════════════ #}
-<div class="prodsys-card overflow-hidden mb-5">
-  <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-    <i class="fa-solid fa-list-ol text-blue-500"></i>
-    <h3 class="text-sm font-bold text-gray-700">Ordens do ERP — Lotes Abertos</h3>
-    <span class="ml-auto bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-bold">{{ ordens_erp|length }}</span>
-  </div>
-  <div class="overflow-x-auto max-h-96 overflow-y-auto">
-    <table class="w-full text-sm">
-      <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider sticky top-0">
-        <tr>
-          <th class="px-3 py-2.5 text-left">Lote</th>
-          <th class="px-3 py-2.5 text-left">Descrição</th>
-          <th class="px-3 py-2.5 text-center">OPs</th>
-          <th class="px-3 py-2.5 text-center">Qtd Total</th>
-          <th class="px-3 py-2.5 text-center">Abertura</th>
-          <th class="px-3 py-2.5 text-center">Previsão</th>
-          <th class="px-3 py-2.5 text-center">Status</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-gray-50">
-        {% for o in ordens_erp %}
-        {% set atrasada = o.data_previsao and o.data_previsao.date() < now.date() %}
-        <tr class="hover:bg-gray-50 {{ 'bg-red-50/40' if atrasada }}">
-          <td class="px-3 py-2.5 font-bold text-blue-700 text-xs">{{ o.get('lote_codigo') or '—' }}</td>
-          <td class="px-3 py-2.5 text-xs text-gray-700 max-w-[250px] truncate" title="{{ o.get('lote_descricao') or '' }}">{{ o.get('lote_descricao') or '—' }}</td>
-          <td class="px-3 py-2.5 text-center font-bold">{{ o.get('total_ofs', 0) }}</td>
-          <td class="px-3 py-2.5 text-center">{{ o.get('quantidade_total', 0) }}</td>
-          <td class="px-3 py-2.5 text-center text-xs text-gray-500">{{ o.get('data_abertura', '') }}</td>
-          <td class="px-3 py-2.5 text-center text-xs {{ 'text-red-600 font-bold' if atrasada else 'text-gray-500' }}">{{ o.get('data_previsao', '') }}</td>
-          <td class="px-3 py-2.5 text-center">
-            {% if atrasada %}<span class="badge-priority urgente">ATRASADO</span>
-            {% elif o.get('status_erp') == 'EP' %}<span class="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">EM PRODUÇÃO</span>
-            {% elif o.get('status_erp') == 'ES' %}<span class="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">SEPARAÇÃO</span>
-            {% else %}<span class="text-[10px] font-bold text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full">{{ o.get('status_erp', '—') }}</span>
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+{# ═══════════════ ATALHOS RÁPIDOS ═══════════════ #}
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+  <a href="{{ url_for('dashboard_pcp') }}" class="prodsys-card p-4 hover:shadow-lg transition text-center">
+    <i class="fa-solid fa-diagram-project text-2xl text-blue-500 mb-1.5"></i>
+    <div class="text-sm font-bold text-gray-700">PCP — Ordens</div>
+    <div class="text-[11px] text-gray-400">Gerenciar OPs</div>
+  </a>
+  <a href="{{ url_for('kanban_board') }}" class="prodsys-card p-4 hover:shadow-lg transition text-center">
+    <i class="fa-solid fa-table-columns text-2xl text-purple-500 mb-1.5"></i>
+    <div class="text-sm font-bold text-gray-700">Kanban</div>
+    <div class="text-[11px] text-gray-400">Board visual</div>
+  </a>
+  <a href="{{ url_for('admin_relatorios') }}" class="prodsys-card p-4 hover:shadow-lg transition text-center">
+    <i class="fa-solid fa-chart-bar text-2xl text-emerald-500 mb-1.5"></i>
+    <div class="text-sm font-bold text-gray-700">Relatórios</div>
+    <div class="text-[11px] text-gray-400">Produção detalhada</div>
+  </a>
+  <a href="{{ url_for('kanban_tv') }}" target="_blank" class="prodsys-card p-4 hover:shadow-lg transition text-center">
+    <i class="fa-solid fa-tv text-2xl text-cyan-500 mb-1.5"></i>
+    <div class="text-sm font-bold text-gray-700">TV Kanban</div>
+    <div class="text-[11px] text-gray-400">Painel chão de fábrica</div>
+  </a>
 </div>
 
 {% endblock %}
@@ -270,39 +407,103 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 // ════════════════ GRÁFICO 7 DIAS ════════════════
-const ctx7 = document.getElementById('chart7dias');
-if (ctx7) {
-  const dias = [];
-  const vals = [];
+(function() {
+  const dados = {{ dados_ger.por_dia | tojson | safe if dados_ger.por_dia else '[]' }};
+  const ctx = document.getElementById('chart7dias');
+  if (!ctx) return;
+
+  const hoje = new Date();
+  const labels = [];
+  const valores = [];
+  const pecas = [];
   for (let i = 6; i >= 0; i--) {
-    const d = new Date(); d.setDate(d.getDate() - i);
-    const ds = d.toISOString().split('T')[0];
-    dias.push(d.toLocaleDateString('pt-BR', {weekday:'short', day:'2-digit', month:'2-digit'}));
-    vals.push(Math.floor(Math.random() * 5) + 1); // placeholder
+    const d = new Date(hoje);
+    d.setDate(d.getDate() - i);
+    const iso = d.toISOString().slice(0,10);
+    const label = d.toLocaleDateString('pt-BR', {weekday:'short', day:'2-digit'});
+    labels.push(label);
+    const encontrado = dados.find(function(x) {
+      if (!x.dia) return false;
+      var dStr = typeof x.dia === 'string' ? x.dia.slice(0,10) : new Date(x.dia).toISOString().slice(0,10);
+      return dStr === iso;
+    });
+    valores.push(encontrado ? (encontrado.total || 0) : 0);
+    pecas.push(encontrado ? Math.round(encontrado.pecas || 0) : 0);
   }
-  new Chart(ctx7, {
+
+  new Chart(ctx, {
     type: 'bar',
-    data: { labels: dias, datasets: [{ label: 'OPs Finalizadas', data: vals, backgroundColor: 'rgba(37,99,235,0.7)', borderRadius: 6, borderSkipped: false }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'OPs finalizadas',
+        data: valores,
+        backgroundColor: 'rgba(37, 99, 235, 0.85)',
+        borderColor: 'rgba(37, 99, 235, 1)',
+        borderWidth: 1,
+        borderRadius: 6,
+        maxBarThickness: 50
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0f172a',
+          titleFont: { size: 12, weight: 'bold' },
+          bodyFont: { size: 12 },
+          padding: 10,
+          callbacks: {
+            label: function(ctx2) {
+              var idx = ctx2.dataIndex;
+              return [
+                'OPs: ' + ctx2.parsed.y,
+                'Peças: ' + (pecas[idx] || 0)
+              ];
+            }
+          }
+        }
+      },
+      scales: {
+        y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 } }, grid: { color: '#f1f5f9' } },
+        x: { ticks: { font: { size: 11 } }, grid: { display: false } }
+      }
+    }
   });
-}
+})();
 
 // ════════════════ GRÁFICO STATUS (DOUGHNUT) ════════════════
-const ctxS = document.getElementById('chartStatus');
-if (ctxS) {
-  new Chart(ctxS, {
+(function() {
+  const ctx = document.getElementById('chartStatus');
+  if (!ctx) return;
+  new Chart(ctx, {
     type: 'doughnut',
     data: {
-      labels: ['Aguardando', 'Em Produção', 'Concluídos Hoje', 'Atrasados'],
-      datasets: [{ data: [
-        {{ k.aguardando_liberacao + k.aguardando_inicio }},
-        {{ k.em_producao }},
-        {{ k.concluidos_hoje }},
-        {{ k.atrasados }}
-      ], backgroundColor: ['#fbbf24', '#f97316', '#22c55e', '#ef4444'], borderWidth: 0 }]
+      labels: ['Aguardando', 'Em Produção', 'Finalizados Hoje', 'Mês Atual', 'Atrasados'],
+      datasets: [{
+        data: [
+          {{ k.aguardando_liberacao + k.aguardando_inicio }},
+          {{ k.em_producao }},
+          {{ k.concluidos_hoje }},
+          {{ k.concluidos_mes }},
+          {{ k.atrasados }}
+        ],
+        backgroundColor: ['#fbbf24', '#f97316', '#22c55e', '#a855f7', '#ef4444'],
+        borderWidth: 0
+      }]
     },
-    options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { display: false } } }
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '65%',
+      plugins: { legend: { display: false } }
+    }
   });
-}
+})();
+
+/* ─── Auto refresh 5 min ─── */
+setTimeout(function() { location.reload(); }, 300000);
 </script>
 {% endblock %}

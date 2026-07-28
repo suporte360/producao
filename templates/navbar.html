@@ -24,8 +24,8 @@
                 {% if session.get('usuario_role') == 'diretor' %}
                 <li class="nav-item"><a class="nav-link" href="{{ url_for('kanban_setores') }}"><i class="bi bi-grid-3x3-gap"></i> Kanban Setores</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ url_for('dashboard_almoxarifado') }}"><i class="bi bi-boxes-stacked"></i> Almoxarifado</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('estoque_interno') }}"><i class="bi bi-box-seam"></i> Estoque</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ url_for('dashboard_pcp') }}"><i class="bi bi-clipboard-data"></i> PCP</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('diretor_relatorios') }}"><i class="bi bi-bar-chart-line"></i> Diretoria</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ url_for('diretor_logs') }}"><i class="bi bi-clock-history"></i> Logs</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ url_for('diretor_acessos') }}"><i class="bi bi-people"></i> Acessos</a></li>
                 {% endif %}
