@@ -103,16 +103,13 @@
       <thead class="text-xs uppercase tracking-wider text-gray-500 border-b border-gray-100 bg-gray-50">
         <tr>
           <th class="px-2 py-2.5 text-center">Pedido</th>
-          <th class="px-2 py-2.5 text-center">Tipo</th>
           <th class="px-2 py-2.5 text-center">Emissão</th>
           <th class="px-2 py-2.5 text-center">Previsão</th>
           <th class="px-2 py-2.5 text-left">Cliente / Razão Social</th>
+          <th class="px-2 py-2.5 text-center">Vendedor</th>
+          <th class="px-2 py-2.5 text-center">OP</th>
           <th class="px-2 py-2.5 text-center">Status</th>
-          <th class="px-2 py-2.5 text-center">Situação</th>
-          <th class="px-2 py-2.5 text-center">Ord.Cmp.</th>
-          <th class="px-2 py-2.5 text-center">Carga</th>
-          <th class="px-2 py-2.5 text-center">Rep.</th>
-          <th class="px-2 py-2.5 text-center">Valor</th>
+          <th class="px-2 py-2.5 text-center">Sit.</th>
           <th class="px-2 py-2.5 text-center">Dias</th>
         </tr>
       </thead>
@@ -128,8 +125,6 @@
           <td class="px-2 py-2 text-center">
             <span class="font-bold text-blue-700 text-sm">#{{ p.pedido }}</span>
           </td>
-          {# Tipo #}
-          <td class="px-2 py-2 text-center text-xs text-gray-500">{{ p.tipo }}</td>
           {# Emissão #}
           <td class="px-2 py-2 text-center text-xs text-gray-500">{{ p.data_emissao|formatar_data_br if p.data_emissao else '—' }}</td>
           {# Previsão #}
@@ -138,72 +133,59 @@
           </td>
           {# Cliente / Razão Social #}
           <td class="px-2 py-2">
-            <div class="font-semibold text-gray-700 text-xs truncate max-w-[180px]" title="{{ p.razao_social }}">
-              {{ p.codigo_cliente }} — {{ p.razao_social }}
+            <div class="font-semibold text-gray-700 text-xs truncate max-w-[220px]" title="{{ p.razao_social }}">
+              {{ p.razao_social }}
             </div>
+          </td>
+          {# Vendedor #}
+          <td class="px-2 py-2 text-center">
+            <span class="text-xs font-semibold text-purple-700">{{ p.vendedor|default('—') }}</span>
+          </td>
+          {# OP Vinculada #}
+          <td class="px-2 py-2 text-center">
+            {% if p.ordem_producao %}
+              <a href="/admin/lote/{{ p.ordem_producao }}" class="text-purple-700 font-bold text-xs hover:underline" target="_blank" title="Ver OP #{{ p.ordem_producao }}">#{{ p.ordem_producao }}</a>
+            {% else %}
+              <span class="text-gray-300 text-xs">—</span>
+            {% endif %}
           </td>
           {# Status #}
           <td class="px-2 py-2 text-center">
             {% set sc = p.status_codigo %}
-            {% if sc == '01' %}
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-gray-100 text-gray-600">01</span>
-            {% elif sc == '02' %}
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700">02</span>
-            {% elif sc == '03' %}
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-orange-100 text-orange-700">03</span>
-            {% elif sc == '04' %}
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-100 text-blue-700">04</span>
-            {% elif sc == '05' %}
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-green-100 text-green-700">05</span>
+            {% if sc in ['01','02'] %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700">Aberto</span>
+            {% elif sc in ['03','04'] %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-100 text-blue-700">Em OF</span>
+            {% elif sc in ['05','07','08','09'] %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-green-100 text-green-700">Atendido</span>
             {% elif sc == '06' %}
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-red-100 text-red-700">06</span>
-            {% elif sc == '07' %}
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-lime-100 text-lime-700">07</span>
-            {% elif sc == '08' %}
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-green-100 text-green-700">08</span>
-            {% elif sc == '09' %}
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-cyan-100 text-cyan-700">09</span>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-red-100 text-red-700">Problema</span>
             {% elif sc == '10' %}
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-red-100 text-red-700">10</span>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-gray-100 text-gray-600">Cancelado</span>
+            {% else %}
+            <span class="text-[9px] text-gray-400">{{ sc }}</span>
             {% endif %}
-            <div class="text-[8px] text-gray-400 mt-0.5 hidden lg:block">{{ p.status_descricao }}</div>
           </td>
           {# Situação #}
           <td class="px-2 py-2 text-center">
             {% set si = p.situacao_codigo %}
-            {% if si == 'A' %}
-            <span class="text-[10px] font-bold text-green-600">A</span>
-            {% elif si == 'P' %}
-            <span class="text-[10px] font-bold text-amber-600">P</span>
-            {% elif si == 'C' %}
-            <span class="text-[10px] font-bold text-red-600">C</span>
-            {% elif si == 'I' %}
-            <span class="text-[10px] font-bold text-gray-500">I</span>
-            {% else %}
-            <span class="text-[10px] text-gray-300">—</span>
-            {% endif %}
-          </td>
-          {# Ordem de Compra #}
-          <td class="px-2 py-2 text-center text-xs text-gray-500">{{ p.ordem_compra.strip() if p.ordem_compra else '—' }}</td>
-          {# Carga #}
-          <td class="px-2 py-2 text-center text-xs text-gray-500">{{ p.numero_carga.strip() if p.numero_carga else '—' }}</td>
-          {# Representante #}
-          <td class="px-2 py-2 text-center text-xs text-gray-500">{{ p.nome_representante if p.nome_representante else '—' }}</td>
-          {# Valor #}
-          <td class="px-2 py-2 text-center text-xs font-semibold text-gray-700">
-            {% if p.valor_faturado %}R$ {{ "%.2f"|format(p.valor_faturado) }}{% else %}—{% endif %}
+            {% if si == 'A' %}<span class="text-[10px] font-bold text-green-600">A</span>
+            {% elif si == 'P' %}<span class="text-[10px] font-bold text-amber-600">P</span>
+            {% elif si == 'C' %}<span class="text-[10px] font-bold text-red-600">C</span>
+            {% elif si == 'I' %}<span class="text-[10px] font-bold text-gray-500">I</span>
+            {% else %}<span class="text-[10px] text-gray-300">—</span>{% endif %}
           </td>
           {# Dias #}
           <td class="px-2 py-2 text-center">
             {% if p.dias_restantes is not none %}
               {% if p.dias_restantes < 0 %}
-              <span class="text-xs font-black text-red-600">{{ p.dias_restantes }}d</span>
+              <span class="text-sm font-black text-red-600 bg-red-50 px-1.5 py-0.5 rounded">{{ p.dias_restantes }}d</span>
               {% elif p.dias_restantes == 0 %}
-              <span class="text-xs font-black text-amber-600">Hoje</span>
+              <span class="text-sm font-black text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">Hoje</span>
               {% elif p.dias_restantes <= 3 %}
-              <span class="text-xs font-bold text-amber-500">{{ p.dias_restantes }}d</span>
+              <span class="text-sm font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">{{ p.dias_restantes }}d</span>
               {% else %}
-              <span class="text-xs font-bold text-blue-600">{{ p.dias_restantes }}d</span>
+              <span class="text-sm font-bold text-blue-600">{{ p.dias_restantes }}d</span>
               {% endif %}
             {% else %}
               <span class="text-xs text-gray-300">—</span>

@@ -94,7 +94,7 @@
       </thead>
       <tbody class="divide-y divide-gray-50">
         {% for o in ordens_erp %}
-        {% set atrasada = o.data_previsao and o.data_previsao.date() < now.date() %}
+        {% set atrasada = o.data_previsao and o.data_previsao < now.date() %}
         <tr class="hover:bg-gray-50 {{ 'bg-red-50/40' if atrasada }}">
           <td class="px-3 py-2.5 font-bold text-blue-700 text-xs">{{ o.get('lote_codigo') or '—' }}</td>
           <td class="px-3 py-2.5 text-xs text-gray-700 max-w-[250px] truncate" title="{{ o.get('lote_descricao') or '' }}">{{ o.get('lote_descricao') or '—' }}</td>

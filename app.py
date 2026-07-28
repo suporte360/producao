@@ -455,15 +455,15 @@ def tv_redirect():
 
 @app.route('/tv/diretoria')
 def tv_diretoria():
-    """TV Inteligente da Diretoria — rotaciona entre pedidos, OPs e status."""
-    from datetime import date
+    """TV Inteligente da Diretoria — rotação automática com gráficos."""
+    from datetime import date, timedelta
     pedidos_tv = []
     ops_tv = []
     kpis = {}
 
     try:
         pg = DatabasePostgreSQL()
-        pedidos_tv = pg.get_pedidos_erp_para_tv(limite=20)
+        pedidos_tv = pg.get_pedidos_erp_para_tv(limite=50)
 
         # Adicionar dias restantes
         hoje = date.today()
@@ -478,6 +478,7 @@ def tv_diretoria():
         kpis = pg.get_resumo_pedidos_erp()
     except Exception as e:
         print(f"Erro TV diretoria: {e}")
+        hoje = date.today()
 
     # OPs em produção (do MySQL)
     try:
@@ -1206,7 +1207,7 @@ def diretor_relatorios():
                            erp_stats=erp_stats, ordens_erp=ordens_erp,
                            usuarios=usuarios,
                            usuario_nome=session['usuario_nome'],
-                           now=datetime.now())
+                           now=datetime.now().date())
 
 @app.route('/diretor/logs')
 @login_required
