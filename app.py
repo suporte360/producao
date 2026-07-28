@@ -1,6 +1,17 @@
 """
 Sistema de Gerenciamento de Produção SALUTEM
-app.py — Ponto de entrada principal v4.1
+app.py — Ponto de entrada principal v4.2
+
+BANCO DE DADOS:
+- MariaDB (MySQL): banco local do sistema. Permite INSERT, UPDATE, DELETE, SELECT
+- PostgreSQL: banco do ERP Lógica. SOMENTE LEITURA (SELECT) - nunca modificar
+
+ROTAS PRINCIPAIS:
+- / => Dashboard inicial
+- /pedidos => Pedidos de Venda do ERP (consulta PostgreSQL)
+- /tv => TV Inteligente da Diretoria (rotação automática)
+- /kanban => Quadro Kanban
+- /gerente => Dashboard gerencial
 """
 
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify

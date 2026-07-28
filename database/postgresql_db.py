@@ -2,6 +2,12 @@
 Classe de conexão e operações com PostgreSQL (ERP Lógica - Somente Leitura)
 v4.2.2 — Reescrito com base no mapeamento real do ERP Salutem
 
+ATENÇÃO: PostgreSQL é o banco do ERP principal (Lógica).
+- SOMENTE LEITURA (SELECT)
+- NUNCA fazer INSERT, UPDATE ou DELETE
+- Qualquer modificação é feita no MariaDB (sistema local)
+- Tabelas do ERP: pedido, empresa, loteprod, ordem, produto, fases, reqordem, passfase, respror
+
 ESTRUTURA DO ERP (confirmada pelo cliente):
 - loteprod: Tabela principal de lotes (lotcod, lotdes, lotdtini, lotdtpre, lotstatus)
 - ordem: Ordens de produção (OFs) vinculadas a um lote via lotcod
@@ -454,12 +460,12 @@ class DatabasePostgreSQL:
                 p.pedcondica AS condicao_pagamento,
                 p.pedtransp AS codigo_transportadora,
                 p.pedoperaca AS operacao,
-                p.pedrepresent AS representante,
-                COALESCE(NULLIF(TRIM(rep.repnome),''), '-') AS nome_representante,
+                NULLIF(TRIM(p.pedrepres), '') AS codigo_representante,
+                '-' AS nome_representante,
                 p.pedsitua AS situacao_codigo,
                 p.pedsitsit AS status_codigo,
-                COALESCE(p.pedordcomp, '') AS numero_carga,
-                p.pedrep AS pedido_representante,
+                COALESCE(NULLIF(TRIM(p.pedordcomp),''), '') AS numero_carga,
+                COALESCE(NULLIF(TRIM(p.pedrep),''), '') AS pedido_representante,
                 p.pedvlrfat AS valor_faturado,
                 p.pedobserva AS observacao,
                 p.pedaprova AS aprovado,
@@ -468,7 +474,6 @@ class DatabasePostgreSQL:
                 p.pedusualt AS usuario_alterou
             FROM public.pedido p
             LEFT JOIN public.empresa e ON p.pedcliente::TEXT = e.empresa::TEXT
-            LEFT JOIN public.represent rep ON p.pedrepres = rep.represent
             WHERE 1=1
         """
         params = []

@@ -16,285 +16,143 @@
             overflow: hidden;
             height: 100vh;
             width: 100vw;
+            user-select: none;
         }
 
         /* ═══════════ HEADER ═══════════ */
         .tv-header {
             background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-            padding: 12px 30px;
+            padding: 10px 30px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             border-bottom: 2px solid #1e40af;
-            height: 70px;
+            height: 65px;
         }
-        .tv-header .logo {
-            font-size: 24px;
-            font-weight: 900;
-            color: #3b82f6;
-            letter-spacing: 2px;
-        }
+        .tv-header .logo { font-size: 22px; font-weight: 900; color: #3b82f6; letter-spacing: 2px; }
         .tv-header .logo span { color: #60a5fa; }
-        .tv-header .subtitulo {
-            font-size: 14px;
-            color: #94a3b8;
-            font-weight: 500;
-        }
-        .tv-header .clock {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 28px;
-            font-weight: 700;
-            color: #fbbf24;
-        }
-        .tv-header .data {
-            font-size: 13px;
-            color: #64748b;
-            text-align: right;
-        }
+        .tv-header .clock { font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 700; color: #fbbf24; }
+        .tv-header .data { font-size: 12px; color: #64748b; text-align: right; }
 
         /* ═══════════ KPI BAR ═══════════ */
         .kpi-bar {
             display: grid;
             grid-template-columns: repeat(6, 1fr);
-            gap: 10px;
-            padding: 12px 20px;
+            gap: 8px;
+            padding: 10px 20px;
             background: #1e293b;
+            border-bottom: 1px solid #334155;
         }
-        .kpi-item {
-            text-align: center;
-            padding: 10px 8px;
-            border-radius: 10px;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.06);
+        .kpi-item { text-align: center; padding: 8px 5px; border-radius: 8px; background: rgba(255,255,255,0.03); }
+        .kpi-item .num { font-size: 28px; font-weight: 900; line-height: 1; }
+        .kpi-item .label { font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-top: 3px; font-weight: 600; }
+
+        /* ═══════════ TAB NAV ═══════════ */
+        .tab-nav {
+            display: flex;
+            gap: 5px;
+            padding: 8px 20px;
+            background: #1e293b;
+            border-bottom: 1px solid #334155;
         }
-        .kpi-item .num {
-            font-size: 32px;
-            font-weight: 900;
-            line-height: 1;
-        }
-        .kpi-item .label {
-            font-size: 10px;
+        .tab-btn {
+            padding: 6px 16px;
+            border-radius: 8px;
+            border: none;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            background: #334155;
             color: #94a3b8;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-top: 4px;
-            font-weight: 600;
-        }
-
-        /* ═══════════ SCREENS ═══════════ */
-        .tv-screen {
-            display: none;
-            height: calc(100vh - 140px);
-            overflow: hidden;
-            animation: fadeIn 0.6s ease;
-        }
-        .tv-screen.active { display: block; }
-        @keyframes fadeIn { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: translateY(0); } }
-
-        /* ═══════════ SCREEN 1: PEDIDOS ═══════════ */
-        .pedidos-title {
-            font-size: 20px;
-            font-weight: 800;
-            padding: 10px 20px 5px;
-            color: #60a5fa;
+            transition: all 0.3s;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 6px;
         }
-        .pedidos-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-        }
-        .pedidos-table thead th {
-            background: #1e293b;
-            padding: 8px 12px;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #94a3b8;
-            font-weight: 700;
-            border-bottom: 2px solid #334155;
-            text-align: left;
-        }
-        .pedidos-table tbody tr {
-            border-bottom: 1px solid rgba(255,255,255,0.04);
-            transition: background 0.3s;
-        }
-        .pedidos-table tbody tr:hover { background: rgba(59,130,246,0.05); }
-        .pedidos-table td {
-            padding: 8px 12px;
-            font-size: 13px;
-        }
-        .pedidos-table .pedido-num {
-            font-weight: 800;
-            color: #60a5fa;
-            font-size: 16px;
-        }
-        .pedidos-table .razao {
-            font-weight: 600;
-            color: #e2e8f0;
-        }
-        .status-badge {
-            display: inline-block;
-            padding: 3px 10px;
-            border-radius: 20px;
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .dias-atraso { font-weight: 800; font-size: 16px; }
-        .dias-ok { font-weight: 700; font-size: 16px; }
+        .tab-btn.active { background: #3b82f6; color: white; }
+        .tab-btn:hover { background: #475569; }
+        .tab-btn i { font-size: 11px; }
 
-        /* ═══════════ SCREEN 2: OPs EM PRODUÇÃO ═══════════ */
-        .ops-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 12px;
-            padding: 15px 20px;
-            height: 100%;
-            overflow: hidden;
+        /* ═══════════ SCREENS ═══════════ */
+        .tv-screen { display: none; height: calc(100vh - 155px); overflow: hidden; animation: fadeIn 0.4s ease; }
+        .tv-screen.active { display: block; }
+        @keyframes fadeIn { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
+
+        /* ═══════════ TABLE ═══════════ */
+        .table-container { padding: 10px 20px; height: 100%; overflow: hidden; }
+        .section-title { font-size: 16px; font-weight: 800; padding: 5px 0 8px; color: #60a5fa; display: flex; align-items: center; gap: 8px; }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .data-table thead th {
+            background: #1e293b; padding: 7px 10px; font-size: 10px; text-transform: uppercase;
+            letter-spacing: 1px; color: #94a3b8; font-weight: 700; border-bottom: 2px solid #334155; text-align: left;
+            position: sticky; top: 0; z-index: 5;
         }
+        .data-table tbody tr { border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.2s; cursor: pointer; }
+        .data-table tbody tr:hover { background: rgba(59,130,246,0.08); }
+        .data-table td { padding: 7px 10px; font-size: 12px; }
+        .pedido-num { font-weight: 800; color: #60a5fa; font-size: 15px; }
+        .razao { font-weight: 600; color: #e2e8f0; }
+        .status-badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 9px; font-weight: 700; text-transform: uppercase; }
+        .dias-num { font-weight: 800; font-size: 15px; }
+
+        /* ═══════════ OP CARDS ═══════════ */
+        .ops-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 10px 20px; height: 100%; overflow-y: auto; }
         .op-card {
             background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-            border-radius: 12px;
-            padding: 15px;
-            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px; padding: 12px; border: 1px solid rgba(255,255,255,0.08);
             border-left: 4px solid #3b82f6;
-            transition: transform 0.3s;
         }
-        .op-card:hover { transform: scale(1.02); }
         .op-card.em_producao { border-left-color: #f59e0b; }
         .op-card.pausado { border-left-color: #ef4444; }
         .op-card.liberado { border-left-color: #3b82f6; }
-        .op-num {
-            font-size: 22px;
-            font-weight: 900;
-            color: #fbbf24;
-            font-family: 'JetBrains Mono', monospace;
-        }
-        .op-produto {
-            font-size: 13px;
-            color: #cbd5e1;
-            margin-top: 5px;
-            font-weight: 500;
-        }
-        .op-setor {
-            display: inline-block;
-            padding: 3px 8px;
-            border-radius: 6px;
-            font-size: 10px;
-            font-weight: 700;
-            margin-top: 8px;
-            text-transform: uppercase;
-        }
-        .op-status-label {
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-            margin-top: 8px;
-            padding: 3px 8px;
-            border-radius: 6px;
-            display: inline-block;
-        }
-        .op-lote {
-            font-size: 11px;
-            color: #94a3b8;
-            margin-top: 5px;
-        }
+        .op-card.finalizado { border-left-color: #22c55e; }
+        .op-num { font-size: 20px; font-weight: 900; color: #fbbf24; font-family: 'JetBrains Mono', monospace; }
+        .op-produto { font-size: 12px; color: #cbd5e1; margin-top: 4px; font-weight: 500; }
+        .op-setor { display: inline-block; padding: 2px 7px; border-radius: 5px; font-size: 9px; font-weight: 700; margin-top: 6px; }
+        .op-status-label { font-size: 9px; font-weight: 700; text-transform: uppercase; margin-top: 6px; padding: 2px 7px; border-radius: 5px; display: inline-block; }
+        .op-lote { font-size: 10px; color: #94a3b8; margin-top: 4px; }
 
-        /* ═══════════ SCREEN 3: ALERTAS ═══════════ */
-        .alertas-container {
-            padding: 15px 20px;
-            overflow: hidden;
-            height: 100%;
+        /* ═══════════ DETAIL MODAL ═══════════ */
+        .detail-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 1000;
+            justify-content: center; align-items: center;
         }
-        .alerta-item {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            padding: 15px 20px;
-            margin-bottom: 10px;
-            border-radius: 12px;
-            animation: slideIn 0.5s ease;
+        .detail-overlay.show { display: flex; animation: fadeIn 0.3s ease; }
+        .detail-modal {
+            background: #1e293b; border-radius: 16px; padding: 30px;
+            max-width: 700px; width: 90%; max-height: 80vh; overflow-y: auto;
+            border: 2px solid #3b82f6;
+            animation: slideUp 0.3s ease;
         }
-        @keyframes slideIn { from { opacity:0; transform: translateX(-20px); } to { opacity:1; transform: translateX(0); } }
-        .alerta-item.atrasado {
-            background: linear-gradient(135deg, rgba(239,68,68,0.15) 0%, rgba(239,68,68,0.05) 100%);
-            border-left: 4px solid #ef4444;
+        @keyframes slideUp { from { opacity:0; transform: translateY(30px); } to { opacity:1; transform: translateY(0); } }
+        .detail-modal h2 { font-size: 22px; font-weight: 900; color: #fbbf24; margin-bottom: 5px; }
+        .detail-modal .close-btn {
+            position: absolute; top: 10px; right: 15px; background: none; border: none;
+            color: #94a3b8; font-size: 24px; cursor: pointer;
         }
-        .alerta-item.urgente {
-            background: linear-gradient(135deg, rgba(245,158,11,0.15) 0%, rgba(245,158,11,0.05) 100%);
-            border-left: 4px solid #f59e0b;
+        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+        .detail-field { }
+        .detail-field label { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+        .detail-field value { display: block; font-size: 16px; font-weight: 700; color: #e2e8f0; margin-top: 3px; }
+        .detail-field .of-link {
+            display: inline-block; margin-top: 5px; padding: 6px 14px; background: #3b82f6;
+            color: white; border-radius: 8px; font-size: 13px; font-weight: 700;
+            text-decoration: none; transition: background 0.2s;
         }
-        .alerta-item.producao {
-            background: linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(59,130,246,0.05) 100%);
-            border-left: 4px solid #3b82f6;
-        }
-        .alerta-item.atendido {
-            background: linear-gradient(135deg, rgba(34,197,94,0.15) 0%, rgba(34,197,94,0.05) 100%);
-            border-left: 4px solid #22c55e;
-        }
-        .alerta-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 22px;
-            flex-shrink: 0;
-        }
-        .alerta-info { flex: 1; }
-        .alerta-pedido {
-            font-size: 18px;
-            font-weight: 800;
-            color: #fbbf24;
-            font-family: 'JetBrains Mono', monospace;
-        }
-        .alerta-razao {
-            font-size: 15px;
-            font-weight: 600;
-            color: #e2e8f0;
-            margin-top: 3px;
-        }
-        .alerta-detalhes {
-            font-size: 12px;
-            color: #94a3b8;
-            margin-top: 3px;
-        }
-        .alerta-dias {
-            font-size: 24px;
-            font-weight: 900;
-            flex-shrink: 0;
-            min-width: 80px;
-            text-align: center;
-        }
+        .detail-field .of-link:hover { background: #2563eb; }
 
-        /* ═══════════ SCREEN INDICATOR ═══════════ */
-        .screen-indicator {
-            position: fixed;
-            bottom: 15px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 8px;
-            z-index: 100;
+        /* ═══════════ NAVIGATION HINT ═══════════ */
+        .nav-hint {
+            position: fixed; bottom: 10px; right: 15px; font-size: 11px; color: #475569;
+            display: flex; align-items: center; gap: 5px; z-index: 50;
         }
-        .screen-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #334155;
-            transition: all 0.3s;
-        }
-        .screen-dot.active {
-            background: #3b82f6;
-            box-shadow: 0 0 10px rgba(59,130,246,0.5);
-        }
+        .nav-hint kbd { background: #334155; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono'; font-size: 10px; color: #94a3b8; }
 
-        /* ═══════════ SCROLLBAR ═══════════ */
+        /* ═══════════ AUTO-ROTATE INDICATOR ═══════════ */
+        .rotate-bar { height: 3px; background: #334155; position: relative; }
+        .rotate-bar-fill { height: 100%; background: #3b82f6; transition: width 0.5s linear; width: 0%; }
+
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
@@ -306,7 +164,6 @@
 <div class="tv-header">
     <div>
         <div class="logo">PRODS<span>YS</span></div>
-        <div class="subtitulo">TV Inteligente — Diretoria</div>
     </div>
     <div style="text-align:right">
         <div class="clock" id="clock">--:--:--</div>
@@ -317,141 +174,114 @@
 <!-- ═══════════ KPI BAR ═══════════ -->
 {% set k = kpis %}
 <div class="kpi-bar">
-    <div class="kpi-item">
-        <div class="num" style="color:#60a5fa">{{ k.total_pedidos|default(0) }}</div>
-        <div class="label">Total Pedidos</div>
-    </div>
-    <div class="kpi-item">
-        <div class="num" style="color:#fbbf24">{{ k.em_aberto|default(0) }}</div>
-        <div class="label">Em Aberto</div>
-    </div>
-    <div class="kpi-item">
-        <div class="num" style="color:#f59e0b">{{ k.em_producao|default(0) }}</div>
-        <div class="label">Em Produção</div>
-    </div>
-    <div class="kpi-item">
-        <div class="num" style="color:#ef4444">{{ k.atrasados|default(0) }}</div>
-        <div class="label">Atrasados</div>
-    </div>
-    <div class="kpi-item">
-        <div class="num" style="color:#22c55e">{{ k.atendidos|default(0) }}</div>
-        <div class="label">Atendidos</div>
-    </div>
-    <div class="kpi-item">
-        <div class="num" style="color:#06b6d4">{{ k.proximos_7dias|default(0) }}</div>
-        <div class="label">Próx. 7 Dias</div>
-    </div>
+    <div class="kpi-item"><div class="num" style="color:#60a5fa">{{ k.total_pedidos|default(0) }}</div><div class="label">Total Pedidos</div></div>
+    <div class="kpi-item"><div class="num" style="color:#fbbf24">{{ k.em_aberto|default(0) }}</div><div class="label">Em Aberto</div></div>
+    <div class="kpi-item"><div class="num" style="color:#f59e0b">{{ k.em_producao|default(0) }}</div><div class="label">Em Produção</div></div>
+    <div class="kpi-item"><div class="num" style="color:#ef4444">{{ k.atrasados|default(0) }}</div><div class="label">Atrasados</div></div>
+    <div class="kpi-item"><div class="num" style="color:#22c55e">{{ k.atendidos|default(0) }}</div><div class="label">Atendidos</div></div>
+    <div class="kpi-item"><div class="num" style="color:#06b6d4">{{ k.proximos_7dias|default(0) }}</div><div class="label">Próx. 7 Dias</div></div>
 </div>
 
-<!-- ═══════════ SCREEN 1: PEDIDOS DESTAQUE ═══════════ -->
+<!-- ═══════════ TAB NAV ═══════════ -->
+<div class="tab-nav">
+    <button class="tab-btn active" data-screen="0" onclick="showScreen(0)">
+        <i class="fa-solid fa-file-invoice"></i> Pedidos
+    </button>
+    <button class="tab-btn" data-screen="1" onclick="showScreen(1)">
+        <i class="fa-solid fa-gears"></i> OPs em Produção
+    </button>
+    <button class="tab-btn" data-screen="2" onclick="showScreen(2)">
+        <i class="fa-solid fa-bell"></i> Alertas
+    </button>
+    <button class="tab-btn" data-screen="3" onclick="showScreen(3)">
+        <i class="fa-solid fa-chart-pie"></i> Resumo
+    </button>
+</div>
+
+<!-- ═══════════ SCREEN 1: PEDIDOS ═══════════ -->
 <div class="tv-screen active" id="screen-0">
-    <div class="pedidos-title">
-        <i class="fa-solid fa-file-invoice"></i>
-        Pedidos em Destaque — Últimas Previsões
-    </div>
-    {% if pedidos %}
-    <table class="pedidos-table">
-        <thead>
-            <tr>
-                <th>Pedido</th>
-                <th>Emissão</th>
-                <th>Previsão</th>
-                <th>Razão Social</th>
-                <th>Status</th>
-                <th>Ord.Cmp.</th>
-                <th>Dias</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for p in pedidos[:12] %}
-            <tr>
-                <td><span class="pedido-num">#{{ p.pedido }}</span></td>
-                <td>{{ p.data_emissao|formatar_data_br if p.data_emissao else '—' }}</td>
-                <td>{{ p.data_previsao|formatar_data_br if p.data_previsao else '—' }}</td>
-                <td><span class="razao">{{ p.razao_social }}</span></td>
-                <td>
-                    {% set sc = p.status_codigo %}
-                    {% if sc in ['01','02'] %}
-                    <span class="status-badge" style="background:rgba(251,191,36,0.2);color:#fbbf24">Aberto</span>
-                    {% elif sc in ['03','04'] %}
-                    <span class="status-badge" style="background:rgba(59,130,246,0.2);color:#60a5fa">Em OF</span>
-                    {% elif sc in ['05','07','08','09'] %}
-                    <span class="status-badge" style="background:rgba(34,197,94,0.2);color:#22c55e">Atendido</span>
-                    {% elif sc == '06' %}
-                    <span class="status-badge" style="background:rgba(239,68,68,0.2);color:#ef4444">Problema</span>
-                    {% else %}
-                    <span class="status-badge" style="background:rgba(148,163,184,0.2);color:#94a3b8">{{ sc }}</span>
-                    {% endif %}
-                </td>
-                <td>{{ p.lote_producao or '—' }}</td>
-                <td>
-                    {% if p.dias_restantes is not none %}
-                        {% if p.dias_restantes < 0 %}
-                        <span class="dias-atraso" style="color:#ef4444">{{ p.dias_restantes }}d</span>
-                        {% elif p.dias_restantes <= 3 %}
-                        <span class="dias-ok" style="color:#f59e0b">{{ p.dias_restantes }}d</span>
-                        {% else %}
-                        <span class="dias-ok" style="color:#60a5fa">{{ p.dias_restantes }}d</span>
+    <div class="table-container">
+        <div class="section-title"><i class="fa-solid fa-file-invoice"></i> Pedidos — Últimas Previsões</div>
+        {% if pedidos %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Pedido</th><th>Emissão</th><th>Previsão</th><th>Razão Social</th>
+                    <th>Status</th><th>Lote/OP</th><th>Dias</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in pedidos %}
+                <tr onclick="showDetail({{ p.pedido }}, '{{ p.razao_social|e }}', '{{ p.data_emissao }}', '{{ p.data_previsao }}', '{{ p.status_descricao }}', '{{ p.lote_producao or '' }}', '{{ p.ordem_producao or '' }}', {{ p.dias_restantes if p.dias_restantes is not none else 'null' }})">\n                    <td><span class="pedido-num">#{{ p.pedido }}</span></td>
+                    <td>{{ p.data_emissao|formatar_data_br if p.data_emissao else '—' }}</td>
+                    <td>{{ p.data_previsao|formatar_data_br if p.data_previsao else '—' }}</td>
+                    <td><span class="razao">{{ p.razao_social }}</span></td>
+                    <td>
+                        {% set sc = p.status_codigo %}
+                        {% if sc in ['01','02'] %}<span class="status-badge" style="background:rgba(251,191,36,0.2);color:#fbbf24">Aberto</span>
+                        {% elif sc in ['03','04'] %}<span class="status-badge" style="background:rgba(59,130,246,0.2);color:#60a5fa">Em OF</span>
+                        {% elif sc in ['05','07','08','09'] %}<span class="status-badge" style="background:rgba(34,197,94,0.2);color:#22c55e">Atendido</span>
+                        {% elif sc == '06' %}<span class="status-badge" style="background:rgba(239,68,68,0.2);color:#ef4444">Problema</span>
+                        {% elif sc == '10' %}<span class="status-badge" style="background:rgba(100,116,139,0.2);color:#64748b">Cancelado</span>
+                        {% else %}<span class="status-badge" style="background:rgba(148,163,184,0.2);color:#94a3b8">{{ sc }}</span>
                         {% endif %}
-                    {% else %}<span style="color:#475569">—</span>{% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <div style="text-align:center; padding:60px; color:#64748b; font-size:18px;">
-        <i class="fa-solid fa-inbox" style="font-size:48px; margin-bottom:15px;"></i>
-        <p>Nenhum pedido em destaque no momento.</p>
+                    </td>
+                    <td>
+                        {% if p.ordem_producao %}<span style="color:#fbbf24;font-weight:700">OP #{{ p.ordem_producao }}</span>{% endif %}
+                        {% if p.lote_producao %}<span style="color:#94a3b8;font-size:10px">L:{{ p.lote_producao }}</span>{% endif %}
+                        {% if not p.ordem_producao and not p.lote_producao %}<span style="color:#475569">—</span>{% endif %}
+                    </td>
+                    <td>
+                        {% if p.dias_restantes is not none %}
+                            {% if p.dias_restantes < 0 %}<span class="dias-num" style="color:#ef4444">{{ p.dias_restantes }}d</span>
+                            {% elif p.dias_restantes <= 3 %}<span class="dias-num" style="color:#f59e0b">{{ p.dias_restantes }}d</span>
+                            {% else %}<span class="dias-num" style="color:#60a5fa">{{ p.dias_restantes }}d</span>
+                            {% endif %}
+                        {% else %}<span style="color:#475569">—</span>{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="text-align:center; padding:60px; color:#64748b; font-size:16px;">
+            <i class="fa-solid fa-inbox" style="font-size:40px; margin-bottom:10px;"></i>
+            <p>Nenhum pedido em destaque.</p>
+        </div>
+        {% endif %}
     </div>
-    {% endif %}
 </div>
 
-<!-- ═══════════ SCREEN 2: OPs EM PRODUÇÃO ═══════════ -->
+<!-- ═══════════ SCREEN 2: OPs ═══════════ -->
 <div class="tv-screen" id="screen-1">
-    <div class="pedidos-title">
-        <i class="fa-solid fa-gears"></i>
-        Ordens de Produção em Andamento
-    </div>
+    <div class="section-title" style="padding:10px 20px"><i class="fa-solid fa-gears"></i> Ordens de Produção em Andamento</div>
     <div class="ops-grid">
-        {% for op in ops[:12] %}
-        <div class="op-card {{ op.status|default('') }}">
+        {% for op in ops %}
+        <div class="op-card {{ op.status|default('') }}" onclick="window.open('/admin/lote/{{ op.ordem }}', '_blank')">
             <div class="op-num">#{{ op.ordem }}</div>
-            <div class="op-produto">{{ op.descricao_produto|truncate(30) if op.descricao_produto else 'Produto não identificado' }}</div>
+            <div class="op-produto">{{ op.descricao_produto|truncate(35) if op.descricao_produto else 'Produto não identificado' }}</div>
             <div class="op-lote">Lote: {{ op.lote_codigo or '—' }}</div>
             <div>
                 <span class="op-setor" style="background:rgba(99,102,241,0.2);color:#818cf8">
-                    <i class="fa-solid fa-industry" style="margin-right:3px"></i>
-                    {{ op.departamento_atual or 'Sem setor' }}
+                    <i class="fa-solid fa-industry" style="margin-right:3px"></i>{{ op.departamento_atual or 'Sem setor' }}
                 </span>
             </div>
             <div>
-                {% if op.status == 'em_producao' %}
-                <span class="op-status-label" style="background:rgba(245,158,11,0.2);color:#f59e0b">
-                    <i class="fa-solid fa-spinner" style="margin-right:3px"></i>Em Produção
-                </span>
-                {% elif op.status == 'liberado' %}
-                <span class="op-status-label" style="background:rgba(59,130,246,0.2);color:#60a5fa">
-                    <i class="fa-solid fa-lock-open" style="margin-right:3px"></i>Liberado
-                </span>
-                {% elif op.status == 'pausado' %}
-                <span class="op-status-label" style="background:rgba(239,68,68,0.2);color:#ef4444">
-                    <i class="fa-solid fa-pause" style="margin-right:3px"></i>Pausado
-                </span>
+                {% if op.status == 'em_producao' %}<span class="op-status-label" style="background:rgba(245,158,11,0.2);color:#f59e0b"><i class="fa-solid fa-spinner" style="margin-right:3px"></i>Em Produção</span>
+                {% elif op.status == 'liberado' %}<span class="op-status-label" style="background:rgba(59,130,246,0.2);color:#60a5fa"><i class="fa-solid fa-lock-open" style="margin-right:3px"></i>Liberado</span>
+                {% elif op.status == 'pausado' %}<span class="op-status-label" style="background:rgba(239,68,68,0.2);color:#ef4444"><i class="fa-solid fa-pause" style="margin-right:3px"></i>Pausado</span>
+                {% elif op.status == 'finalizado' %}<span class="op-status-label" style="background:rgba(34,197,94,0.2);color:#22c55e"><i class="fa-solid fa-check" style="margin-right:3px"></i>Finalizado</span>
                 {% endif %}
             </div>
             {% if op.data_previsao_erp %}
-            <div style="margin-top:8px; font-size:11px; color:#94a3b8;">
-                <i class="fa-regular fa-calendar" style="margin-right:3px"></i>
-                Previsão: {{ op.data_previsao_erp|formatar_data_br }}
-            </div>
+            <div style="margin-top:6px; font-size:10px; color:#94a3b8;"><i class="fa-regular fa-calendar" style="margin-right:3px"></i>Previsão: {{ op.data_previsao_erp|formatar_data_br }}</div>
             {% endif %}
         </div>
         {% endfor %}
         {% if not ops %}
-        <div style="grid-column: 1/-1; text-align:center; padding:60px; color:#64748b; font-size:18px;">
-            <i class="fa-solid fa-gears" style="font-size:48px; margin-bottom:15px;"></i>
-            <p>Nenhuma OP em produção no momento.</p>
+        <div style="grid-column:1/-1; text-align:center; padding:60px; color:#64748b; font-size:16px;">
+            <i class="fa-solid fa-gears" style="font-size:40px; margin-bottom:10px;"></i>
+            <p>Nenhuma OP em produção.</p>
         </div>
         {% endif %}
     </div>
@@ -459,110 +289,281 @@
 
 <!-- ═══════════ SCREEN 3: ALERTAS ═══════════ -->
 <div class="tv-screen" id="screen-2">
-    <div class="pedidos-title">
-        <i class="fa-solid fa-bell"></i>
-        Alertas e Ações Imediatas
-    </div>
-    <div class="alertas-container">
-        {# Pedidos atrasados #}
+    <div class="section-title" style="padding:10px 20px"><i class="fa-solid fa-bell"></i> Alertas e Ações Imediatas</div>
+    <div style="padding:5px 20px; overflow-y: auto; height: calc(100% - 50px);">
+        {% set atrasados = [] %}
         {% for p in pedidos if p.dias_restantes is not none and p.dias_restantes < 0 %}
-        <div class="alerta-item atrasado">
-            <div class="alerta-icon" style="background:rgba(239,68,68,0.2)">
-                <i class="fa-solid fa-triangle-exclamation" style="color:#ef4444"></i>
-            </div>
-            <div class="alerta-info">
-                <div class="alerta-pedido">Pedido #{{ p.pedido }}</div>
-                <div class="alerta-razao">{{ p.razao_social }}</div>
-                <div class="alerta-detalhes">
-                    Previsão: {{ p.data_previsao|formatar_data_br if p.data_previsao else '—' }}
-                    {% if p.lote_producao %} | Lote: {{ p.lote_producao }}{% endif %}
-                    {% if p.ordem_producao %} | OP: #{{ p.ordem_producao }}{% endif %}
-                </div>
-            </div>
-            <div class="alerta-dias" style="color:#ef4444">
-                <i class="fa-solid fa-clock" style="font-size:14px; display:block; margin-bottom:2px"></i>
-                {{ p.dias_restantes }}d
-            </div>
-        </div>
+            {% set _ = atrasados.append(p) %}
         {% endfor %}
-
-        {# Próximos da entrega #}
+        {% set urgentes = [] %}
         {% for p in pedidos if p.dias_restantes is not none and p.dias_restantes >= 0 and p.dias_restantes <= 3 %}
-        <div class="alerta-item urgente">
-            <div class="alerta-icon" style="background:rgba(245,158,11,0.2)">
-                <i class="fa-solid fa-hourglass-half" style="color:#f59e0b"></i>
-            </div>
-            <div class="alerta-info">
-                <div class="alerta-pedido">Pedido #{{ p.pedido }}</div>
-                <div class="alerta-razao">{{ p.razao_social }}</div>
-                <div class="alerta-detalhes">
-                    Previsão: {{ p.data_previsao|formatar_data_br if p.data_previsao else '—' }}
-                    {% if p.ordem_producao %} | OP: #{{ p.ordem_producao }}{% endif %}
-                </div>
-            </div>
-            <div class="alerta-dias" style="color:#f59e0b">
-                <i class="fa-solid fa-hourglass-half" style="font-size:14px; display:block; margin-bottom:2px"></i>
-                {% if p.dias_restantes == 0 %}Hoje{% else %}{{ p.dias_restantes }}d{% endif %}
-            </div>
-        </div>
+            {% set _ = urgentes.append(p) %}
         {% endfor %}
 
-        {# Se não tem alertas #}
-        {% if pedidos|length == 0 or (pedidos|selectattr('dias_restantes', 'defined')|list)|length == 0 %}
-        <div style="text-align:center; padding:60px; color:#64748b; font-size:18px;">
-            <i class="fa-solid fa-check-circle" style="font-size:48px; color:#22c55e; margin-bottom:15px;"></i>
+        {% if atrasados %}
+        <div style="margin-bottom:8px; font-size:13px; font-weight:700; color:#ef4444;"><i class="fa-solid fa-circle" style="font-size:8px;margin-right:5px"></i>Atrasados ({{ atrasados|length }})</div>
+        {% for p in atrasados %}
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 15px;margin-bottom:6px;border-radius:10px;background:rgba(239,68,68,0.1);border-left:4px solid #ef4444;">
+            <div style="width:40px;height:40px;border-radius:10px;background:rgba(239,68,68,0.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fa-solid fa-triangle-exclamation" style="color:#ef4444;font-size:18px;"></i>
+            </div>
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:16px;font-weight:800;color:#fbbf24;font-family:'JetBrains Mono',monospace;">Pedido #{{ p.pedido }}</div>
+                <div style="font-size:13px;font-weight:600;color:#e2e8f0;margin-top:2px;">{{ p.razao_social }}</div>
+                <div style="font-size:11px;color:#94a3b8;margin-top:2px;">Previsão: {{ p.data_previsao|formatar_data_br if p.data_previsao else '—' }}
+                    {% if p.ordem_producao %} | OF: #{{ p.ordem_producao }}{% endif %}</div>
+            </div>
+            <div style="font-size:22px;font-weight:900;color:#ef4444;text-align:center;flex-shrink:0;min-width:70px;">{{ p.dias_restantes }}d</div>
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        {% if urgentes %}
+        <div style="margin-top:15px;margin-bottom:8px; font-size:13px; font-weight:700; color:#f59e0b;"><i class="fa-solid fa-circle" style="font-size:8px;margin-right:5px"></i>Urgentes — Próximos 3 dias ({{ urgentes|length }})</div>
+        {% for p in urgentes %}
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 15px;margin-bottom:6px;border-radius:10px;background:rgba(245,158,11,0.1);border-left:4px solid #f59e0b;">
+            <div style="width:40px;height:40px;border-radius:10px;background:rgba(245,158,11,0.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fa-solid fa-hourglass-half" style="color:#f59e0b;font-size:18px;"></i>
+            </div>
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:16px;font-weight:800;color:#fbbf24;font-family:'JetBrains Mono',monospace;">Pedido #{{ p.pedido }}</div>
+                <div style="font-size:13px;font-weight:600;color:#e2e8f0;margin-top:2px;">{{ p.razao_social }}</div>
+                <div style="font-size:11px;color:#94a3b8;margin-top:2px;">Previsão: {{ p.data_previsao|formatar_data_br if p.data_previsao else '—' }}
+                    {% if p.ordem_producao %} | OF: #{{ p.ordem_producao }}{% endif %}</div>
+            </div>
+            <div style="font-size:22px;font-weight:900;color:#f59e0b;text-align:center;flex-shrink:0;min-width:70px;">{% if p.dias_restantes == 0 %}Hoje{% else %}{{ p.dias_restantes }}d{% endif %}</div>
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        {% if not atrasados and not urgentes %}
+        <div style="text-align:center; padding:60px; color:#64748b; font-size:16px;">
+            <i class="fa-solid fa-check-circle" style="font-size:40px; color:#22c55e; margin-bottom:10px;"></i>
             <p>Nenhum alerta no momento.</p>
         </div>
         {% endif %}
     </div>
 </div>
 
-<!-- ═══════════ SCREEN INDICATOR ═══════════ -->
-<div class="screen-indicator">
-    <div class="screen-dot active" id="dot-0"></div>
-    <div class="screen-dot" id="dot-1"></div>
-    <div class="screen-dot" id="dot-2"></div>
+<!-- ═══════════ SCREEN 4: RESUMO ═══════════ -->
+<div class="tv-screen" id="screen-3">
+    <div class="section-title" style="padding:10px 20px"><i class="fa-solid fa-chart-pie"></i> Resumo Geral</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:15px 20px;height:calc(100% - 50px);overflow:hidden;">
+        {# Gráfico de Status #}
+        <div style="background:#1e293b;border-radius:12px;padding:20px;border:1px solid rgba(255,255,255,0.06);">
+            <h3 style="font-size:14px;font-weight:700;color:#94a3b8;margin-bottom:15px;">Status dos Pedidos</h3>
+            <div style="space-y:12px;">
+                {% set status_list = [
+                    ('01', 'Não Aprovado', '#64748b', k.total_pedidos|default(0)),
+                    ('02', 'Em Aberto', '#fbbf24', k.em_aberto|default(0)),
+                    ('03', 'Vínculo OF Estática', '#f97316', 0),
+                    ('04', 'Vínculo OF Processo', '#3b82f6', k.em_producao|default(0)),
+                    ('05', 'Vínculo OF Encerrada', '#22c55e', 0),
+                    ('06', 'Vínculo OF Problema', '#ef4444', 0),
+                    ('07', 'Atendido Parcial', '#84cc16', 0),
+                    ('08', 'Atendido Total', '#16a34a', 0),
+                    ('09', 'Expedição', '#06b6d4', 0),
+                    ('10', 'Cancelado', '#7f1d1d', k.cancelados|default(0))
+                ] %}
+                {% set total = k.total_pedidos|default(1) %}
+                {% for cod, desc, color, count in status_list %}
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                    <div style="width:6px;height:30px;border-radius:3px;background:{{color}};flex-shrink:0;"></div>
+                    <div style="flex:1;">
+                        <div style="font-size:12px;color:#cbd5e1;font-weight:600;">{{desc}}</div>
+                    </div>
+                    <div style="font-size:20px;font-weight:900;color:{{color}};font-family:'JetBrains Mono',monospace;">{{count}}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        {# Próximas entregas #}
+        <div style="background:#1e293b;border-radius:12px;padding:20px;border:1px solid rgba(255,255,255,0.06);">
+            <h3 style="font-size:14px;font-weight:700;color:#94a3b8;margin-bottom:15px;">Próximas Entregas (7 dias)</h3>
+            {% set proximos = [] %}
+            {% for p in pedidos if p.dias_restantes is not none and p.dias_restantes >= 0 and p.dias_restantes <= 7 %}
+                {% set _ = proximos.append(p) %}
+            {% endfor %}
+            {% if proximos %}
+            {% for p in proximos[:8] %}
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+                <div style="font-size:14px;font-weight:800;color:#60a5fa;font-family:'JetBrains Mono',monospace;min-width:70px;">#{{ p.pedido }}</div>
+                <div style="flex:1;">
+                    <div style="font-size:12px;font-weight:600;color:#e2e8f0;">{{ p.razao_social }}</div>
+                    <div style="font-size:10px;color:#64748b;">{{ p.data_previsao|formatar_data_br if p.data_previsao else '—' }}</div>
+                </div>
+                <div style="font-size:16px;font-weight:900;{% if p.dias_restantes <= 1 %}color:#ef4444{% elif p.dias_restantes <= 3 %}color:#f59e0b{% else %}color:#22c55e{% endif %};">{{ p.dias_restantes }}d</div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div style="text-align:center;padding:40px;color:#475569;font-size:14px;">Nenhum pedido previsto para 7 dias.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ DETAIL MODAL ═══════════ -->
+<div class="detail-overlay" id="detail-overlay" onclick="closeDetail(event)">
+    <div class="detail-modal" onclick="event.stopPropagation()">
+        <h2>Pedido <span id="d-pedido"></span></h2>
+        <div style="font-size:14px;color:#94a3b8;margin-bottom:10px;" id="d-razao"></div>
+        <div class="detail-grid">
+            <div class="detail-field">
+                <label>Emissão</label>
+                <value id="d-emissao"></value>
+            </div>
+            <div class="detail-field">
+                <label>Previsão</label>
+                <value id="d-previ"></value>
+            </div>
+            <div class="detail-field">
+                <label>Status</label>
+                <value id="d-status"></value>
+            </div>
+            <div class="detail-field">
+                <label>Dias Restantes</label>
+                <value id="d-dias"></value>
+            </div>
+            <div class="detail-field">
+                <label>Lote Produção</label>
+                <value id="d-lote"></value>
+            </div>
+            <div class="detail-field">
+                <label>OF Vinculada</label>
+                <value id="d-of"></value>
+                <a href="#" id="d-of-link" class="of-link" target="_blank" style="display:none;">Ver detalhes da OP <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px;"></i></a>
+            </div>
+        </div>
+        <div style="margin-top:20px;text-align:center;">
+            <button onclick="document.getElementById('detail-overlay').classList.remove('show')" style="padding:8px 20px;background:#3b82f6;color:white;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;">
+                <i class="fa-solid fa-xmark" style="margin-right:5px;"></i> Fechar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ ROTATE BAR ═══════════ -->
+<div class="rotate-bar"><div class="rotate-bar-fill" id="rotate-fill"></div></div>
+
+<!-- ═══════════ NAV HINT ═══════════ -->
+<div class="nav-hint">
+    <kbd>←</kbd><kbd>→</kbd> Navegar &nbsp;|&nbsp; Auto: <span id="auto-status">LIG</span> &nbsp;|&nbsp; <kbd>Space</kbd> Pausar
 </div>
 
 <script>
 // ═══════════ RELÓGIO ═══════════
 function updateClock() {
     const now = new Date();
-    document.getElementById('clock').textContent = now.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
-    document.getElementById('data').textContent = now.toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'2-digit', year:'numeric' });
+    document.getElementById('clock').textContent = now.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    document.getElementById('data').textContent = now.toLocaleDateString('pt-BR', {weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
 }
 setInterval(updateClock, 1000);
 updateClock();
 
-// ═══════════ ROTAÇÃO DE TELAS ═══════════
+// ═══════════ TAB NAVIGATION ═══════════
 let currentScreen = 0;
-const totalScreens = 3;
-const INTERVAL = 30000; // 30 segundos por tela
+const totalScreens = 4;
+const INTERVAL = 30000;
+let autoRotate = true;
+let rotateTimer = null;
+let fillTimer = null;
 
 function showScreen(n) {
-    // Esconder todas
     document.querySelectorAll('.tv-screen').forEach(s => s.classList.remove('active'));
-    document.querySelectorAll('.screen-dot').forEach(d => d.classList.remove('active'));
-
-    // Mostrar atual
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     const screen = document.getElementById('screen-' + n);
-    const dot = document.getElementById('dot-' + n);
+    const btn = document.querySelector('.tab-btn[data-screen="' + n + '"]');
     if (screen) screen.classList.add('active');
-    if (dot) dot.classList.add('active');
+    if (btn) btn.classList.add('active');
     currentScreen = n;
+    resetRotation();
 }
 
-function nextScreen() {
-    const next = (currentScreen + 1) % totalScreens;
-    showScreen(next);
+// ═══════════ AUTO-ROTATE ═══════════
+function startRotation() {
+    if (!autoRotate) return;
+    let progress = 0;
+    const step = 100 / (INTERVAL / 100);
+    document.getElementById('rotate-fill').style.width = '0%';
+
+    fillTimer = setInterval(() => {
+        progress += step;
+        document.getElementById('rotate-fill').style.width = Math.min(progress, 100) + '%';
+        if (progress >= 100) clearInterval(fillTimer);
+    }, 100);
+
+    rotateTimer = setInterval(() => {
+        if (!autoRotate) return;
+        const next = (currentScreen + 1) % totalScreens;
+        showScreen(next);
+    }, INTERVAL);
 }
 
-setInterval(nextScreen, INTERVAL);
+function resetRotation() {
+    clearInterval(rotateTimer);
+    clearInterval(fillTimer);
+    if (autoRotate) startRotation();
+}
 
-// ═══════════ AUTO-REFRESH A CADA 5 MIN ═══════════
-setInterval(() => {
-    window.location.reload();
-}, 300000);
+startRotation();
+
+// ═══════════ KEYBOARD NAV ═══════════
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') { showScreen((currentScreen + 1) % totalScreens); }
+    else if (e.key === 'ArrowLeft') { showScreen((currentScreen - 1 + totalScreens) % totalScreens); }
+    else if (e.key === ' ') {
+        e.preventDefault();
+        autoRotate = !autoRotate;
+        document.getElementById('auto-status').textContent = autoRotate ? 'LIG' : 'PAUS';
+        if (autoRotate) startRotation();
+        else { clearInterval(rotateTimer); clearInterval(fillTimer); document.getElementById('rotate-fill').style.width = '0%'; }
+    }
+    else if (e.key === 'Escape') { closeDetail(); }
+});
+
+// ═══════════ DETAIL MODAL ═══════════
+function showDetail(pedido, razao, emissao, previ, status, lote, of, dias) {
+    document.getElementById('d-pedido').textContent = '#' + pedido;
+    document.getElementById('d-razao').textContent = razao;
+    document.getElementById('d-emissao').textContent = emissao ? emissao.split(' ')[0] : '—';
+    document.getElementById('d-previ').textContent = previ ? previ.split(' ')[0] : '—';
+    document.getElementById('d-status').textContent = status;
+    document.getElementById('d-dias').textContent = dias !== null && dias !== undefined ? dias + ' dias' : '—';
+    document.getElementById('d-lote').textContent = lote || '—';
+
+    const ofEl = document.getElementById('d-of');
+    const ofLink = document.getElementById('d-of-link');
+    if (of) {
+        ofEl.textContent = 'OP #' + of;
+        ofLink.href = '/admin/lote/' + of;
+        ofLink.style.display = 'inline-block';
+    } else {
+        ofEl.textContent = 'Sem OF vinculada';
+        ofLink.style.display = 'none';
+    }
+
+    document.getElementById('detail-overlay').classList.add('show');
+}
+
+function closeDetail(e) {
+    if (e && e.target !== e.currentTarget) return;
+    document.getElementById('detail-overlay').classList.remove('show');
+}
+
+// ═══════════ TOUCH/SWIPE ═══════════
+let touchStartX = 0;
+document.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; });
+document.addEventListener('touchend', e => {
+    const diff = touchStartX - e.changedTouches[0].screenX;
+    if (Math.abs(diff) > 80) {
+        if (diff > 0) showScreen((currentScreen + 1) % totalScreens);
+        else showScreen((currentScreen - 1 + totalScreens) % totalScreens);
+    }
+});
+
+// ═══════════ AUTO-REFRESH 5 MIN ═══════════
+setInterval(() => { window.location.reload(); }, 300000);
 </script>
 </body>
 </html>

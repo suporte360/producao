@@ -1,6 +1,10 @@
 """
 Sistema de Gerenciamento de Produção - SALUTEM
-Arquivo de Configuração v4.1
+Arquivo de Configuração v4.2
+
+CONEXÕES:
+- MARIA: MariaDB local do sistema de produção (leitura/escrita)
+- PG_*: PostgreSQL do ERP Lógica (SOMENTE LEITURA)
 """
 import os
 from datetime import timedelta

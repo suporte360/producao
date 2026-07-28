@@ -1,6 +1,11 @@
 """
 Sistema de Produção SALUTEM - Camada de Banco de Dados MySQL/MariaDB
 Versão 4.0 - Controle Total de Linha de Fabricação
+
+ATENÇÃO: MariaDB é o banco local do sistema de produção.
+- PERMITIDO: INSERT, UPDATE, DELETE, SELECT
+- Aqui ficam: lotes_producao, kanban_cards, apontamentos, usuarios, setores
+- O PostgreSQL é só para CONSULTA (ERP Lógica)
 """
 import pymysql
 from pymysql.cursors import DictCursor
