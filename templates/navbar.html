@@ -22,12 +22,9 @@
                 {% endif %}
 
                 {% if session.get('usuario_role') == 'diretor' %}
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('kanban_setores') }}"><i class="bi bi-grid-3x3-gap"></i> Kanban Setores</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('dashboard_almoxarifado') }}"><i class="bi bi-boxes-stacked"></i> Almoxarifado</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('dashboard_pcp') }}"><i class="bi bi-clipboard-data"></i> PCP</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('diretor_relatorios') }}"><i class="bi bi-bar-chart-line"></i> Diretoria</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('diretor_logs') }}"><i class="bi bi-clock-history"></i> Logs</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('diretor_acessos') }}"><i class="bi bi-people"></i> Acessos</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('diretor_relatorios') }}"><i class="bi bi-bar-chart-line"></i> Visão Geral</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('pedidos_redirect') }}"><i class="bi bi-clipboard-data"></i> Pedidos</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('tv_redirect') }}" target="_blank"><i class="bi bi-tv"></i> TV Kanban</a></li>
                 {% endif %}
                 
                 <li class="nav-item dropdown">
