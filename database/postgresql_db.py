@@ -407,32 +407,193 @@ class DatabasePostgreSQL:
         """
         return self.query(sql, (f'%{termo}%',))
 
-    def get_pedidos_erp(self):
+    # ═══════════════════════════════════════════════════════
+    # PEDIDOS DE VENDA — Tabela: pedido + empresa
+    # ═══════════════════════════════════════════════════════
+
+    STATUS_MAP = {
+        '01': 'Pedido Não Aprovado',
+        '02': 'Pedido em Aberto',
+        '03': 'Vínculo com OF Estática',
+        '04': 'Vínculo com OF em Processo',
+        '05': 'Vínculo com OF Encerrada',
+        '06': 'Vínculo com OF Com Problema',
+        '07': 'Atendido Parcial',
+        '08': 'Atendido Total',
+        '09': 'Vínculo com Expedição',
+        '10': 'Pedido Cancelado',
+    }
+
+    SIT_MAP = {
+        'A': 'Aprovado',
+        'P': 'Pendente',
+        'C': 'Cancelado',
+        'I': 'Incompleto',
+    }
+
+    def get_pedidos_erp(self, status=None, busca=None, limite=100):
         """
-        Retorna todos os lotes abertos do ERP com informações completas.
-        Inclui produto final, datas, status e quantidade.
+        Retorna pedidos de venda do ERP com cliente, razão social, status, etc.
+        status: 'todos', 'aberto', 'atrasado', 'producao', 'atendido', 'cancelado'
+        busca: texto para filtrar por número pedido, cliente ou razão social
         """
         sql = """
             SELECT
-                lp.lotcod AS lote_codigo,
-                lp.lotdes AS lote_descricao,
-                lp.lotdtini AS data_abertura,
-                lp.lotdtpre AS data_previsao,
-                lp.lotstatus AS status_erp,
-                NULLIF(TRIM(lp.lottrans),'') AS observacao,
-                (SELECT o.ordproduto
-                 FROM public.ordem o WHERE o.lotcod = lp.lotcod AND o.ordnivprod = '1' LIMIT 1) AS produto_final_codigo,
-                (SELECT COUNT(DISTINCT o.ordem) FROM public.ordem o WHERE o.lotcod = lp.lotcod) AS total_ofs,
-                (SELECT COALESCE(o.ordquanti, 0) FROM public.ordem o WHERE o.lotcod = lp.lotcod AND o.ordnivprod = '1' LIMIT 1) AS quantidade_pai,
-                (SELECT COALESCE(SUM(o.ordquanti), 0) FROM public.ordem o WHERE o.lotcod = lp.lotcod) AS quantidade_total,
-                (SELECT MAX(o.ordem) FROM public.ordem o WHERE o.lotcod = lp.lotcod) AS maior_ordem,
-                (SELECT p.pronome FROM public.produto p WHERE p.produto = (SELECT o.ordproduto FROM public.ordem o WHERE o.lotcod = lp.lotcod AND o.ordnivprod = '1' LIMIT 1) LIMIT 1) AS nome_produto
-            FROM public.loteprod lp
-            WHERE lp.lotcod IS NOT NULL AND lp.lotcod <> ''
-              AND (lp.lotstatus IS NULL OR lp.lotstatus IN ('EP', 'ES', ''))
-            ORDER BY lp.lotcod DESC
+                p.pedido,
+                p.peddata AS data_emissao,
+                p.tipoped AS tipo,
+                p.pedprevi AS data_previsao,
+                p.peddtdigit AS data_digitacao,
+                p.pedhrdigit AS hora_digitacao,
+                p.pedusu AS usuario_digitou,
+                p.deposito,
+                p.pedcliente AS codigo_cliente,
+                COALESCE(NULLIF(TRIM(e.empnome),''), 'Não identificado') AS razao_social,
+                e.empdemtip AS tipo_cliente,
+                p.pedordcmp AS ordem_compra,
+                p.pedcondica AS condicao_pagamento,
+                p.pedtransp AS codigo_transportadora,
+                p.pedoperaca AS operacao,
+                p.pedrepresent AS representante,
+                COALESCE(NULLIF(TRIM(rep.repnome),''), '-') AS nome_representante,
+                p.pedsitua AS situacao_codigo,
+                p.pedsitsit AS status_codigo,
+                COALESCE(p.pedordcomp, '') AS numero_carga,
+                p.pedrep AS pedido_representante,
+                p.pedvlrfat AS valor_faturado,
+                p.pedobserva AS observacao,
+                p.pedaprova AS aprovado,
+                p.peddtrepla AS data_reprogramacao,
+                p.peddtaalt AS data_alteracao,
+                p.pedusualt AS usuario_alterou
+            FROM public.pedido p
+            LEFT JOIN public.empresa e ON p.pedcliente::TEXT = e.empresa::TEXT
+            LEFT JOIN public.represent rep ON p.pedrepres = rep.represent
+            WHERE 1=1
         """
-        return self.query(sql)
+        params = []
+
+        # Filtro por status
+        if status == 'aberto':
+            sql += " AND p.pedsitsit IN ('01','02','03','04')"
+            sql += " AND p.pedsitua != 'C'"
+        elif status == 'producao':
+            sql += " AND p.pedsitsit IN ('03','04','06')"
+            sql += " AND p.pedsitua != 'C'"
+        elif status == 'atendido':
+            sql += " AND p.pedsitsit IN ('05','07','08','09')"
+        elif status == 'cancelado':
+            sql += " AND (p.pedsitsit = '10' OR p.pedsitua = 'C')"
+        elif status == 'atrasado':
+            sql += " AND p.pedprevi IS NOT NULL"
+            sql += " AND p.pedprevi < CURRENT_DATE"
+            sql += " AND p.pedsitsit IN ('01','02','03','04')"
+            sql += " AND p.pedsitua != 'C'"
+
+        # Busca por texto
+        if busca:
+            busca_like = f'%{busca}%'
+            sql += " AND (CAST(p.pedido AS TEXT) LIKE %s OR NULLIF(TRIM(e.empnome),'') ILIKE %s OR CAST(p.pedcliente AS TEXT) LIKE %s)"
+            params.extend([busca_like, busca_like, busca_like])
+
+        # Somente pedidos recentes (últimos 2 anos) e que não são cancelados a menos que solicitado
+        if status != 'cancelado':
+            sql += " AND p.peddata >= CURRENT_DATE - INTERVAL '2 years'"
+
+        sql += " ORDER BY p.pedido DESC LIMIT %s"
+        params.append(limite)
+
+        resultados = self.query(sql, tuple(params))
+
+        # Aplicar mapa de status
+        for r in resultados:
+            r['status_descricao'] = self.STATUS_MAP.get(r.get('status_codigo') or '', 'Desconhecido')
+            r['situacao_descricao'] = self.SIT_MAP.get(r.get('situacao_codigo') or '', 'Desconhecido')
+
+        return resultados
+
+    def get_resumo_pedidos_erp(self):
+        """Retorna resumo rápido de pedidos para KPIs."""
+        try:
+            resultados = self.query("""
+                SELECT
+                    COUNT(*) AS total_pedidos,
+                    SUM(CASE WHEN pedsitsit IN ('01','02') AND pedsitua != 'C' THEN 1 ELSE 0 END) AS em_aberto,
+                    SUM(CASE WHEN pedsitsit IN ('03','04') AND pedsitua != 'C' THEN 1 ELSE 0 END) AS em_producao,
+                    SUM(CASE WHEN pedsitsit = '05' AND pedsitua != 'C' THEN 1 ELSE 0 END) AS vinculados_of,
+                    SUM(CASE WHEN pedsitsit IN ('07','08','09') THEN 1 ELSE 0 END) AS atendidos,
+                    SUM(CASE WHEN pedsitsit = '10' OR pedsitua = 'C' THEN 1 ELSE 0 END) AS cancelados,
+                    SUM(CASE WHEN pedprevi IS NOT NULL AND pedprevi < CURRENT_DATE AND pedsitsit IN ('01','02','03','04') AND pedsitua != 'C' THEN 1 ELSE 0 END) AS atrasados,
+                    SUM(CASE WHEN pedprevi IS NOT NULL AND pedprevi BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days' AND pedsitsit IN ('01','02','03','04') AND pedsitua != 'C' THEN 1 ELSE 0 END) AS proximos_7dias,
+                    SUM(COALESCE(pedvlrfat, 0)) AS valor_total_faturado
+                FROM public.pedido
+                WHERE peddata >= CURRENT_DATE - INTERVAL '1 year'
+            """)
+            r = resultados[0] if resultados else {}
+            return {
+                'total_pedidos': int(r.get('total_pedidos', 0) or 0),
+                'em_aberto': int(r.get('em_aberto', 0) or 0),
+                'em_producao': int(r.get('em_producao', 0) or 0),
+                'vinculados_of': int(r.get('vinculados_of', 0) or 0),
+                'atendidos': int(r.get('atendidos', 0) or 0),
+                'cancelados': int(r.get('cancelados', 0) or 0),
+                'atrasados': int(r.get('atrasados', 0) or 0),
+                'proximos_7dias': int(r.get('proximos_7dias', 0) or 0),
+                'valor_total_faturado': float(r.get('valor_total_faturado', 0) or 0),
+            }
+        except Exception as e:
+            print(f"Erro get_resumo_pedidos_erp: {e}")
+            return {
+                'total_pedidos':0,'em_aberto':0,'em_producao':0,'vinculados_of':0,
+                'atendidos':0,'cancelados':0,'atrasados':0,'proximos_7dias':0,'valor_total_faturado':0
+            }
+
+    def get_pedidos_erp_para_tv(self, limite=30):
+        """
+        Retorna pedidos relevantes para a TV da diretoria:
+        - Em produção (status 03, 04)
+        - Atrasados
+        - Próximos da entrega
+        """
+        resultados = self.query("""
+            SELECT
+                p.pedido,
+                p.peddata AS data_emissao,
+                p.pedprevi AS data_previsao,
+                COALESCE(NULLIF(TRIM(e.empnome),''), 'Não identificado') AS razao_social,
+                p.pedsitsit AS status_codigo,
+                p.pedsitua AS situacao,
+                p.pedvlrfat AS valor_faturado,
+                -- Buscar OF vinculada
+                (SELECT lp.lotcod FROM public.loteprod lp
+                 WHERE lp.lotcod = p.pedoflote LIMIT 1) AS lote_producao,
+                -- Buscar OP vinculada via ordem
+                (SELECT o.ordem::integer FROM public.ordem o
+                 WHERE o.pedcod = p.pedido::TEXT OR o.lotcod = p.pedoflote
+                 LIMIT 1) AS ordem_producao,
+                -- Dias restantes
+                CASE
+                    WHEN p.pedprevi IS NULL THEN NULL
+                    WHEN p.pedprevi < CURRENT_DATE THEN -(CURRENT_DATE - p.pedprevi)
+                    ELSE (p.pedprevi - CURRENT_DATE)
+                END AS dias_restantes
+            FROM public.pedido p
+            LEFT JOIN public.empresa e ON p.pedcliente::TEXT = e.empresa::TEXT
+            WHERE p.peddata >= CURRENT_DATE - INTERVAL '90 days'
+              AND p.pedsitua != 'C'
+              AND p.pedsitsit IN ('01','02','03','04','05','06','07','08','09')
+            ORDER BY
+                CASE WHEN p.pedsitsit IN ('03','04') THEN 0 ELSE 1 END,
+                CASE WHEN p.pedprevi < CURRENT_DATE THEN 0 ELSE 1 END,
+                p.pedprevi ASC,
+                p.pedido DESC
+            LIMIT %s
+        """, (limite,))
+
+        for r in resultados:
+            r['status_descricao'] = self.STATUS_MAP.get(r.get('status_codigo') or '', 'Desconhecido')
+
+        return resultados
 
     def get_requisicoes_multiplas_ordens(self, ordens):
         """Busca materiais de varias OFs de uma vez (otimizado para dashboard)."""

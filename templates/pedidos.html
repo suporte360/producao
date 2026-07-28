@@ -1,25 +1,25 @@
 {% extends "base.html" %}
-{% block title %}Pedidos — SALUTEM{% endblock %}
+{% block title %}Pedidos de Venda — SALUTEM{% endblock %}
 
 {% block header_title %}
 <span class="flex items-center gap-2">
-  <i class="fa-solid fa-clipboard-list text-blue-600"></i>
-  <span class="hidden sm:inline">Pedidos</span>
+  <i class="fa-solid fa-file-invoice text-blue-600"></i>
+  <span class="hidden sm:inline">Pedidos de Venda</span>
 </span>
 {% endblock %}
 
 {% block content %}
 
 {# ═══════════════ KPIs ═══════════════ #}
+{% set r = resumo %}
 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
-  {% set r = resumo %}
   <div class="prodsys-card p-3 text-center">
     <div class="text-2xl font-black text-blue-700">{{ r.total_pedidos or 0 }}</div>
     <div class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mt-1">Total Pedidos</div>
   </div>
   <div class="prodsys-card p-3 text-center">
-    <div class="text-2xl font-black text-amber-600">{{ r.aguardando_liberacao or 0 }}</div>
-    <div class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mt-1">Aguard. Liberação</div>
+    <div class="text-2xl font-black text-amber-600">{{ r.em_aberto or 0 }}</div>
+    <div class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mt-1">Em Aberto</div>
   </div>
   <div class="prodsys-card p-3 text-center">
     <div class="text-2xl font-black text-orange-500">{{ r.em_producao or 0 }}</div>
@@ -30,8 +30,8 @@
     <div class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mt-1">Atrasados</div>
   </div>
   <div class="prodsys-card p-3 text-center">
-    <div class="text-2xl font-black text-green-600">{{ r.concluidos_mes or 0 }}</div>
-    <div class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mt-1">Concluídos Mês</div>
+    <div class="text-2xl font-black text-green-600">{{ r.atendidos or 0 }}</div>
+    <div class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mt-1">Atendidos</div>
   </div>
   <div class="prodsys-card p-3 text-center">
     <div class="text-2xl font-black text-cyan-600">{{ r.proximos_7dias or 0 }}</div>
@@ -44,17 +44,19 @@
   <form method="get" action="{{ url_for('pedidos_redirect') }}" class="flex flex-wrap items-center gap-3">
     <div class="flex items-center gap-2 flex-1 min-w-[200px]">
       <i class="fa-solid fa-magnifying-glass text-gray-400 text-sm"></i>
-      <input type="text" name="busca" value="{{ busca }}" placeholder="Buscar por descrição, lote ou OP..."
+      <input type="text" name="busca" value="{{ busca }}" placeholder="Buscar por nº pedido, cliente ou razão social..."
              class="w-full text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
     </div>
     <div class="flex items-center gap-1.5 overflow-x-auto">
-      {% for st, label, color in [
+      {% set filtros = [
         ('todos', 'Todos', 'blue'),
-        ('aberto', 'Abertos', 'amber'),
+        ('aberto', 'Em Aberto', 'amber'),
+        ('producao', 'Em Produção', 'orange'),
         ('atrasado', 'Atrasados', 'red'),
-        ('proximo', 'Próx. 7 Dias', 'cyan'),
-        ('finalizado', 'Finalizados', 'green')
+        ('atendido', 'Atendidos', 'green'),
+        ('cancelado', 'Cancelados', 'gray')
       ] %}
+      {% for st, label, color in filtros %}
       <a href="{{ url_for('pedidos_redirect', status=st, busca=busca) }}"
          class="px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all
                 {% if status_filtro == st %}
@@ -70,16 +72,16 @@
 </div>
 
 {# ═══════════════ ALERTA ATRASADOS ═══════════════ #}
-{% if r.atrasados > 0 %}
+{% if r.atrasados and r.atrasados > 0 %}
 <div class="mb-4 rounded-xl border-l-4 border-red-500 bg-red-50 px-4 py-3 flex items-center gap-3">
   <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
     <i class="fa-solid fa-triangle-exclamation text-red-600 text-lg"></i>
   </div>
   <div class="flex-1 min-w-0">
     <div class="font-black text-red-800 text-sm">⚠ {{ r.atrasados }} PEDIDO(S) ATRASADO(S)</div>
-    <div class="text-xs text-red-700">Verifique a lista abaixo e priorize a liberação</div>
+    <div class="text-xs text-red-700">Data de previsão já passou e pedido ainda não foi atendido</div>
   </div>
-  <a href="{{ url_for('pedidos_redirect', status='atrasado') }}" class="btn-danger text-xs px-3 py-2 rounded-lg">
+  <a href="{{ url_for('pedidos_redirect', status='atrasado') }}" class="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-2 rounded-lg font-bold transition">
     Ver atrasados <i class="fa-solid fa-arrow-down ml-1"></i>
   </a>
 </div>
@@ -90,7 +92,7 @@
   <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
     <h3 class="text-sm font-bold text-gray-700 flex items-center gap-2">
       <i class="fa-solid fa-list-check text-blue-500"></i>
-      Pedidos ({% if status_filtro == 'todos' %}Todos{% elif status_filtro == 'aberto' %}Abertos{% elif status_filtro == 'atrasado' %}Atrasados{% elif status_filtro == 'proximo' %}Próximos{% elif status_filtro == 'finalizado' %}Finalizados{% endif %})
+      Pedidos de Venda
     </h3>
     <span class="text-xs text-gray-400">{{ pedidos|length }} registros</span>
   </div>
@@ -100,109 +102,111 @@
     <table class="w-full text-sm">
       <thead class="text-xs uppercase tracking-wider text-gray-500 border-b border-gray-100 bg-gray-50">
         <tr>
-          <th class="px-3 py-2.5 text-left">OP / Lote</th>
-          <th class="px-3 py-2.5 text-left">Produto</th>
-          <th class="px-3 py-2.5 text-center">Qtd</th>
-          <th class="px-3 py-2.5 text-center">Prioridade</th>
-          <th class="px-3 py-2.5 text-center">Status</th>
-          <th class="px-3 py-2.5 text-center">Abertura</th>
-          <th class="px-3 py-2.5 text-center">Previsão</th>
-          <th class="px-3 py-2.5 text-center">Dias</th>
-          <th class="px-3 py-2.5 text-center">Setor Atual</th>
-          <th class="px-3 py-2.5 text-center">Progresso</th>
+          <th class="px-2 py-2.5 text-center">Pedido</th>
+          <th class="px-2 py-2.5 text-center">Tipo</th>
+          <th class="px-2 py-2.5 text-center">Emissão</th>
+          <th class="px-2 py-2.5 text-center">Previsão</th>
+          <th class="px-2 py-2.5 text-left">Cliente / Razão Social</th>
+          <th class="px-2 py-2.5 text-center">Status</th>
+          <th class="px-2 py-2.5 text-center">Situação</th>
+          <th class="px-2 py-2.5 text-center">Ord.Cmp.</th>
+          <th class="px-2 py-2.5 text-center">Carga</th>
+          <th class="px-2 py-2.5 text-center">Rep.</th>
+          <th class="px-2 py-2.5 text-center">Valor</th>
+          <th class="px-2 py-2.5 text-center">Dias</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-50">
         {% for p in pedidos %}
-        {% set atrasada = p.data_previsao_erp and p.status not in ('finalizado','cancelado') and p.data_previsao_erp < agora %}
-        {% set dias = p.dias_restantes %}
-        <tr class="hover:bg-gray-50 transition-colors {% if atrasada %}bg-red-50/50{% endif %}">
-          <td class="px-3 py-2.5">
-            <div class="flex items-center gap-2">
-              <a href="{{ url_for('admin_lote_detalhe', ordem=p.ordem) }}" class="font-bold text-blue-700 hover:underline">#{{ p.ordem }}</a>
-              {% if p.lote_codigo %}<div class="text-[10px] text-gray-400">{{ p.lote_codigo }}</div>{% endif %}
+        {% set atrasado = p.dias_restantes is not none and p.dias_restantes < 0 and p.situacao_codigo != 'C' %}
+        {% set urgente = p.dias_restantes is not none and p.dias_restantes >= 0 and p.dias_restantes <= 3 %}
+        <tr class="hover:bg-gray-50 transition-colors
+             {% if atrasado %}bg-red-50/50
+             {% elif urgente %}bg-amber-50/30
+             {% endif %}">
+          {# Pedido #}
+          <td class="px-2 py-2 text-center">
+            <span class="font-bold text-blue-700 text-sm">#{{ p.pedido }}</span>
+          </td>
+          {# Tipo #}
+          <td class="px-2 py-2 text-center text-xs text-gray-500">{{ p.tipo }}</td>
+          {# Emissão #}
+          <td class="px-2 py-2 text-center text-xs text-gray-500">{{ p.data_emissao|formatar_data_br if p.data_emissao else '—' }}</td>
+          {# Previsão #}
+          <td class="px-2 py-2 text-center text-xs {% if atrasado %}text-red-600 font-bold{% elif urgente %}text-amber-600 font-bold{% else %}text-gray-500{% endif %}">
+            {{ p.data_previsao|formatar_data_br if p.data_previsao else '—' }}
+          </td>
+          {# Cliente / Razão Social #}
+          <td class="px-2 py-2">
+            <div class="font-semibold text-gray-700 text-xs truncate max-w-[180px]" title="{{ p.razao_social }}">
+              {{ p.codigo_cliente }} — {{ p.razao_social }}
             </div>
           </td>
-          <td class="px-3 py-2.5 text-gray-700 max-w-[180px] truncate" title="{{ p.descricao_produto or '' }}">
-            {{ p.descricao_produto or '—' }}
+          {# Status #}
+          <td class="px-2 py-2 text-center">
+            {% set sc = p.status_codigo %}
+            {% if sc == '01' %}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-gray-100 text-gray-600">01</span>
+            {% elif sc == '02' %}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700">02</span>
+            {% elif sc == '03' %}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-orange-100 text-orange-700">03</span>
+            {% elif sc == '04' %}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-100 text-blue-700">04</span>
+            {% elif sc == '05' %}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-green-100 text-green-700">05</span>
+            {% elif sc == '06' %}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-red-100 text-red-700">06</span>
+            {% elif sc == '07' %}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-lime-100 text-lime-700">07</span>
+            {% elif sc == '08' %}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-green-100 text-green-700">08</span>
+            {% elif sc == '09' %}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-cyan-100 text-cyan-700">09</span>
+            {% elif sc == '10' %}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-red-100 text-red-700">10</span>
+            {% endif %}
+            <div class="text-[8px] text-gray-400 mt-0.5 hidden lg:block">{{ p.status_descricao }}</div>
           </td>
-          <td class="px-3 py-2.5 text-center font-semibold">{{ p.qtde_ordem|round(0) if p.qtde_ordem else '—' }}</td>
-          <td class="px-3 py-2.5 text-center">
-            {% if p.prioridade == 'urgente' %}
-            <span class="badge-priority urgente">URGENTE</span>
-            {% elif p.prioridade == 'alta' %}
-            <span class="badge-priority alta">ALTA</span>
-            {% elif p.prioridade == 'media' %}
-            <span class="badge-priority media">MÉDIA</span>
-            {% elif p.prioridade == 'baixa' %}
-            <span class="badge-priority baixa">BAIXA</span>
+          {# Situação #}
+          <td class="px-2 py-2 text-center">
+            {% set si = p.situacao_codigo %}
+            {% if si == 'A' %}
+            <span class="text-[10px] font-bold text-green-600">A</span>
+            {% elif si == 'P' %}
+            <span class="text-[10px] font-bold text-amber-600">P</span>
+            {% elif si == 'C' %}
+            <span class="text-[10px] font-bold text-red-600">C</span>
+            {% elif si == 'I' %}
+            <span class="text-[10px] font-bold text-gray-500">I</span>
             {% else %}
-            <span class="text-gray-400 text-xs">—</span>
+            <span class="text-[10px] text-gray-300">—</span>
             {% endif %}
           </td>
-          <td class="px-3 py-2.5 text-center">
-            {% if p.status == 'importado' %}
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-600">
-              <i class="fa-solid fa-arrow-right-to-bracket text-[9px]"></i> Importado
-            </span>
-            {% elif p.status == 'liberado' %}
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700">
-              <i class="fa-solid fa-lock-open text-[9px]"></i> Liberado
-            </span>
-            {% elif p.status == 'em_producao' %}
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-50 text-orange-700">
-              <i class="fa-solid fa-gear text-[9px]"></i> Em Produção
-            </span>
-            {% elif p.status == 'pausado' %}
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700">
-              <i class="fa-solid fa-pause text-[9px]"></i> Pausado
-            </span>
-            {% elif p.status == 'finalizado' %}
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-50 text-green-700">
-              <i class="fa-solid fa-check text-[9px]"></i> Finalizado
-            </span>
-            {% elif p.status == 'cancelado' %}
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-700">
-              <i class="fa-solid fa-xmark text-[9px]"></i> Cancelado
-            </span>
-            {% endif %}
+          {# Ordem de Compra #}
+          <td class="px-2 py-2 text-center text-xs text-gray-500">{{ p.ordem_compra.strip() if p.ordem_compra else '—' }}</td>
+          {# Carga #}
+          <td class="px-2 py-2 text-center text-xs text-gray-500">{{ p.numero_carga.strip() if p.numero_carga else '—' }}</td>
+          {# Representante #}
+          <td class="px-2 py-2 text-center text-xs text-gray-500">{{ p.nome_representante if p.nome_representante else '—' }}</td>
+          {# Valor #}
+          <td class="px-2 py-2 text-center text-xs font-semibold text-gray-700">
+            {% if p.valor_faturado %}R$ {{ "%.2f"|format(p.valor_faturado) }}{% else %}—{% endif %}
           </td>
-          <td class="px-3 py-2.5 text-center text-xs text-gray-500">
-            {{ p.data_abertura_erp|formatar_data_br if p.data_abertura_erp else '—' }}
-          </td>
-          <td class="px-3 py-2.5 text-center text-xs {% if atrasada %}text-red-600 font-bold{% else %}text-gray-500{% endif %}">
-            {{ p.data_previsao_erp|formatar_data_br if p.data_previsao_erp else '—' }}
-          </td>
-          <td class="px-3 py-2.5 text-center">
-            {% if dias is not none %}
-              {% if dias > 0 %}
-              <span class="text-xs font-bold text-blue-600">{{ dias }}d</span>
-              {% elif dias == 0 %}
-              <span class="text-xs font-bold text-amber-600">Hoje</span>
+          {# Dias #}
+          <td class="px-2 py-2 text-center">
+            {% if p.dias_restantes is not none %}
+              {% if p.dias_restantes < 0 %}
+              <span class="text-xs font-black text-red-600">{{ p.dias_restantes }}d</span>
+              {% elif p.dias_restantes == 0 %}
+              <span class="text-xs font-black text-amber-600">Hoje</span>
+              {% elif p.dias_restantes <= 3 %}
+              <span class="text-xs font-bold text-amber-500">{{ p.dias_restantes }}d</span>
               {% else %}
-              <span class="text-xs font-bold text-red-600">{{ dias }}d</span>
+              <span class="text-xs font-bold text-blue-600">{{ p.dias_restantes }}d</span>
               {% endif %}
             {% else %}
               <span class="text-xs text-gray-300">—</span>
-            {% endif %}
-          </td>
-          <td class="px-3 py-2.5 text-center text-xs text-gray-500">
-            {{ p.departamento_atual or '—' }}
-          </td>
-          <td class="px-3 py-2.5">
-            {% set total_ops = p.total_operacoes or 0 %}
-            {% set concl_ops = p.operacoes_concluidas or 0 %}
-            {% if total_ops > 0 %}
-            <div class="flex items-center gap-2">
-              <div class="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden min-w-[60px]">
-                {% set pct = (concl_ops * 100 / total_ops)|round(0) %}
-                <div class="h-full rounded-full {% if pct == 100 %}bg-green-500{% elif pct >= 50 %}bg-blue-500{% else %}bg-amber-500{% endif %}"
-                     style="width:{{ pct }}%"></div>
-              </div>
-              <span class="text-[10px] font-bold text-gray-500 w-8 text-right">{{ concl_ops }}/{{ total_ops }}</span>
-            </div>
-            {% else %}
-            <span class="text-[10px] text-gray-300">—</span>
             {% endif %}
           </td>
         </tr>
@@ -213,72 +217,48 @@
   {% else %}
   <div class="text-center py-12">
     <i class="fa-solid fa-inbox text-4xl text-gray-300 mb-3"></i>
-    <div class="text-sm text-gray-500">Nenhum pedido encontrado com os filtros selecionados.</div>
+    <div class="text-sm text-gray-500">Nenhum pedido encontrado.</div>
+    <div class="text-xs text-gray-400 mt-1">Verifique se o ERP está acessível e tente outro filtro.</div>
   </div>
   {% endif %}
 </div>
 
-{# ═══════════════ LOTES NO ERP (NÃO IMPORTADOS) ═══════════════ #}
-{% if lotes_erp %}
-{% set novos_erp = lotes_erp|selectattr('importado', 'equalto', false)|list %}
-{% if novos_erp %}
-<div class="prodsys-card p-0 mb-5 overflow-hidden border-2 border-dashed border-blue-200">
-  <div class="px-4 py-3 border-b border-blue-100 bg-blue-50/50 flex items-center justify-between">
-    <h3 class="text-sm font-bold text-blue-700 flex items-center gap-2">
-      <i class="fa-solid fa-cloud-arrow-down text-blue-500"></i>
-      Novos no ERP (não importados)
-    </h3>
-    <span class="text-xs text-blue-500">{{ novos_erp|length }} registros</span>
+{# ═══════════════ LEGENDA STATUS ═══════════════ #}
+<div class="prodsys-card p-4 mb-5">
+  <h4 class="text-xs font-bold text-gray-600 uppercase tracking-wider mb-3">Legenda de Status</h4>
+  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+    {% set mapa = [
+      ('01', 'Pedido Não Aprovado', 'bg-gray-100 text-gray-600'),
+      ('02', 'Pedido em Aberto', 'bg-amber-100 text-amber-700'),
+      ('03', 'Vínculo OF Estática', 'bg-orange-100 text-orange-700'),
+      ('04', 'Vínculo OF em Processo', 'bg-blue-100 text-blue-700'),
+      ('05', 'Vínculo OF Encerrada', 'bg-green-100 text-green-700'),
+      ('06', 'Vínculo OF Problema', 'bg-red-100 text-red-700'),
+      ('07', 'Atendido Parcial', 'bg-lime-100 text-lime-700'),
+      ('08', 'Atendido Total', 'bg-green-100 text-green-700'),
+      ('09', 'Vínculo Expedição', 'bg-cyan-100 text-cyan-700'),
+      ('10', 'Pedido Cancelado', 'bg-red-100 text-red-700'),
+    ] %}
+    {% for cod, desc, color in mapa %}
+    <div class="flex items-center gap-2">
+      <span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-bold {{ color }}">{{ cod }}</span>
+      <span class="text-[10px] text-gray-600">{{ desc }}</span>
+    </div>
+    {% endfor %}
   </div>
-  <div class="overflow-x-auto">
-    <table class="w-full text-sm">
-      <thead class="text-xs uppercase tracking-wider text-gray-500 border-b border-blue-100 bg-blue-50/30">
-        <tr>
-          <th class="px-3 py-2 text-left">Lote</th>
-          <th class="px-3 py-2 text-left">Produto</th>
-          <th class="px-3 py-2 text-center">Qtd</th>
-          <th class="px-3 py-2 text-center">OPs</th>
-          <th class="px-3 py-2 text-center">Abertura</th>
-          <th class="px-3 py-2 text-center">Previsão</th>
-          <th class="px-3 py-2 text-center">Status ERP</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-gray-50">
-        {% for l in novos_erp %}
-        <tr class="hover:bg-blue-50/30 transition-colors">
-          <td class="px-3 py-2">
-            <div class="font-bold text-blue-700">{{ l.lote_codigo }}</div>
-            <div class="text-[10px] text-gray-400">{{ l.lote_descricao or '' }}</div>
-          </td>
-          <td class="px-3 py-2 text-gray-700">{{ l.nome_produto or l.produto_final_codigo or '—' }}</td>
-          <td class="px-3 py-2 text-center font-semibold">{{ l.quantidade_pai|round(0) if l.quantidade_pai else '—' }}</td>
-          <td class="px-3 py-2 text-center text-gray-500">{{ l.total_ofs or 0 }}</td>
-          <td class="px-3 py-2 text-center text-xs text-gray-500">{{ l.data_abertura|formatar_data_br if l.data_abertura else '—' }}</td>
-          <td class="px-3 py-2 text-center text-xs text-gray-500">{{ l.data_previsao|formatar_data_br if l.data_previsao else '—' }}</td>
-          <td class="px-3 py-2 text-center">
-            {% if l.status_erp == 'EP' %}
-            <span class="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">Em Produção</span>
-            {% elif l.status_erp == 'ES' %}
-            <span class="text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">Separação</span>
-            {% else %}
-            <span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">Aberto</span>
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <div class="mt-3 pt-3 border-t border-gray-100 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px]">
+    <div><span class="font-bold text-green-600">A</span> = Aprovado</div>
+    <div><span class="font-bold text-amber-600">P</span> = Pendente</div>
+    <div><span class="font-bold text-red-600">C</span> = Cancelado</div>
+    <div><span class="font-bold text-gray-500">I</span> = Incompleto</div>
   </div>
 </div>
-{% endif %}
-{% endif %}
 
 {% endblock %}
 
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  // Atualizar data no header
   const now = new Date();
   const el = document.getElementById('current-date');
   if (el) el.textContent = now.toLocaleDateString('pt-BR');

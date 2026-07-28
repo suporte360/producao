@@ -394,56 +394,98 @@ def dashboard():
 @login_required
 @role_required('admin', 'gerente', 'diretor', 'pcp')
 def pedidos_redirect():
-    """Tela de Pedidos — Visão completa de todos os pedidos/lotes."""
-    from datetime import date
+    """Tela de Pedidos de Venda do ERP — direto da tabela pedido + empresa."""
+    from datetime import date, timedelta
     status_filtro = request.args.get('status', 'todos')
     busca = request.args.get('busca', '').strip()
 
-    # Resumo de KPIs
-    resumo = db.get_resumo_pedidos()
+    pg = None
+    pedidos_erp = []
+    resumo_erp = {}
 
-    # Pedidos filtrados
-    pedidos = db.get_pedidos_completos(status=status_filtro, filtro=busca if busca else None)
-
-    # Tenta buscar lotes abertos no ERP
-    lotes_erp = []
     try:
         pg = DatabasePostgreSQL()
-        lotes_erp = pg.get_pedidos_erp()
-        # Adiciona nome do produto se não tiver
-        for lote in lotes_erp:
-            if not lote.get('nome_produto') and lote.get('produto_final_codigo'):
-                prod = pg.buscar_produto_por_codigo(lote['produto_final_codigo'])
-                lote['nome_produto'] = prod.get('descricao') if prod else None
+
+        # Resumo de KPIs direto do ERP
+        resumo_erp = pg.get_resumo_pedidos_erp()
+
+        # Pedidos filtrados do ERP
+        pedidos_erp = pg.get_pedidos_erp(status=status_filtro, busca=busca if busca else None, limite=200)
+
+        # Adicionar dias restantes
+        hoje = date.today()
+        for p in pedidos_erp:
+            dp = p.get('data_previsao')
+            if dp:
+                p['dias_restantes'] = (dp - hoje).days
+            else:
+                p['dias_restantes'] = None
+
     except Exception as e:
         print(f"Erro ERP pedidos: {e}")
-
-    # Lotes já importados
-    ja_importados = set()
-    try:
-        ja = db.query("SELECT DISTINCT lote_codigo FROM lotes_producao WHERE lote_codigo IS NOT NULL")
-        ja_importados = {r['lote_codigo'] for r in ja}
-    except Exception:
-        pass
-
-    # Marcar lotes ERP como importados ou novos
-    for lote in lotes_erp:
-        lote['importado'] = lote['lote_codigo'] in ja_importados
+        pedidos_erp = []
+        resumo_erp = {'total_pedidos':0,'em_aberto':0,'em_producao':0,'vinculados_of':0,
+                      'atendidos':0,'cancelados':0,'atrasados':0,'proximos_7dias':0,'valor_total_faturado':0}
+        hoje = date.today()
 
     return render_template('pedidos.html',
-                           pedidos=pedidos,
-                           lotes_erp=lotes_erp,
-                           resumo=resumo,
+                           pedidos=pedidos_erp,
+                           resumo=resumo_erp,
                            status_filtro=status_filtro,
                            busca=busca,
-                           agora=date.today(),
+                           agora=hoje,
                            usuario_nome=session['usuario_nome'])
 
 @app.route('/tv')
 @login_required
 def tv_redirect():
-    """Alias: /tv redireciona para a TV Kanban."""
-    return redirect(url_for('kanban_tv'))
+    """Alias: /tv redireciona para a TV Inteligente da Diretoria."""
+    return redirect(url_for('tv_diretoria'))
+
+@app.route('/tv/diretoria')
+def tv_diretoria():
+    """TV Inteligente da Diretoria — rotaciona entre pedidos, OPs e status."""
+    from datetime import date
+    pedidos_tv = []
+    ops_tv = []
+    kpis = {}
+
+    try:
+        pg = DatabasePostgreSQL()
+        pedidos_tv = pg.get_pedidos_erp_para_tv(limite=20)
+
+        # Adicionar dias restantes
+        hoje = date.today()
+        for p in pedidos_tv:
+            dp = p.get('data_previsao')
+            if dp:
+                p['dias_restantes'] = (dp - hoje).days
+            else:
+                p['dias_restantes'] = None
+
+        # KPIs
+        kpis = pg.get_resumo_pedidos_erp()
+    except Exception as e:
+        print(f"Erro TV diretoria: {e}")
+
+    # OPs em produção (do MySQL)
+    try:
+        ops_tv = db.query("""
+            SELECT ordem, lote_codigo, descricao_produto, status, departamento_atual,
+                   data_abertura_erp, data_previsao_erp
+            FROM lotes_producao
+            WHERE status IN ('liberado', 'em_producao', 'pausado')
+            ORDER BY FIELD(status, 'em_producao', 'liberado', 'pausado'), ordem DESC
+            LIMIT 30
+        """)
+    except Exception:
+        pass
+
+    return render_template('tv_diretoria.html',
+                           pedidos=pedidos_tv,
+                           ops=ops_tv,
+                           kpis=kpis,
+                           agora=hoje if 'hoje' in dir() else date.today())
 
 @app.route('/gerente')
 @login_required
