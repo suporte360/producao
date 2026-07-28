@@ -94,19 +94,19 @@
       </thead>
       <tbody class="divide-y divide-gray-50">
         {% for o in ordens_erp %}
-        {% set atrasada = o.data_previsao and o.data_previsao < now %}
+        {% set atrasada = o.data_previsao is not none and o.data_previsao < now %}
         <tr class="hover:bg-gray-50 {{ 'bg-red-50/40' if atrasada }}">
-          <td class="px-3 py-2.5 font-bold text-blue-700 text-xs">{{ o.get('lote_codigo') or '—' }}</td>
-          <td class="px-3 py-2.5 text-xs text-gray-700 max-w-[250px] truncate" title="{{ o.get('lote_descricao') or '' }}">{{ o.get('lote_descricao') or '—' }}</td>
-          <td class="px-3 py-2.5 text-center font-bold">{{ o.get('total_ofs', 0) }}</td>
-          <td class="px-3 py-2.5 text-center">{{ o.get('quantidade_total', 0) }}</td>
-          <td class="px-3 py-2.5 text-center text-xs text-gray-500">{{ o.get('data_abertura', '') }}</td>
-          <td class="px-3 py-2.5 text-center text-xs {{ 'text-red-600 font-bold' if atrasada else 'text-gray-500' }}">{{ o.get('data_previsao', '') }}</td>
+          <td class="px-3 py-2.5 font-bold text-blue-700 text-xs">{{ o.lote_codigo or '—' }}</td>
+          <td class="px-3 py-2.5 text-xs text-gray-700 max-w-[250px] truncate" title="{{ o.lote_descricao or '' }}">{{ o.lote_descricao or '—' }}</td>
+          <td class="px-3 py-2.5 text-center font-bold">{{ o.total_ofs or 0 }}</td>
+          <td class="px-3 py-2.5 text-center">{{ o.quantidade_total or 0 }}</td>
+          <td class="px-3 py-2.5 text-center text-xs text-gray-500">{{ o.data_abertura|formatar_data_br if o.data_abertura else '—' }}</td>
+          <td class="px-3 py-2.5 text-center text-xs {{ 'text-red-600 font-bold' if atrasada else 'text-gray-500' }}">{{ o.data_previsao|formatar_data_br if o.data_previsao else '—' }}</td>
           <td class="px-3 py-2.5 text-center">
             {% if atrasada %}<span class="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">ATRASADO</span>
-            {% elif o.get('status_erp') == 'EP' %}<span class="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">EM PRODUÇÃO</span>
-            {% elif o.get('status_erp') == 'ES' %}<span class="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">SEPARAÇÃO</span>
-            {% else %}<span class="text-[10px] font-bold text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full">{{ o.get('status_erp', '—') }}</span>
+            {% elif o.status_erp == 'EP' %}<span class="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">EM PRODUÇÃO</span>
+            {% elif o.status_erp == 'ES' %}<span class="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">SEPARAÇÃO</span>
+            {% else %}<span class="text-[10px] font-bold text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full">{{ o.status_erp or '—' }}</span>
             {% endif %}
           </td>
         </tr>
@@ -117,14 +117,14 @@
 </div>
 
 {# ═══════════════ OPs ATRASADAS (sistema local) ═══════════════ #}
-{% if dados_ger.atrasados %}
+{% if dados_ger.atrasados is iterable and dados_ger.atrasados|length > 0 %}
 <section id="atrasados" class="prodsys-card overflow-hidden mb-5 border-l-4 border-red-500">
   <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between bg-red-50">
     <h3 class="text-sm font-bold text-red-800 flex items-center gap-2">
       <i class="fa-solid fa-triangle-exclamation"></i>
       OPs Atrasadas — Ação Necessária
     </h3>
-    <span class="bg-red-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">{{ dados_ger.atrasados|length }}</span>
+    <span class="bg-red-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">{{ dados_ger.atrasados|length }} item(s)</span>
   </div>
   <div class="overflow-x-auto">
     <table class="w-full text-sm">

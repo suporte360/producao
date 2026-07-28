@@ -1182,6 +1182,7 @@ def diretor_relatorios():
     # Busca dados do ERP para relatório
     erp_stats = {'total': 0, 'urgentes': 0, 'atrasadas': 0, 'normais': 0}
     ordens_erp = []
+    hoje = datetime.now().date()
     try:
         pg = DatabasePostgreSQL()
         ordens_erp = pg.get_lotes_agrupados_abertos() or []
@@ -1189,25 +1190,23 @@ def diretor_relatorios():
         for o in ordens_erp:
             prev = o.get('data_previsao')
             if prev:
-                if hasattr(prev, 'date'):
-                    prev_date = prev.date()
-                else:
-                    prev_date = prev
-                if prev_date < datetime.now().date():
+                # Converter para date se for datetime
+                prev_date = prev.date() if hasattr(prev, 'date') else prev
+                if prev_date < hoje:
                     erp_stats['atrasadas'] += 1
                 else:
                     erp_stats['normais'] += 1
             else:
                 erp_stats['normais'] += 1
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"Erro ERP lotes: {e}")
     usuarios = db.listar_usuarios()
     return render_template('diretor/relatorios.html',
                            stats=stats, dados_ger=dados_ger,
                            erp_stats=erp_stats, ordens_erp=ordens_erp,
                            usuarios=usuarios,
                            usuario_nome=session['usuario_nome'],
-                           now=datetime.now().date())
+                           now=hoje)
 
 @app.route('/diretor/logs')
 @login_required
