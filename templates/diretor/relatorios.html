@@ -484,11 +484,11 @@
       labels: ['Aguardando', 'Em Produção', 'Finalizados Hoje', 'Mês Atual', 'Atrasados'],
       datasets: [{
         data: [
-          {{ k.aguardando_liberacao + k.aguardando_inicio }},
-          {{ k.em_producao }},
-          {{ k.concluidos_hoje }},
-          {{ k.concluidos_mes }},
-          {{ k.atrasados }}
+          {{ dados_ger.kpis.aguardando_liberacao + dados_ger.kpis.aguardando_inicio }},
+          {{ dados_ger.kpis.em_producao }},
+          {{ dados_ger.kpis.concluidos_hoje }},
+          {{ dados_ger.kpis.concluidos_mes }},
+          {{ dados_ger.kpis.atrasados }}
         ],
         backgroundColor: ['#fbbf24', '#f97316', '#22c55e', '#a855f7', '#ef4444'],
         borderWidth: 0
