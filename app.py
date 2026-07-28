@@ -390,6 +390,23 @@ def dashboard():
 # Gerente
 # =============================================
 
+@app.route('/pedidos')
+@login_required
+def pedidos_redirect():
+    """Alias: /pedidos redireciona para o painel de pedidos/gerente."""
+    role = session.get('usuario_role')
+    if role in ('admin', 'gerente', 'diretor'):
+        return redirect(url_for('dashboard_gerente'))
+    elif role == 'pcp':
+        return redirect(url_for('dashboard_pcp'))
+    return redirect(url_for('dashboard'))
+
+@app.route('/tv')
+@login_required
+def tv_redirect():
+    """Alias: /tv redireciona para a TV Kanban."""
+    return redirect(url_for('kanban_tv'))
+
 @app.route('/gerente')
 @login_required
 @role_required('admin', 'gerente', 'diretor')

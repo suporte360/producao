@@ -113,13 +113,14 @@
                     <i class="fa-solid fa-chart-pie text-indigo-400"></i>
                     <span>Visão Geral</span>
                 </a>
-                <a href="{{ url_for('diretor_logs') }}" class="nav-item {% if endpoint == 'diretor_logs' %}active{% endif %}">
-                    <i class="fa-solid fa-clock-rotate-left text-amber-400"></i>
-                    <span>Logs do Sistema</span>
+                <a href="{{ url_for('pedidos_redirect') }}" class="nav-item {% if endpoint == 'dashboard_gerente' %}active{% endif %}">
+                    <i class="fa-solid fa-clipboard-list text-emerald-400"></i>
+                    <span>Pedidos</span>
                 </a>
-                <a href="{{ url_for('diretor_acessos') }}" class="nav-item {% if endpoint == 'diretor_acessos' %}active{% endif %}">
-                    <i class="fa-solid fa-users-gear text-pink-400"></i>
-                    <span>Acessos</span>
+                <a href="{{ url_for('tv_redirect') }}" target="_blank" class="nav-item">
+                    <i class="fa-solid fa-tv text-cyan-400"></i>
+                    <span>TV Kanban</span>
+                    <i class="fa-solid fa-arrow-up-right-from-square ml-auto text-[10px] text-slate-500"></i>
                 </a>
                 {% endif %}
 
