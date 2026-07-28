@@ -392,14 +392,52 @@ def dashboard():
 
 @app.route('/pedidos')
 @login_required
+@role_required('admin', 'gerente', 'diretor', 'pcp')
 def pedidos_redirect():
-    """Alias: /pedidos redireciona para o painel de pedidos/gerente."""
-    role = session.get('usuario_role')
-    if role in ('admin', 'gerente', 'diretor'):
-        return redirect(url_for('dashboard_gerente'))
-    elif role == 'pcp':
-        return redirect(url_for('dashboard_pcp'))
-    return redirect(url_for('dashboard'))
+    """Tela de Pedidos — Visão completa de todos os pedidos/lotes."""
+    from datetime import date
+    status_filtro = request.args.get('status', 'todos')
+    busca = request.args.get('busca', '').strip()
+
+    # Resumo de KPIs
+    resumo = db.get_resumo_pedidos()
+
+    # Pedidos filtrados
+    pedidos = db.get_pedidos_completos(status=status_filtro, filtro=busca if busca else None)
+
+    # Tenta buscar lotes abertos no ERP
+    lotes_erp = []
+    try:
+        pg = DatabasePostgreSQL()
+        lotes_erp = pg.get_pedidos_erp()
+        # Adiciona nome do produto se não tiver
+        for lote in lotes_erp:
+            if not lote.get('nome_produto') and lote.get('produto_final_codigo'):
+                prod = pg.buscar_produto_por_codigo(lote['produto_final_codigo'])
+                lote['nome_produto'] = prod.get('descricao') if prod else None
+    except Exception as e:
+        print(f"Erro ERP pedidos: {e}")
+
+    # Lotes já importados
+    ja_importados = set()
+    try:
+        ja = db.query("SELECT DISTINCT lote_codigo FROM lotes_producao WHERE lote_codigo IS NOT NULL")
+        ja_importados = {r['lote_codigo'] for r in ja}
+    except Exception:
+        pass
+
+    # Marcar lotes ERP como importados ou novos
+    for lote in lotes_erp:
+        lote['importado'] = lote['lote_codigo'] in ja_importados
+
+    return render_template('pedidos.html',
+                           pedidos=pedidos,
+                           lotes_erp=lotes_erp,
+                           resumo=resumo,
+                           status_filtro=status_filtro,
+                           busca=busca,
+                           agora=date.today(),
+                           usuario_nome=session['usuario_nome'])
 
 @app.route('/tv')
 @login_required

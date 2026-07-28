@@ -1039,6 +1039,97 @@ class DatabaseMySQL:
             }
 
     # =============================================
+    # PEDIDOS / LOTES — Visão completa para Diretoria
+    # =============================================
+
+    def get_pedidos_completos(self, status=None, filtro=None):
+        """
+        Retorna todos os pedidos/lotes com informações completas.
+        status: 'todos', 'aberto', 'atrasado', 'proximo', 'finalizado'
+        filtro: texto para buscar por descrição ou lote_codigo
+        """
+        sql = """
+            SELECT l.*,
+                   (SELECT COUNT(*) FROM operacoes_producao op WHERE op.lote_ordem = l.ordem) AS total_operacoes,
+                   (SELECT COUNT(*) FROM operacoes_producao op WHERE op.lote_ordem = l.ordem AND op.status = 'concluido') AS operacoes_concluidas,
+                   (SELECT COUNT(*) FROM ordens_fabricacao of2 WHERE of2.lote_ordem = l.ordem) AS total_ofs,
+                   CASE 
+                       WHEN l.data_previsao_erp IS NULL THEN NULL
+                       WHEN l.status IN ('finalizado','cancelado') THEN NULL
+                       WHEN l.data_previsao_erp < CURDATE() THEN DATEDIFF(CURDATE(), l.data_previsao_erp)
+                       ELSE DATEDIFF(l.data_previsao_erp, CURDATE())
+                   END AS dias_restantes
+            FROM lotes_producao l
+            WHERE 1=1
+        """
+        params = []
+
+        if status == 'aberto':
+            sql += " AND l.status IN ('importado','liberado','em_producao')"
+        elif status == 'atrasado':
+            sql += " AND l.data_previsao_erp < CURDATE() AND l.status NOT IN ('finalizado','cancelado')"
+        elif status == 'proximo':
+            sql += " AND l.data_previsao_erp BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY) AND l.status NOT IN ('finalizado','cancelado')"
+        elif status == 'finalizado':
+            sql += " AND l.status IN ('finalizado','cancelado')"
+
+        if filtro:
+            sql += " AND (l.descricao_produto LIKE %s OR l.lote_codigo LIKE %s OR CAST(l.ordem AS CHAR) LIKE %s)"
+            filtro_like = f'%{filtro}%'
+            params.extend([filtro_like, filtro_like, filtro_like])
+
+        sql += """
+            ORDER BY FIELD(l.prioridade, 'urgente', 'alta', 'media', 'baixa'),
+                     l.data_previsao_erp ASC,
+                     l.ordem DESC
+        """
+        return self.query(sql, params)
+
+    def get_pedidos_erp_lotes(self):
+        """
+        Retorna lotes do ERP que ainda NÃO foram importados no sistema local.
+        Consulta direta no PostgreSQL via DatabasePostgreSQL (chamada pela route).
+        """
+        # Retorna query SQL para ser executada pela DatabasePostgreSQL
+        return None  # Usado apenas como documentação
+
+    def get_resumo_pedidos(self):
+        """Retorna resumo rápido de pedidos para KPIs da diretoria."""
+        try:
+            return self.query_one("""
+                SELECT
+                    COUNT(*) AS total_pedidos,
+                    SUM(status = 'importado') AS aguardando_liberacao,
+                    SUM(status = 'liberado') AS aguardando_inicio,
+                    SUM(status = 'em_producao') AS em_producao,
+                    SUM(status = 'pausado') AS pausados,
+                    SUM(status = 'finalizado' AND DATE(data_fim_producao) = CURDATE()) AS concluidos_hoje,
+                    SUM(status = 'finalizado' AND MONTH(data_fim_producao) = MONTH(CURDATE())
+                        AND YEAR(data_fim_producao) = YEAR(CURDATE())) AS concluidos_mes,
+                    SUM(status = 'finalizado') AS total_finalizados,
+                    SUM(status = 'cancelado') AS cancelados,
+                    SUM(CASE WHEN data_previsao_erp IS NOT NULL 
+                             AND data_previsao_erp < CURDATE() 
+                             AND status NOT IN ('finalizado','cancelado') 
+                        THEN 1 ELSE 0 END) AS atrasados,
+                    SUM(CASE WHEN data_previsao_erp IS NOT NULL 
+                             AND data_previsao_erp BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
+                             AND status NOT IN ('finalizado','cancelado')
+                        THEN 1 ELSE 0 END) AS proximos_7dias,
+                    SUM(qtde_ordem) AS total_pecas,
+                    SUM(CASE WHEN status IN ('importado','liberado','em_producao') THEN qtde_ordem ELSE 0 END) AS pecas_abertas,
+                    SUM(CASE WHEN status = 'finalizado' THEN qtde_ordem ELSE 0 END) AS pecas_finalizadas
+                FROM lotes_producao
+            """) or {'total_pedidos':0,'aguardando_liberacao':0,'aguardando_inicio':0,'em_producao':0,
+                    'pausados':0,'concluidos_hoje':0,'concluidos_mes':0,'total_finalizados':0,
+                    'cancelados':0,'atrasados':0,'proximos_7dias':0,'total_pecas':0,'pecas_abertas':0,'pecas_finalizadas':0}
+        except Exception as e:
+            print(f"Erro get_resumo_pedidos: {e}")
+            return {'total_pedidos':0,'aguardando_liberacao':0,'aguardando_inicio':0,'em_producao':0,
+                    'pausados':0,'concluidos_hoje':0,'concluidos_mes':0,'total_finalizados':0,
+                    'cancelados':0,'atrasados':0,'proximos_7dias':0,'total_pecas':0,'pecas_abertas':0,'pecas_finalizadas':0}
+
+    # =============================================
     # ESTOQUE INTERNO (ALMOXARIFADO)
     # =============================================
 

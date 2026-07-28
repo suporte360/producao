@@ -407,6 +407,33 @@ class DatabasePostgreSQL:
         """
         return self.query(sql, (f'%{termo}%',))
 
+    def get_pedidos_erp(self):
+        """
+        Retorna todos os lotes abertos do ERP com informações completas.
+        Inclui produto final, datas, status e quantidade.
+        """
+        sql = """
+            SELECT
+                lp.lotcod AS lote_codigo,
+                lp.lotdes AS lote_descricao,
+                lp.lotdtini AS data_abertura,
+                lp.lotdtpre AS data_previsao,
+                lp.lotstatus AS status_erp,
+                NULLIF(TRIM(lp.lottrans),'') AS observacao,
+                (SELECT o.ordproduto
+                 FROM public.ordem o WHERE o.lotcod = lp.lotcod AND o.ordnivprod = '1' LIMIT 1) AS produto_final_codigo,
+                (SELECT COUNT(DISTINCT o.ordem) FROM public.ordem o WHERE o.lotcod = lp.lotcod) AS total_ofs,
+                (SELECT COALESCE(o.ordquanti, 0) FROM public.ordem o WHERE o.lotcod = lp.lotcod AND o.ordnivprod = '1' LIMIT 1) AS quantidade_pai,
+                (SELECT COALESCE(SUM(o.ordquanti), 0) FROM public.ordem o WHERE o.lotcod = lp.lotcod) AS quantidade_total,
+                (SELECT MAX(o.ordem) FROM public.ordem o WHERE o.lotcod = lp.lotcod) AS maior_ordem,
+                (SELECT p.pronome FROM public.produto p WHERE p.produto = (SELECT o.ordproduto FROM public.ordem o WHERE o.lotcod = lp.lotcod AND o.ordnivprod = '1' LIMIT 1) LIMIT 1) AS nome_produto
+            FROM public.loteprod lp
+            WHERE lp.lotcod IS NOT NULL AND lp.lotcod <> ''
+              AND (lp.lotstatus IS NULL OR lp.lotstatus IN ('EP', 'ES', ''))
+            ORDER BY lp.lotcod DESC
+        """
+        return self.query(sql)
+
     def get_requisicoes_multiplas_ordens(self, ordens):
         """Busca materiais de varias OFs de uma vez (otimizado para dashboard)."""
         if not ordens:
