@@ -57,11 +57,25 @@ class DatabasePostgreSQL:
             connection.close()
 
     def query(self, sql, params=None):
-        with self.get_connection() as conn:
-            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
-                cursor.execute(sql, params or ())
-                results = cursor.fetchall()
-                return [{k: (v.replace('\\','') if isinstance(v,str) else v) for k,v in dict(row).items()} for row in results]
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    cursor.execute(sql, params or ())
+                    results = cursor.fetchall()
+                    return [{k: (v.replace('\\','') if isinstance(v,str) else v) for k,v in dict(row).items()} for row in results]
+        except Exception as e:
+            # Se der erro de coluna, tenta uma versão simplificada sem o vínculo de ordem
+            if 'UndefinedColumn' in str(e) and 'ordem_producao' in sql:
+                import re
+                # Remove a subquery de ordem_producao
+                sql_limpo = re.sub(r'\(SELECT o\.ordem::integer.*?\) AS ordem_producao,?', '', sql, flags=re.DOTALL)
+                # Tenta novamente sem a subquery problematica
+                with self.get_connection() as conn:
+                    with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                        cursor.execute(sql_limpo, params or ())
+                        results = cursor.fetchall()
+                        return [{k: (v.replace('\\','') if isinstance(v,str) else v) for k,v in dict(row).items()} for row in results]
+            raise e
 
     def query_one(self, sql, params=None):
         with self.get_connection() as conn:
@@ -472,10 +486,12 @@ class DatabasePostgreSQL:
                 p.peddtrepla AS data_reprogramacao,
                 p.peddtaalt AS data_alteracao,
                 p.pedusualt AS usuario_alterou,
-                TRIM(p.pedrepres) AS vendedor,
-                -- Buscar OP vinculada via ordem (usa ordpedido no ERP Lógica)
+                CAST(p.pedrepres AS TEXT) AS vendedor,
+                -- Buscar OP vinculada via ordem (vínculo via lotcod ou ordpedido)
                 (SELECT o.ordem::integer FROM public.ordem o
-                 WHERE o.ordpedido = p.pedido OR o.lotcod = NULLIF(TRIM(CAST(p.pedoflote AS TEXT)), '')
+                 WHERE o.ordpedido = p.pedido 
+                    OR (NULLIF(TRIM(CAST(p.pedoflote AS TEXT)), '') IS NOT NULL 
+                        AND (o.lotcod = TRIM(CAST(p.pedoflote AS TEXT)) OR o.lotcod = REPLACE(TRIM(CAST(p.pedoflote AS TEXT)), 'LOTE ', '')))
                  LIMIT 1) AS ordem_producao
             FROM public.pedido p
             LEFT JOIN public.empresa e ON p.pedcliente::TEXT = e.empresa::TEXT
@@ -590,10 +606,12 @@ class DatabasePostgreSQL:
                 TRIM(CAST(COALESCE(p.pedsitua, '') AS TEXT)) AS situacao_codigo,
                 p.pedvlrfat AS valor_faturado,
                 p.pedoflote,
-                TRIM(CAST(COALESCE(p.pedrepres, 0) AS TEXT)) AS vendedor,
-                -- Buscar OP vinculada (usa ordpedido no ERP Lógica)
+                CAST(p.pedrepres AS TEXT) AS vendedor,
+                -- Buscar OP vinculada (vínculo via lotcod ou ordpedido)
                 (SELECT o.ordem::integer FROM public.ordem o
-                 WHERE o.ordpedido = p.pedido OR (NULLIF(TRIM(CAST(p.pedoflote AS TEXT)), '') IS NOT NULL AND o.lotcod = TRIM(CAST(p.pedoflote AS TEXT)))
+                 WHERE o.ordpedido = p.pedido 
+                    OR (NULLIF(TRIM(CAST(p.pedoflote AS TEXT)), '') IS NOT NULL 
+                        AND (o.lotcod = TRIM(CAST(p.pedoflote AS TEXT)) OR o.lotcod = REPLACE(TRIM(CAST(p.pedoflote AS TEXT)), 'LOTE ', '')))
                  LIMIT 1) AS ordem_producao
             FROM public.pedido p
             LEFT JOIN public.empresa e ON p.pedcliente::TEXT = e.empresa::TEXT
