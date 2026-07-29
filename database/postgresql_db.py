@@ -615,14 +615,16 @@ class DatabasePostgreSQL:
                  LIMIT 1) AS ordem_producao
             FROM public.pedido p
             LEFT JOIN public.empresa e ON p.pedcliente::TEXT = e.empresa::TEXT
-            WHERE p.peddata >= CURRENT_DATE - INTERVAL '180 days'
+            WHERE p.peddata >= CURRENT_DATE - INTERVAL '120 days'
               AND p.peddata IS NOT NULL
-              AND TRIM(CAST(COALESCE(p.pedsitua, '') AS TEXT)) != 'C'
-              AND TRIM(CAST(COALESCE(p.pedsitsit, '') AS TEXT)) NOT IN ('10')
+              -- Apenas Aprovados (A) e Parciais (P)
+              AND TRIM(CAST(COALESCE(p.pedsitua, '') AS TEXT)) IN ('A', 'P')
+              -- Remove Cancelados (10) e Atendidos Totais (07,08,09) para focar no que falta
+              AND TRIM(CAST(COALESCE(p.pedsitsit, '') AS TEXT)) NOT IN ('07', '08', '09', '10')
             ORDER BY
                 -- 1. Atrasados (em aberto ou em produção)
-                CASE WHEN p.pedprevi < CURRENT_DATE AND TRIM(CAST(COALESCE(p.pedsitsit, '') AS TEXT)) IN ('01','02','03','04','') THEN 0 ELSE 1 END,
-                -- 2. Em produção
+                CASE WHEN p.pedprevi < CURRENT_DATE THEN 0 ELSE 1 END,
+                -- 2. Em produção (status 03, 04)
                 CASE WHEN TRIM(CAST(COALESCE(p.pedsitsit, '') AS TEXT)) IN ('03','04') THEN 0 ELSE 1 END,
                 -- 3. Data de previsão mais próxima
                 p.pedprevi ASC,

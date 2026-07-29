@@ -172,20 +172,16 @@
 
     <!-- ═══ SCREEN 1: OVERVIEW CHARTS ═══ -->
     <div class="screen active" id="screen-0">
-        <div class="overview-grid">
+        <div class="overview-grid" style="grid-template-columns: 1fr 1fr;">
             <div class="chart-card">
-                <h3><i class="fa-solid fa-chart-pie" style="margin-right:6px"></i>Distribuição dos Pedidos</h3>
+                <h3><i class="fa-solid fa-chart-pie" style="margin-right:6px"></i>Status da Produção (ERP)</h3>
                 <div class="chart-wrapper"><canvas id="chartStatus"></canvas></div>
-            </div>
-            <div class="chart-card">
-                <h3><i class="fa-solid fa-chart-bar" style="margin-right:6px"></i>Pedidos por Situação</h3>
-                <div class="chart-wrapper"><canvas id="chartSituacao"></canvas></div>
             </div>
             <div class="chart-card">
                 <h3><i class="fa-solid fa-calendar-clock" style="margin-right:6px"></i>Urgência por Prazo</h3>
                 <div class="chart-wrapper"><canvas id="chartUrgencia"></canvas></div>
             </div>
-            <div class="chart-card">
+            <div class="chart-card" style="grid-column: span 2;">
                 <h3><i class="fa-solid fa-link" style="margin-right:6px"></i>Pedidos Vinculados a OF</h3>
                 <div class="chart-wrapper"><canvas id="chartOF"></canvas></div>
             </div>
@@ -346,32 +342,7 @@ new Chart(document.getElementById('chartStatus'), {
     }
 });
 
-// Chart 2: Situação (Aprovado / Pendente / Cancelado / Incompleto)
-new Chart(document.getElementById('chartSituacao'), {
-    type: 'bar',
-    data: {
-        labels: ['Aprovado', 'Pendente', 'Cancelado', 'Incompleto'],
-        datasets: [{
-            data: [
-                {{ k.situacao_a|default(0) }},
-                {{ k.situacao_p|default(0) }},
-                {{ k.situacao_c|default(0) }},
-                {{ k.situacao_i|default(0) }}
-            ],
-            backgroundColor: [chartColors.green, chartColors.amber, chartColors.red, chartColors.gray],
-            borderRadius: 6,
-            barPercentage: 0.6
-        }]
-    },
-    options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-            x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } },
-            y: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } }
-        }
-    }
-});
+// Chart de Situação removido conforme solicitado para simplificar o visual.
 
 // Chart 3: Urgência por Prazo
 {% set atrasados_count = 0 %}
