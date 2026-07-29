@@ -487,9 +487,9 @@ class DatabasePostgreSQL:
                 p.peddtaalt AS data_alteracao,
                 p.pedusualt AS usuario_alterou,
                 CAST(p.pedrepres AS TEXT) AS vendedor,
-                -- Buscar OP vinculada via ordem (vínculo via lotcod ou ordpedido)
+                -- Buscar OP vinculada via ordem (vínculo via lotcod ou ordped)
                 (SELECT o.ordem::integer FROM public.ordem o
-                 WHERE o.ordpedido = p.pedido 
+                 WHERE o.ordped = p.pedido 
                     OR (NULLIF(TRIM(CAST(p.pedoflote AS TEXT)), '') IS NOT NULL 
                         AND (o.lotcod = TRIM(CAST(p.pedoflote AS TEXT)) OR o.lotcod = REPLACE(TRIM(CAST(p.pedoflote AS TEXT)), 'LOTE ', '')))
                  LIMIT 1) AS ordem_producao
@@ -607,9 +607,9 @@ class DatabasePostgreSQL:
                 p.pedvlrfat AS valor_faturado,
                 p.pedoflote,
                 CAST(p.pedrepres AS TEXT) AS vendedor,
-                -- Buscar OP vinculada (vínculo via lotcod ou ordpedido)
+                -- Buscar OP vinculada (vínculo via lotcod ou ordped)
                 (SELECT o.ordem::integer FROM public.ordem o
-                 WHERE o.ordpedido = p.pedido 
+                 WHERE o.ordped = p.pedido 
                     OR (NULLIF(TRIM(CAST(p.pedoflote AS TEXT)), '') IS NOT NULL 
                         AND (o.lotcod = TRIM(CAST(p.pedoflote AS TEXT)) OR o.lotcod = REPLACE(TRIM(CAST(p.pedoflote AS TEXT)), 'LOTE ', '')))
                  LIMIT 1) AS ordem_producao
@@ -625,7 +625,7 @@ class DatabasePostgreSQL:
                 -- 2. Em produção
                 CASE WHEN TRIM(CAST(COALESCE(p.pedsitsit, '') AS TEXT)) IN ('03','04') THEN 0 ELSE 1 END,
                 -- 3. Data de previsão mais próxima
-                p.pedprevi ASC NULLS LAST,
+                p.pedprevi ASC,
                 p.pedido DESC
             LIMIT %s
         """
