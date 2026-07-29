@@ -611,7 +611,7 @@ class DatabasePostgreSQL:
                 p.pedvlrfat AS valor_faturado,
                 p.pedoflote,
                 CAST(p.pedrepres AS TEXT) AS vendedor,
-                CAST(p.peddepo AS TEXT) AS deposito,
+                CAST(p.peddep AS TEXT) AS deposito,
                 -- Buscar OP vinculada (vínculo via lotcod ou ordped)
                 (SELECT o.ordem::integer FROM public.ordem o
                  WHERE o.ordped = p.pedido 
@@ -622,8 +622,8 @@ class DatabasePostgreSQL:
             LEFT JOIN public.empresa e ON p.pedcliente::TEXT = e.empresa::TEXT
             WHERE p.peddata >= CURRENT_DATE - INTERVAL '120 days'
               AND p.peddata IS NOT NULL
-              -- Apenas Aprovados (A) e Parciais (P)
-              AND TRIM(CAST(COALESCE(p.pedsitua, '') AS TEXT)) IN ('A', 'P')
+              -- Apenas Aprovados (A=1) e Parciais (P=2) - Ajustado para códigos numéricos se necessário
+              AND (TRIM(CAST(COALESCE(p.pedsitua, '') AS TEXT)) IN ('A', 'P') OR TRIM(CAST(COALESCE(p.pedsitua, '') AS TEXT)) IN ('1', '2'))
               -- Remove Cancelados (10) e Atendidos Totais (07,08,09) para focar no que falta
               AND TRIM(CAST(COALESCE(p.pedsitsit, '') AS TEXT)) NOT IN ('07', '08', '09', '10')
             ORDER BY
