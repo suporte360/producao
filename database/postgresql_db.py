@@ -554,7 +554,11 @@ class DatabasePostgreSQL:
                     SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('07','08','09') THEN 1 ELSE 0 END) AS atendidos,
                     SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) = '10' OR TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) = 'C' THEN 1 ELSE 0 END) AS cancelados,
                     SUM(CASE WHEN pedprevi IS NOT NULL AND pedprevi < CURRENT_DATE AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('01','02','03','04','') AND TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) != 'C' THEN 1 ELSE 0 END) AS atrasados,
-                    SUM(CASE WHEN pedprevi IS NOT NULL AND pedprevi BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days' AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('01','02','03','04','') AND TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) != 'C' THEN 1 ELSE 0 END) AS proximos_7dias,
+                    -- Próximos 3 dias úteis (considerando intervalo de 5 dias corridos para cobrir final de semana)
+                    SUM(CASE WHEN pedprevi IS NOT NULL AND pedprevi >= CURRENT_DATE AND pedprevi <= (CURRENT_DATE + INTERVAL '5 days') 
+                        AND EXTRACT(DOW FROM pedprevi) NOT IN (0, 6)
+                        AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('01','02','03','04','') 
+                        AND TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) != 'C' THEN 1 ELSE 0 END) AS proximos_3dias,
                     SUM(CASE WHEN pedprevi IS NOT NULL AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('03','04') THEN 1 ELSE 0 END) AS em_of_vinculo,
                     SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) = 'A' THEN 1 ELSE 0 END) AS situacao_a,
                     SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) = 'P' THEN 1 ELSE 0 END) AS situacao_p,
@@ -607,6 +611,7 @@ class DatabasePostgreSQL:
                 p.pedvlrfat AS valor_faturado,
                 p.pedoflote,
                 CAST(p.pedrepres AS TEXT) AS vendedor,
+                CAST(p.peddepo AS TEXT) AS deposito,
                 -- Buscar OP vinculada (vínculo via lotcod ou ordped)
                 (SELECT o.ordem::integer FROM public.ordem o
                  WHERE o.ordped = p.pedido 

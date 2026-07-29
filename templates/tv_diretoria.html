@@ -166,8 +166,7 @@
         <div class="kpi-item"><div class="kpi-num" style="color:#fbbf24">{{ k.em_aberto|default(0) }}</div><div class="kpi-label">Em Aberto</div></div>
         <div class="kpi-item"><div class="kpi-num" style="color:#a78bfa">{{ k.em_producao|default(0) }}</div><div class="kpi-label">Em OF</div></div>
         <div class="kpi-item"><div class="kpi-num" style="color:#ef4444">{{ k.atrasados|default(0) }}</div><div class="kpi-label">Atrasados</div></div>
-        <div class="kpi-item"><div class="kpi-num" style="color:#22c55e">{{ k.atendidos|default(0) }}</div><div class="kpi-label">Atendidos</div></div>
-        <div class="kpi-item"><div class="kpi-num" style="color:#06b6d4">{{ k.proximos_7dias|default(0) }}</div><div class="kpi-label">Próx. 7d</div></div>
+        <div class="kpi-item"><div class="kpi-num" style="color:#06b6d4">{{ k.proximos_3dias|default(0) }}</div><div class="kpi-label">Próx. 3 Dias Úteis</div></div>
     </div>
 
     <!-- ═══ SCREEN 1: OVERVIEW CHARTS ═══ -->
@@ -203,7 +202,14 @@
                 <tbody>
                     {% for p in pedidos %}
                     <tr>
-                        <td><span class="num">#{{ p.pedido }}</span></td>
+                        <td>
+                            <div style="display:flex; align-items:center; gap:8px">
+                                <span class="num">#{{ p.pedido }}</span>
+                                {% if p.deposito in ['2', '3', '4', '7'] %}
+                                <span style="background:#8b5cf6; color:white; font-size:9px; padding:1px 5px; border-radius:10px; font-weight:bold; box-shadow: 0 0 5px rgba(139, 92, 246, 0.5);">L{{ p.deposito }}</span>
+                                {% endif %}
+                            </div>
+                        </td>
                         <td style="color:#64748b;font-size:10px">{{ p.data_emissao|formatar_data_br if p.data_emissao else '—' }}</td>
                         <td style="font-size:10px;{% if p.dias_restantes is not none and p.dias_restantes < 0 %}color:#ef4444;font-weight:700{% else %}color:#64748b{% endif %}">
                             {{ p.data_previsao|formatar_data_br if p.data_previsao else '—' }}
@@ -259,7 +265,12 @@
             <div class="alert-item atrasado">
                 <div class="alert-icon"><i class="fa-solid fa-triangle-exclamation" style="color:#ef4444;font-size:16px"></i></div>
                 <div class="alert-info">
-                    <div class="alert-pedido">Pedido #{{ p.pedido }}</div>
+                    <div style="display:flex; align-items:center; gap:6px">
+                        <div class="alert-pedido">Pedido #{{ p.pedido }}</div>
+                        {% if p.deposito in ['2', '3', '4', '7'] %}
+                        <span style="background:#8b5cf6; color:white; font-size:9px; padding:1px 5px; border-radius:8px; font-weight:bold;">L{{ p.deposito }}</span>
+                        {% endif %}
+                    </div>
                     <div class="alert-cliente">{{ p.razao_social }}</div>
                     <div class="alert-detail">Previsão: {{ p.data_previsao|formatar_data_br if p.data_previsao else '—' }}
                         {% if p.ordem_producao %} | OF: #{{ p.ordem_producao }}{% endif %}</div>
@@ -275,7 +286,12 @@
             <div class="alert-item urgente">
                 <div class="alert-icon"><i class="fa-solid fa-hourglass-half" style="color:#f59e0b;font-size:16px"></i></div>
                 <div class="alert-info">
-                    <div class="alert-pedido">Pedido #{{ p.pedido }}</div>
+                    <div style="display:flex; align-items:center; gap:6px">
+                        <div class="alert-pedido">Pedido #{{ p.pedido }}</div>
+                        {% if p.deposito in ['2', '3', '4', '7'] %}
+                        <span style="background:#8b5cf6; color:white; font-size:9px; padding:1px 5px; border-radius:8px; font-weight:bold;">L{{ p.deposito }}</span>
+                        {% endif %}
+                    </div>
                     <div class="alert-cliente">{{ p.razao_social }}</div>
                     <div class="alert-detail">Previsão: {{ p.data_previsao|formatar_data_br if p.data_previsao else '—' }}
                         {% if p.ordem_producao %} | OF: #{{ p.ordem_producao }}{% endif %}</div>
@@ -365,7 +381,7 @@ new Chart(document.getElementById('chartUrgencia'), {
     data: {
         labels: ['Atrasados', 'Hoje', '1-3 dias', '4-7 dias', '8+ dias'],
         datasets: [{
-            data: [{{ atrasados_count }}, {{ hoje_count }}, {{ d1_3 }}, {{ d4_7 }}, {{ d8plus }}],
+            data: [{{ k.atrasados|default(0) }}, {{ hoje_count|default(0) }}, {{ k.proximos_3dias|default(0) }}, {{ (k.proximos_7dias|default(0) - k.proximos_3dias|default(0))|max(0) }}, {{ (k.total_pedidos|default(0) - k.atrasados|default(0) - k.proximos_7dias|default(0))|max(0) }}],
             backgroundColor: [chartColors.red, '#f59e0b', '#fbbf24', chartColors.blue, chartColors.cyan],
             borderRadius: 6,
             barPercentage: 0.7
