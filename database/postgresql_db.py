@@ -473,9 +473,9 @@ class DatabasePostgreSQL:
                 p.peddtaalt AS data_alteracao,
                 p.pedusualt AS usuario_alterou,
                 TRIM(p.pedrepres) AS vendedor,
-                -- Buscar OP vinculada via ordem
+                -- Buscar OP vinculada via ordem (usa ordpedido no ERP Lógica)
                 (SELECT o.ordem::integer FROM public.ordem o
-                 WHERE o.pedcod = p.pedido::TEXT OR o.lotcod = NULLIF(TRIM(p.pedoflote), '')
+                 WHERE o.ordpedido = p.pedido OR o.lotcod = NULLIF(TRIM(CAST(p.pedoflote AS TEXT)), '')
                  LIMIT 1) AS ordem_producao
             FROM public.pedido p
             LEFT JOIN public.empresa e ON p.pedcliente::TEXT = e.empresa::TEXT
@@ -591,9 +591,9 @@ class DatabasePostgreSQL:
                 p.pedvlrfat AS valor_faturado,
                 p.pedoflote,
                 TRIM(CAST(COALESCE(p.pedrepres, 0) AS TEXT)) AS vendedor,
-                -- Buscar OP vinculada
+                -- Buscar OP vinculada (usa ordpedido no ERP Lógica)
                 (SELECT o.ordem::integer FROM public.ordem o
-                 WHERE o.pedcod = p.pedido::TEXT OR (NULLIF(TRIM(CAST(p.pedoflote AS TEXT)), '') IS NOT NULL AND o.lotcod = TRIM(CAST(p.pedoflote AS TEXT)))
+                 WHERE o.ordpedido = p.pedido OR (NULLIF(TRIM(CAST(p.pedoflote AS TEXT)), '') IS NOT NULL AND o.lotcod = TRIM(CAST(p.pedoflote AS TEXT)))
                  LIMIT 1) AS ordem_producao
             FROM public.pedido p
             LEFT JOIN public.empresa e ON p.pedcliente::TEXT = e.empresa::TEXT
