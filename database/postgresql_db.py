@@ -574,48 +574,44 @@ class DatabasePostgreSQL:
                 'situacao_a':0,'situacao_p':0,'situacao_c':0,'situacao_i':0
             }
 
-    def get_pedidos_erp_para_tv(self, limite=30):
+    def get_pedidos_erp_para_tv(self, limite=50):
         """
-        Retorna pedidos relevantes para a TV da diretoria:
-        - Em produção (status 03, 04)
-        - Atrasados
-        - Próximos da entrega
-        NOTA: Colunas do ERP têm espaços (CHAR fixo), usamos TRIM.
+        Retorna pedidos relevantes para a TV da diretoria.
+        Filtra pedidos ativos (não cancelados) dos últimos 180 dias.
+        Prioriza: Atrasados -> Em Produção -> Próximos Vencimentos.
         """
-        resultados = self.query("""
+        sql = """
             SELECT
                 p.pedido,
                 p.peddata AS data_emissao,
                 p.pedprevi AS data_previsao,
                 COALESCE(NULLIF(TRIM(e.empnome),''), 'Não identificado') AS razao_social,
-                TRIM(p.pedsitsit) AS status_codigo,
-                TRIM(p.pedsitua) AS situacao,
+                TRIM(COALESCE(p.pedsitsit, '')) AS status_codigo,
+                TRIM(COALESCE(p.pedsitua, '')) AS situacao_codigo,
                 p.pedvlrfat AS valor_faturado,
                 p.pedoflote,
-                TRIM(p.pedrepres) AS vendedor,
-                -- Buscar OP vinculada via ordem
+                TRIM(COALESCE(p.pedrepres, '')) AS vendedor,
+                -- Buscar OP vinculada
                 (SELECT o.ordem::integer FROM public.ordem o
-                 WHERE o.pedcod = p.pedido::TEXT OR o.lotcod = NULLIF(TRIM(p.pedoflote), '')
-                 LIMIT 1) AS ordem_producao,
-                -- Dias restantes
-                CASE
-                    WHEN p.pedprevi IS NULL THEN NULL
-                    WHEN p.pedprevi < CURRENT_DATE THEN -(CURRENT_DATE - p.pedprevi)
-                    ELSE (p.pedprevi - CURRENT_DATE)
-                END AS dias_restantes
+                 WHERE o.pedcod = p.pedido::TEXT OR (NULLIF(TRIM(p.pedoflote), '') IS NOT NULL AND o.lotcod = TRIM(p.pedoflote))
+                 LIMIT 1) AS ordem_producao
             FROM public.pedido p
             LEFT JOIN public.empresa e ON p.pedcliente::TEXT = e.empresa::TEXT
-            WHERE p.peddata >= CURRENT_DATE - INTERVAL '90 days'
+            WHERE p.peddata >= CURRENT_DATE - INTERVAL '180 days'
               AND p.peddata IS NOT NULL
-              AND TRIM(p.pedsitua) != 'C'
-              AND TRIM(p.pedsitsit) IN ('01','02','03','04','05','06','07','08','09')
+              AND TRIM(COALESCE(p.pedsitua, '')) != 'C'
+              AND TRIM(COALESCE(p.pedsitsit, '')) NOT IN ('10')
             ORDER BY
-                CASE WHEN TRIM(p.pedsitsit) IN ('03','04') THEN 0 ELSE 1 END,
-                CASE WHEN p.pedprevi IS NOT NULL AND p.pedprevi < CURRENT_DATE THEN 0 ELSE 1 END,
-                p.pedprevi ASC,
+                -- 1. Atrasados (em aberto ou em produção)
+                CASE WHEN p.pedprevi < CURRENT_DATE AND TRIM(COALESCE(p.pedsitsit, '')) IN ('01','02','03','04','') THEN 0 ELSE 1 END,
+                -- 2. Em produção
+                CASE WHEN TRIM(COALESCE(p.pedsitsit, '')) IN ('03','04') THEN 0 ELSE 1 END,
+                -- 3. Data de previsão mais próxima
+                p.pedprevi ASC NULLS LAST,
                 p.pedido DESC
             LIMIT %s
-        """, (limite,))
+        """
+        resultados = self.query(sql, (limite,))
 
         for r in resultados:
             r['status_descricao'] = self.STATUS_MAP.get(r.get('status_codigo') or '', 'Desconhecido')
