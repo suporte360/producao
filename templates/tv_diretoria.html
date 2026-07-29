@@ -91,29 +91,6 @@
         .tv-table .num { font-weight: 800; color: #60a5fa; font-size: 14px; font-family: 'JetBrains Mono', monospace; }
         .tv-table .cliente { font-weight: 600; color: #e2e8f0; }
 
-        /* ═══════ SCREEN: OPs CARDS ═══════ */
-        .ops-grid {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 10px;
-            padding: 12px 20px;
-            height: calc(100vh - 140px);
-            overflow-y: auto;
-        }
-        .op-card {
-            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-            border-radius: 10px;
-            padding: 12px;
-            border: 1px solid rgba(255,255,255,0.08);
-        }
-        .op-card.em_producao { border-left: 4px solid #f59e0b; }
-        .op-card.pausado { border-left: 4px solid #ef4444; }
-        .op-card.liberado { border-left: 4px solid #3b82f6; }
-        .op-num { font-size: 18px; font-weight: 900; color: #fbbf24; font-family: 'JetBrains Mono', monospace; }
-        .op-prod { font-size: 11px; color: #cbd5e1; margin-top: 4px; }
-        .op-setor { display: inline-block; padding: 2px 6px; border-radius: 5px; font-size: 8px; font-weight: 700; margin-top: 5px; background: rgba(99,102,241,0.2); color: #818cf8; }
-        .op-status-tag { font-size: 8px; font-weight: 700; text-transform: uppercase; margin-top: 4px; padding: 1px 6px; border-radius: 4px; display: inline-block; }
-
         /* ═══════ SCREEN: ALERTAS ═══════ */
         .alert-screen { padding: 12px 20px; height: calc(100vh - 140px); overflow-y: auto; }
         .alert-item {
@@ -149,6 +126,18 @@
         .badge-normal { background: rgba(59,130,246,0.2); color: #60a5fa; }
         .badge-atendido { background: rgba(34,197,94,0.2); color: #22c55e; }
         .badge-aberto { background: rgba(251,191,36,0.2); color: #fbbf24; }
+
+        /* SCREEN INDICATOR */
+        .screen-indicator {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .screen-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: #334155; transition: background 0.3s;
+        }
+        .screen-dot.active { background: #3b82f6; }
     </style>
 </head>
 <body>
@@ -156,7 +145,14 @@
 
     <!-- HEADER -->
     <div class="tv-header">
-        <div class="logo">PRODS<span>YS</span> <span style="font-size:11px;color:#64748b;font-weight:500;letter-spacing:0">| TV Diretoria</span></div>
+        <div style="display:flex;align-items:center;gap:16px">
+            <div class="logo">PRODS<span>YS</span> <span style="font-size:11px;color:#64748b;font-weight:500;letter-spacing:0">| TV Diretoria</span></div>
+            <div class="screen-indicator" id="screenDots">
+                <div class="screen-dot active" id="dot-0"></div>
+                <div class="screen-dot" id="dot-1"></div>
+                <div class="screen-dot" id="dot-2"></div>
+            </div>
+        </div>
         <div class="header-right">
             <div class="clock" id="clock">--:--:--</div>
             <div class="date-text" id="data">--/--/----</div>
@@ -186,12 +182,12 @@
                 <div class="chart-wrapper"><canvas id="chartSituacao"></canvas></div>
             </div>
             <div class="chart-card">
-                <h3><i class="fa-solid fa-gears" style="margin-right:6px"></i>OPs em Andamento ({{ ops|length }})</h3>
-                <div class="chart-wrapper"><canvas id="chartOps"></canvas></div>
+                <h3><i class="fa-solid fa-calendar-clock" style="margin-right:6px"></i>Urgência por Prazo</h3>
+                <div class="chart-wrapper"><canvas id="chartUrgencia"></canvas></div>
             </div>
             <div class="chart-card">
-                <h3><i class="fa-solid fa-bell" style="margin-right:6px"></i>Urgência por Dias</h3>
-                <div class="chart-wrapper"><canvas id="chartUrgencia"></canvas></div>
+                <h3><i class="fa-solid fa-link" style="margin-right:6px"></i>Pedidos Vinculados a OF</h3>
+                <div class="chart-wrapper"><canvas id="chartOF"></canvas></div>
             </div>
         </div>
     </div>
@@ -247,32 +243,8 @@
         </div>
     </div>
 
-    <!-- ═══ SCREEN 3: OPs ═══ -->
+    <!-- ═══ SCREEN 3: ALERTAS ═══ -->
     <div class="screen" id="screen-2">
-        <div class="section-title" style="padding:12px 20px"><i class="fa-solid fa-gears"></i> Ordens de Produção em Andamento</div>
-        <div class="ops-grid">
-            {% for op in ops %}
-            <div class="op-card {{ op.status|default('') }}">
-                <div class="op-num">#{{ op.ordem }}</div>
-                <div class="op-prod">{{ op.descricao_produto|truncate(30) if op.descricao_produto else 'Produto não identificado' }}</div>
-                <div style="font-size:9px;color:#94a3b8;margin-top:3px">Lote: {{ op.lote_codigo or '—' }}</div>
-                <div><span class="op-setor"><i class="fa-solid fa-industry" style="margin-right:3px"></i>{{ op.departamento_atual or 'Sem setor' }}</span></div>
-                <div>
-                    {% if op.status == 'em_producao' %}<span class="op-status-tag" style="background:rgba(245,158,11,0.2);color:#f59e0b">Em Produção</span>
-                    {% elif op.status == 'liberado' %}<span class="op-status-tag" style="background:rgba(59,130,246,0.2);color:#60a5fa">Liberado</span>
-                    {% elif op.status == 'pausado' %}<span class="op-status-tag" style="background:rgba(239,68,68,0.2);color:#ef4444">Pausado</span>
-                    {% endif %}
-                </div>
-            </div>
-            {% endfor %}
-            {% if not ops %}
-            <div class="no-data" style="grid-column:1/-1"><i class="fa-solid fa-gears"></i>Nenhuma OP em produção.</div>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- ═══ SCREEN 4: ALERTAS ═══ -->
-    <div class="screen" id="screen-3">
         <div class="alert-screen">
             <div class="section-title"><i class="fa-solid fa-triangle-exclamation"></i> Alertas — Ação Necessária</div>
 
@@ -345,8 +317,9 @@ const chartColors = {
     lime: '#84cc16'
 };
 
-// Chart 1: Status dos Pedidos
-{% set total = k.total_pedidos|default(1) %}
+{% set k = kpis %}
+
+// Chart 1: Status dos Pedidos (Doughnut)
 new Chart(document.getElementById('chartStatus'), {
     type: 'doughnut',
     data: {
@@ -373,7 +346,7 @@ new Chart(document.getElementById('chartStatus'), {
     }
 });
 
-// Chart 2: Situação
+// Chart 2: Situação (Aprovado / Pendente / Cancelado / Incompleto)
 new Chart(document.getElementById('chartSituacao'), {
     type: 'bar',
     data: {
@@ -400,40 +373,17 @@ new Chart(document.getElementById('chartSituacao'), {
     }
 });
 
-// Chart 3: OPs por Status
-new Chart(document.getElementById('chartOps'), {
-    type: 'bar',
-    data: {
-        labels: [{% for op in ops %}'OP #{{ op.ordem }}',{% endfor %}],
-        datasets: [{
-            label: 'OPs',
-            data: [{% for op in ops %}1,{% endfor %}],
-            backgroundColor: [{% for op in ops %}{% if op.status == 'em_producao' %}'#f59e0b'{% elif op.status == 'pausado' %}'#ef4444'{% else %}'#3b82f6'{% endif %},{% endfor %}],
-            borderRadius: 4
-        }]
-    },
-    options: {
-        indexAxis: 'y',
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-            x: { display: false },
-            y: { ticks: { color: '#94a3b8', font: { size: 9 } }, grid: { display: false } }
-        }
-    }
-});
-
-// Chart 4: Urgência
+// Chart 3: Urgência por Prazo
 {% set atrasados_count = 0 %}
-{% set hoje_1d = 0 %}
-{% set d2_3 = 0 %}
+{% set hoje_count = 0 %}
+{% set d1_3 = 0 %}
 {% set d4_7 = 0 %}
 {% set d8plus = 0 %}
 {% for p in pedidos %}
     {% if p.dias_restantes is not none %}
         {% if p.dias_restantes < 0 %}{% set atrasados_count = atrasados_count + 1 %}
-        {% elif p.dias_restantes == 0 %}{% set hoje_1d = hoje_1d + 1 %}
-        {% elif p.dias_restantes <= 3 %}{% set d2_3 = d2_3 + 1 %}
+        {% elif p.dias_restantes == 0 %}{% set hoje_count = hoje_count + 1 %}
+        {% elif p.dias_restantes <= 3 %}{% set d1_3 = d1_3 + 1 %}
         {% elif p.dias_restantes <= 7 %}{% set d4_7 = d4_7 + 1 %}
         {% else %}{% set d8plus = d8plus + 1 %}
         {% endif %}
@@ -444,7 +394,7 @@ new Chart(document.getElementById('chartUrgencia'), {
     data: {
         labels: ['Atrasados', 'Hoje', '1-3 dias', '4-7 dias', '8+ dias'],
         datasets: [{
-            data: [{{ atrasados_count }}, {{ hoje_1d }}, {{ d2_3 }}, {{ d4_7 }}, {{ d8plus }}],
+            data: [{{ atrasados_count }}, {{ hoje_count }}, {{ d1_3 }}, {{ d4_7 }}, {{ d8plus }}],
             backgroundColor: [chartColors.red, '#f59e0b', '#fbbf24', chartColors.blue, chartColors.cyan],
             borderRadius: 6,
             barPercentage: 0.7
@@ -460,12 +410,42 @@ new Chart(document.getElementById('chartUrgencia'), {
     }
 });
 
-// ═══════ AUTO-ROTATE ═══════
-const TOTAL_SCREENS = 4;
+// Chart 4: Pedidos com / sem OF vinculada
+const comOF = {{ pedidos | selectattr('ordem_producao') | list | length }};
+const semOF = {{ pedidos | rejectattr('ordem_producao') | list | length }};
+new Chart(document.getElementById('chartOF'), {
+    type: 'doughnut',
+    data: {
+        labels: ['Com OF vinculada', 'Sem OF'],
+        datasets: [{
+            data: [comOF, semOF],
+            backgroundColor: [chartColors.purple, chartColors.gray],
+            borderWidth: 0,
+            borderRadius: 4
+        }]
+    },
+    options: {
+        responsive: true, maintainAspectRatio: false,
+        cutout: '65%',
+        plugins: {
+            legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 11, family: 'Inter' }, padding: 10, usePointStyle: true, pointStyle: 'circle' } }
+        }
+    }
+});
+
+// ═══════ AUTO-ROTATE (3 telas) ═══════
+const TOTAL_SCREENS = 3;
 const INTERVAL = 25000;
 let current = 0;
 let progress = 0;
 let progressInterval;
+
+function updateDots(n) {
+    for (let i = 0; i < TOTAL_SCREENS; i++) {
+        const dot = document.getElementById('dot-' + i);
+        if (dot) dot.classList.toggle('active', i === n);
+    }
+}
 
 function showScreen(n) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -474,6 +454,7 @@ function showScreen(n) {
     current = n;
     progress = 0;
     document.getElementById('progress').style.width = '0%';
+    updateDots(n);
 }
 
 function startAutoRotate() {
@@ -489,7 +470,7 @@ function startAutoRotate() {
 
 startAutoRotate();
 
-// ═══════ AUTO-REFRESH ═══════
+// ═══════ AUTO-REFRESH (5 min) ═══════
 setInterval(() => { window.location.reload(); }, 300000);
 </script>
 </body>

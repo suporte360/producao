@@ -21,6 +21,22 @@ from collections import defaultdict, OrderedDict, OrderedDict
 import time
 import re
 import sqlite3
+import logging
+import traceback as _traceback
+
+# =============================================
+# Logging estruturado
+# =============================================
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] %(levelname)s %(name)s: %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('app_5002.log', encoding='utf-8')
+    ]
+)
+logger = logging.getLogger('producao')
 
 from config.config import Config
 from database.mysql_db import DatabaseMySQL
@@ -406,25 +422,41 @@ def dashboard():
 @role_required('admin', 'gerente', 'diretor', 'pcp')
 def pedidos_redirect():
     """Tela de Pedidos de Venda do ERP — direto da tabela pedido + empresa."""
-    from datetime import date, timedelta
+    from datetime import date
     status_filtro = request.args.get('status', 'todos')
     busca = request.args.get('busca', '').strip()
+    hoje = date.today()
 
-    pg = None
     pedidos_erp = []
-    resumo_erp = {}
+    resumo_erp = {
+        'total_pedidos':0,'em_aberto':0,'em_producao':0,'vinculados_of':0,
+        'atendidos':0,'cancelados':0,'atrasados':0,'proximos_7dias':0,
+        'valor_total_faturado':0,'situacao_a':0,'situacao_p':0,'situacao_c':0,'situacao_i':0
+    }
 
     try:
+        logger.info('[/pedidos] Conectando ao PostgreSQL (ERP)...')
         pg = DatabasePostgreSQL()
+
+        # Teste de conectividade
+        pg.query_one('SELECT 1 AS ok')
+        logger.info('[/pedidos] Conexao OK. Buscando resumo KPIs...')
 
         # Resumo de KPIs direto do ERP
         resumo_erp = pg.get_resumo_pedidos_erp()
+        logger.info('[/pedidos] KPIs: total=%s em_aberto=%s em_producao=%s atrasados=%s',
+                    resumo_erp.get('total_pedidos'), resumo_erp.get('em_aberto'),
+                    resumo_erp.get('em_producao'), resumo_erp.get('atrasados'))
 
         # Pedidos filtrados do ERP
-        pedidos_erp = pg.get_pedidos_erp(status=status_filtro, busca=busca if busca else None, limite=200)
+        pedidos_erp = pg.get_pedidos_erp(
+            status=status_filtro,
+            busca=busca if busca else None,
+            limite=200
+        )
+        logger.info('[/pedidos] Pedidos retornados: %d (filtro=%s)', len(pedidos_erp), status_filtro)
 
         # Adicionar dias restantes
-        hoje = date.today()
         for p in pedidos_erp:
             dp = p.get('data_previsao')
             if dp:
@@ -433,11 +465,10 @@ def pedidos_redirect():
                 p['dias_restantes'] = None
 
     except Exception as e:
-        print(f"Erro ERP pedidos: {e}")
+        logger.error('[/pedidos] ERRO ao buscar dados do ERP: %s', e)
+        logger.error('[/pedidos] Traceback: %s', _traceback.format_exc())
         pedidos_erp = []
-        resumo_erp = {'total_pedidos':0,'em_aberto':0,'em_producao':0,'vinculados_of':0,
-                      'atendidos':0,'cancelados':0,'atrasados':0,'proximos_7dias':0,'valor_total_faturado':0}
-        hoje = date.today()
+        # resumo_erp ja tem valores zerados como fallback
 
     return render_template('pedidos.html',
                            pedidos=pedidos_erp,
@@ -456,17 +487,16 @@ def tv_redirect():
 @app.route('/tv/diretoria')
 def tv_diretoria():
     """TV Inteligente da Diretoria — rotação automática com gráficos."""
-    from datetime import date, timedelta
+    from datetime import date
     pedidos_tv = []
-    ops_tv = []
     kpis = {}
+    hoje = date.today()
 
     try:
         pg = DatabasePostgreSQL()
         pedidos_tv = pg.get_pedidos_erp_para_tv(limite=50)
 
         # Adicionar dias restantes
-        hoje = date.today()
         for p in pedidos_tv:
             dp = p.get('data_previsao')
             if dp:
@@ -477,27 +507,17 @@ def tv_diretoria():
         # KPIs
         kpis = pg.get_resumo_pedidos_erp()
     except Exception as e:
+        import traceback
         print(f"Erro TV diretoria: {e}")
-        hoje = date.today()
+        traceback.print_exc()
 
-    # OPs em produção (do MySQL)
-    try:
-        ops_tv = db.query("""
-            SELECT ordem, lote_codigo, descricao_produto, status, departamento_atual,
-                   data_abertura_erp, data_previsao_erp
-            FROM lotes_producao
-            WHERE status IN ('liberado', 'em_producao', 'pausado')
-            ORDER BY FIELD(status, 'em_producao', 'liberado', 'pausado'), ordem DESC
-            LIMIT 30
-        """)
-    except Exception:
-        pass
+    # NOTA: OPs do MariaDB foram removidas desta tela conforme solicitado.
+    # A TV da Diretoria exibe apenas dados de pedidos do ERP (PostgreSQL).
 
     return render_template('tv_diretoria.html',
                            pedidos=pedidos_tv,
-                           ops=ops_tv,
                            kpis=kpis,
-                           agora=hoje if 'hoje' in dir() else date.today())
+                           agora=hoje)
 
 @app.route('/gerente')
 @login_required
@@ -1176,34 +1196,41 @@ def _formatar_minutos(minutos):
 @login_required
 @role_required('admin', 'gerente', 'diretor')
 def diretor_relatorios():
-    """Visão Geral da Diretoria — Pedidos, atrasos, entregas e métricas."""
+    """Visão Geral da Diretoria — Pedidos de Venda do ERP + métricas locais."""
+    from datetime import date, timedelta
     stats = db.get_estatisticas_gerais()
     dados_ger = db.get_dashboard_gerente()
-    # Busca dados do ERP para relatório
-    erp_stats = {'total': 0, 'urgentes': 0, 'atrasadas': 0, 'normais': 0}
-    ordens_erp = []
     hoje = datetime.now().date()
+
+    # ── ERP: pedidos de venda (substitui get_lotes_agrupados_abertos) ──
+    resumo_erp = {
+        'total_pedidos': 0, 'em_aberto': 0, 'em_producao': 0,
+        'atrasados': 0, 'proximos_7dias': 0, 'atendidos': 0,
+        'cancelados': 0, 'valor_total_faturado': 0,
+        'situacao_a': 0, 'situacao_p': 0, 'situacao_c': 0, 'situacao_i': 0
+    }
+    pedidos_erp = []
     try:
         pg = DatabasePostgreSQL()
-        ordens_erp = pg.get_lotes_agrupados_abertos() or []
-        erp_stats['total'] = len(ordens_erp)
-        for o in ordens_erp:
-            prev = o.get('data_previsao')
-            if prev:
-                # Converter para date se for datetime
-                prev_date = prev.date() if hasattr(prev, 'date') else prev
-                if prev_date < hoje:
-                    erp_stats['atrasadas'] += 1
-                else:
-                    erp_stats['normais'] += 1
+        resumo_erp = pg.get_resumo_pedidos_erp()
+        pedidos_erp = pg.get_pedidos_erp(status='todos', limite=200)
+        # Adicionar dias_restantes a cada pedido
+        for p in pedidos_erp:
+            dp = p.get('data_previsao')
+            if dp:
+                p['dias_restantes'] = (dp - hoje).days
             else:
-                erp_stats['normais'] += 1
+                p['dias_restantes'] = None
     except Exception as e:
-        print(f"Erro ERP lotes: {e}")
+        import traceback
+        print(f"Erro ERP pedidos (diretor/relatorios): {e}")
+        traceback.print_exc()
+
     usuarios = db.listar_usuarios()
     return render_template('diretor/relatorios.html',
                            stats=stats, dados_ger=dados_ger,
-                           erp_stats=erp_stats, ordens_erp=ordens_erp,
+                           resumo_erp=resumo_erp,
+                           pedidos_erp=pedidos_erp,
                            usuarios=usuarios,
                            usuario_nome=session['usuario_nome'],
                            now=hoje)
