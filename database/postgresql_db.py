@@ -549,18 +549,21 @@ class DatabasePostgreSQL:
             resultados = self.query("""
                 SELECT
                     COUNT(*) AS total_pedidos,
-                    SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('001','002','') AND TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) != 'C' THEN 1 ELSE 0 END) AS em_aberto,
-                    SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('003','004') AND TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) != 'C' THEN 1 ELSE 0 END) AS em_producao,
+                    -- Em Aberto: Status 001/002 e SEM OF vinculada
+                    SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('001','002','') AND NULLIF(TRIM(CAST(pedoflote AS TEXT)), '') IS NULL AND TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) NOT IN ('C') THEN 1 ELSE 0 END) AS em_aberto,
+                    -- Em OF: Tem pedoflote preenchido e não está cancelado nem totalmente atendido
+                    SUM(CASE WHEN NULLIF(TRIM(CAST(pedoflote AS TEXT)), '') IS NOT NULL AND TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) NOT IN ('C') AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) NOT IN ('007','008','009','010') THEN 1 ELSE 0 END) AS em_producao,
                     SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) = '005' AND TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) != 'C' THEN 1 ELSE 0 END) AS vinculados_of,
                     SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('007','008','009') THEN 1 ELSE 0 END) AS atendidos,
-                    SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) = '010' OR TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) = 'C' THEN 1 ELSE 0 END) AS cancelados,
-                    SUM(CASE WHEN pedprevi IS NOT NULL AND pedprevi < CURRENT_DATE AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('001','002','003','004','') AND TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) != 'C' THEN 1 ELSE 0 END) AS atrasados,
-                    -- Próximos 3 dias úteis (considerando intervalo de 5 dias corridos para cobrir final de semana)
+                    SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('010','004') OR TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) = 'C' THEN 1 ELSE 0 END) AS cancelados,
+                    -- Atrasados: Em aberto ou Em OF com data vencida
+                    SUM(CASE WHEN pedprevi IS NOT NULL AND pedprevi < CURRENT_DATE AND TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) NOT IN ('C') AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) NOT IN ('007','008','009','010') THEN 1 ELSE 0 END) AS atrasados,
+                    -- Próximos 3 dias úteis
                     SUM(CASE WHEN pedprevi IS NOT NULL AND pedprevi >= CURRENT_DATE AND pedprevi <= (CURRENT_DATE + INTERVAL '5 days') 
                         AND EXTRACT(DOW FROM pedprevi) NOT IN (0, 6)
-                        AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('001','002','003','004','') 
-                        AND TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) != 'C' THEN 1 ELSE 0 END) AS proximos_3dias,
-                    SUM(CASE WHEN pedprevi IS NOT NULL AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('003','004') THEN 1 ELSE 0 END) AS em_of_vinculo,
+                        AND TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) NOT IN ('C') 
+                        AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) NOT IN ('007','008','009','010') THEN 1 ELSE 0 END) AS proximos_3dias,
+                    SUM(CASE WHEN pedprevi IS NOT NULL AND NULLIF(TRIM(CAST(pedoflote AS TEXT)), '') IS NOT NULL THEN 1 ELSE 0 END) AS em_of_vinculo,
                     SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) IN ('A', '') THEN 1 ELSE 0 END) AS situacao_a,
                     SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) = 'P' THEN 1 ELSE 0 END) AS situacao_p,
                     SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) = 'C' THEN 1 ELSE 0 END) AS situacao_c,
