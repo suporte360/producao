@@ -129,22 +129,24 @@ class DatabasePostgreSQL:
                 SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('001','002','') AND NULLIF(TRIM(CAST(pedoflote AS TEXT)), '') IS NULL THEN 1 ELSE 0 END) as em_aberto,
                 SUM(CASE WHEN NULLIF(TRIM(CAST(pedoflote AS TEXT)), '') IS NOT NULL OR TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('003','004','005','006') THEN 1 ELSE 0 END) as em_producao,
                 SUM(CASE WHEN pedprevi < CURRENT_DATE AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) NOT IN ('007','008','009','010') THEN 1 ELSE 0 END) as atrasados,
-                SUM(CASE WHEN pedprevi >= CURRENT_DATE AND pedprevi <= (CURRENT_DATE + INTERVAL '3 days') THEN 1 ELSE 0 END) as prox_3_dias
+                SUM(CASE WHEN pedprevi >= CURRENT_DATE AND pedprevi <= (CURRENT_DATE + INTERVAL '3 days') AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) NOT IN ('007','008','009','010') THEN 1 ELSE 0 END) as prox_3_dias,
+                SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('007','008','009') THEN 1 ELSE 0 END) as atendidos,
+                SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) = 'C' OR TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) = '010' THEN 1 ELSE 0 END) as cancelados
             FROM public.pedido
             WHERE peddata >= CURRENT_DATE - INTERVAL '180 days'
-              AND TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) NOT IN ('C')
-              AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) NOT IN ('007','008','009','010')
         """
         res = self.query_one(sql)
         if not res:
-            return {'total_pedidos':0, 'em_aberto':0, 'em_producao':0, 'atrasados':0, 'proximos_3dias':0}
+            return {'total_pedidos':0, 'em_aberto':0, 'em_producao':0, 'atrasados':0, 'proximos_3dias':0, 'atendidos':0, 'cancelados':0}
             
         return {
             'total_pedidos': int(res.get('total') or 0),
             'em_aberto': int(res.get('em_aberto') or 0),
             'em_producao': int(res.get('em_producao') or 0),
             'atrasados': int(res.get('atrasados') or 0),
-            'proximos_3dias': int(res.get('prox_3_dias') or 0)
+            'proximos_3dias': int(res.get('prox_3_dias') or 0),
+            'atendidos': int(res.get('atendidos') or 0),
+            'cancelados': int(res.get('cancelados') or 0)
         }
 
     def get_pedidos_erp_para_tv(self, limite=50):
