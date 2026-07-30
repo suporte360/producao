@@ -94,6 +94,8 @@ class DatabasePostgreSQL:
             FROM public.pedido p
             LEFT JOIN public.empresa e ON p.pedcliente::TEXT = e.empresa::TEXT
             WHERE p.peddata >= CURRENT_DATE - INTERVAL '180 days'
+              AND TRIM(CAST(COALESCE(p.pedsitua, '') AS TEXT)) NOT IN ('C')
+              AND TRIM(CAST(COALESCE(p.pedsitsit, '') AS TEXT)) NOT IN ('010')
         """
         params = []
         
@@ -126,14 +128,16 @@ class DatabasePostgreSQL:
         sql = """
             SELECT 
                 COUNT(*) as total,
-                SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('001','002','') AND NULLIF(TRIM(CAST(pedoflote AS TEXT)), '') IS NULL THEN 1 ELSE 0 END) as em_aberto,
+                SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('001','002','','007') AND NULLIF(TRIM(CAST(pedoflote AS TEXT)), '') IS NULL THEN 1 ELSE 0 END) as em_aberto,
                 SUM(CASE WHEN NULLIF(TRIM(CAST(pedoflote AS TEXT)), '') IS NOT NULL OR TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('003','004','005','006') THEN 1 ELSE 0 END) as em_producao,
                 SUM(CASE WHEN pedprevi < CURRENT_DATE AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) NOT IN ('007','008','009','010') THEN 1 ELSE 0 END) as atrasados,
                 SUM(CASE WHEN pedprevi >= CURRENT_DATE AND pedprevi <= (CURRENT_DATE + INTERVAL '3 days') AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) NOT IN ('007','008','009','010') THEN 1 ELSE 0 END) as prox_3_dias,
-                SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('007','008','009') THEN 1 ELSE 0 END) as atendidos,
+                SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('008','009') THEN 1 ELSE 0 END) as atendidos,
                 SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) = 'C' OR TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) = '010' THEN 1 ELSE 0 END) as cancelados
             FROM public.pedido
             WHERE peddata >= CURRENT_DATE - INTERVAL '180 days'
+              AND TRIM(CAST(COALESCE(pedsitua, '') AS TEXT)) NOT IN ('C')
+              AND TRIM(CAST(COALESCE(pedsitsit, '') AS TEXT)) NOT IN ('010')
         """
         res = self.query_one(sql)
         if not res:
