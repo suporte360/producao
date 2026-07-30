@@ -37,7 +37,7 @@ def gerar_pdf_pedidos(output_path, dias=180):
             TRIM(CAST(p.pedsitsit AS TEXT)) as status, 
             TRIM(CAST(p.pedsitua AS TEXT)) as situacao,
             TRIM(CAST(p.pedoflote AS TEXT)) as lote,
-            CAST(p.pedrep AS TEXT) as deposito
+            CAST(p.deposito AS TEXT) as deposito
         FROM public.pedido p
         LEFT JOIN public.empresa e ON p.pedcliente::text = e.empresa::text
         WHERE p.peddata >= CURRENT_DATE - INTERVAL '{dias} days'
@@ -56,20 +56,17 @@ def gerar_pdf_pedidos(output_path, dias=180):
         cliente = (p['cliente'][:35] + '..') if p['cliente'] and len(p['cliente']) > 35 else (p['cliente'] or '-')
         deposito = str(p['deposito']) if p['deposito'] else '-'
         
-        # Destaque para lojas 2, 3, 4 e 7 (fundo cinza claro para destacar)
+        # Destaque para lojas 2, 3, 4 e 7
         destaque = p['deposito'] in ['2', '3', '4', '7']
         if destaque:
-            pdf.set_fill_color(240, 230, 255) # Roxo bem clarinho para o PDF
+            pdf.set_fill_color(240, 230, 255)
             fill = True
         else:
             fill = False
             
         pdf.cell(20, 6, str(p['pedido']), 1, 0, 'C', fill)
-        
-        # Se for loja de destaque, coloca um asterisco ou algo para marcar no PDF
         dep_text = f"* {deposito}" if destaque else deposito
         pdf.cell(15, 6, dep_text, 1, 0, 'C', fill)
-        
         pdf.cell(60, 6, cliente, 1, 0, 'L', fill)
         pdf.cell(25, 6, previsao, 1, 0, 'C', fill)
         pdf.cell(25, 6, p['situacao'] or '-', 1, 0, 'C', fill)
