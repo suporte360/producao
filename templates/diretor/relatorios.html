@@ -73,8 +73,8 @@
   <div class="kpi-card">
     <div class="kpi-icon" style="background:#f3e8ff;color:#7c3aed"><i class="fa-solid fa-calendar-check"></i></div>
     <div>
-      <div class="kpi-num text-purple-600">{{ r.proximos_7dias }}</div>
-      <div class="kpi-lbl">Próx. 7 dias</div>
+      <div class="kpi-num text-purple-600">{{ r.proximos_3dias }}</div>
+      <div class="kpi-lbl">Próx. 3 dias</div>
     </div>
   </div>
   <div class="kpi-card">
@@ -124,6 +124,7 @@
       <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider sticky top-0">
         <tr>
           <th class="px-3 py-2.5 text-left">Pedido</th>
+          <th class="px-3 py-2.5 text-center">Loja</th>
           <th class="px-3 py-2.5 text-left">Cliente</th>
           <th class="px-3 py-2.5 text-center">Emissão</th>
           <th class="px-3 py-2.5 text-center">Previsão</th>
@@ -139,6 +140,15 @@
         {% set urgente = p.dias_restantes is not none and p.dias_restantes >= 0 and p.dias_restantes <= 3 %}
         <tr class="hover:bg-gray-50 {{ 'bg-red-50/40' if atrasado else ('bg-amber-50/30' if urgente else '') }}">
           <td class="px-3 py-2.5 font-bold text-blue-700 text-xs">#{{ p.pedido }}</td>
+          <td class="px-3 py-2.5 text-center">
+            {% if p.deposito in ['2', '3', '4', '7'] %}
+              <span class="bg-purple-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">L{{ p.deposito }}</span>
+            {% elif p.deposito %}
+              <span class="text-gray-500 text-xs">{{ p.deposito }}</span>
+            {% else %}
+              <span class="text-gray-300">—</span>
+            {% endif %}
+          </td>
           <td class="px-3 py-2.5 text-xs text-gray-700 max-w-[220px] truncate" title="{{ p.razao_social or '' }}">{{ p.razao_social or '—' }}</td>
           <td class="px-3 py-2.5 text-center text-xs text-gray-500">{{ p.data_emissao|formatar_data_br if p.data_emissao else '—' }}</td>
           <td class="px-3 py-2.5 text-center text-xs {{ 'text-red-600 font-bold' if atrasado else ('text-amber-600 font-semibold' if urgente else 'text-gray-500') }}">

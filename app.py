@@ -429,9 +429,9 @@ def pedidos_redirect():
 
     pedidos_erp = []
     resumo_erp = {
-        'total_pedidos':0,'em_aberto':0,'em_producao':0,'vinculados_of':0,
-        'atendidos':0,'cancelados':0,'atrasados':0,'proximos_7dias':0,
-        'valor_total_faturado':0,'situacao_a':0,'situacao_p':0,'situacao_c':0,'situacao_i':0
+        'total_pedidos': 0, 'em_aberto': 0, 'em_producao': 0,
+        'atendidos': 0, 'cancelados': 0, 'atrasados': 0, 'proximos_3dias': 0,
+        'valor_total_faturado': 0
     }
 
     try:
@@ -1225,9 +1225,8 @@ def diretor_relatorios():
     # ── ERP: pedidos de venda (substitui get_lotes_agrupados_abertos) ──
     resumo_erp = {
         'total_pedidos': 0, 'em_aberto': 0, 'em_producao': 0,
-        'atrasados': 0, 'proximos_7dias': 0, 'atendidos': 0,
-        'cancelados': 0, 'valor_total_faturado': 0,
-        'situacao_a': 0, 'situacao_p': 0, 'situacao_c': 0, 'situacao_i': 0
+        'atrasados': 0, 'proximos_3dias': 0, 'atendidos': 0,
+        'cancelados': 0, 'valor_total_faturado': 0
     }
     pedidos_erp = []
     try:

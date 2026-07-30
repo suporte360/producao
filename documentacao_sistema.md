@@ -25,4 +25,8 @@
 | 2026-07-30 | Adição de destaque visual (balão roxo) para lojas 2, 3, 4 e 7 usando a coluna `pedrep`. | **Sucesso** |
 | 2026-07-30 | Implementação de lógica de contagem em Python para evitar falhas de "espaços fantasmas" do banco. | **Sucesso** |
 | 2026-07-30 | Ajuste de KPIs para considerar "Em OF" pedidos com campo `pedoflote` preenchido. | **Sucesso** |
-| 2026-07-30 | Unificação da lógica entre TV e Relatórios para garantir números idênticos em ambas as telas. | **Em andamento** |
+| 2026-07-30 | Unificação da lógica entre TV e Relatórios para garantir números idênticos em ambas as telas. | **Sucesso** |
+| 2026-07-30 | Atualização do mapeamento de status para 3 dígitos conforme solicitação (001-010). | **Sucesso** |
+| 2026-07-30 | Inclusão da coluna de Loja/Depósito com destaque visual (balão roxo) para lojas 2, 3, 4 e 7. | **Sucesso** |
+| 2026-07-30 | Ajuste do KPI de "Próximos 7 dias" para "Próximos 3 dias" em todo o sistema. | **Sucesso** |
+| 2026-07-30 | Implementação de lógica 'blinded' para tratar ausência da coluna peddep no banco. | **Sucesso** |

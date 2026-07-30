@@ -434,22 +434,23 @@ class DatabasePostgreSQL:
     STATUS_MAP = {
         '001': 'Pedido Não Aprovado',
         '002': 'Pedido em Aberto',
-        '003': 'Vínculo com OF Estática',
-        '004': 'Vínculo com OF em Processo',
-        '005': 'Vínculo com OF Encerrada',
-        '006': 'Vínculo com OF Com Problema',
+        '003': 'Vínculo OF Estática',
+        '004': 'Vínculo OF em Processo',
+        '005': 'Vínculo OF Encerrada',
+        '006': 'Vínculo OF Problema',
         '007': 'Atendido Parcial',
         '008': 'Atendido Total',
-        '009': 'Vínculo com Expedição',
+        '009': 'Vínculo Expedição',
         '010': 'Pedido Cancelado',
         '': 'Aberto'
     }
 
     SIT_MAP = {
         'A': 'Aprovado',
-        'P': 'Pendente',
+        'P': 'Parcial',
         'C': 'Cancelado',
         'I': 'Incompleto',
+        ' ': 'Em Aberto'
     }
 
     def get_pedidos_erp(self, status=None, busca=None, limite=100):
@@ -540,55 +541,37 @@ class DatabasePostgreSQL:
         return resultados
 
     def get_resumo_pedidos_erp(self):
-        """Retorna resumo rápido de pedidos para KPIs.
-        NOTA: Colunas do ERP têm valores com espaços (CHAR fixo).
-        Filtro agressivo de 180 dias para remover os 8 mil pedidos antigos.
-        """
+        """Retorna resumo unificado de pedidos para KPIs (TV e Relatórios)."""
         try:
             resultados = self.query("""
                 SELECT
                     COUNT(*) AS total_pedidos,
                     -- Em Aberto: Status 001/002 e SEM OF vinculada
-                    SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('001','002','') AND NULLIF(TRIM(CAST(pedoflote AS TEXT)), '') IS NULL AND TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) NOT IN ('C') THEN 1 ELSE 0 END) AS em_aberto,
-                    -- Em OF: Tem pedoflote preenchido e não está cancelado nem totalmente atendido
-                    SUM(CASE WHEN NULLIF(TRIM(CAST(pedoflote AS TEXT)), '') IS NOT NULL AND TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) NOT IN ('C') AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) NOT IN ('007','008','009','010','004') THEN 1 ELSE 0 END) AS em_producao,
-                    SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) = '005' AND TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) != 'C' THEN 1 ELSE 0 END) AS vinculados_of,
-                    SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('007','008','009') THEN 1 ELSE 0 END) AS atendidos,
-                    SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('010','004') OR TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) = 'C' THEN 1 ELSE 0 END) AS cancelados,
-                    -- Atrasados: Em aberto ou Em OF com data vencida
-                    SUM(CASE WHEN pedprevi IS NOT NULL AND pedprevi < CURRENT_DATE AND TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) NOT IN ('C') AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) NOT IN ('007','008','009','010','004') THEN 1 ELSE 0 END) AS atrasados,
+                    SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('001','002','') AND NULLIF(TRIM(CAST(pedoflote AS TEXT)), '') IS NULL THEN 1 ELSE 0 END) AS em_aberto,
+                    -- Em OF: Tem pedoflote OU status de produção (003-006)
+                    SUM(CASE WHEN NULLIF(TRIM(CAST(pedoflote AS TEXT)), '') IS NOT NULL OR TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('003','004','005','006') THEN 1 ELSE 0 END) AS em_producao,
+                    -- Atrasados: Não atendidos/cancelados com data vencida
+                    SUM(CASE WHEN pedprevi < CURRENT_DATE AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) NOT IN ('007','008','009','010') THEN 1 ELSE 0 END) AS atrasados,
                     -- Próximos 3 dias úteis
-                    SUM(CASE WHEN pedprevi IS NOT NULL AND pedprevi >= CURRENT_DATE AND pedprevi <= (CURRENT_DATE + INTERVAL '5 days') 
-                        AND EXTRACT(DOW FROM pedprevi) NOT IN (0, 6)
-                        AND TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) NOT IN ('C') 
-                        AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) NOT IN ('007','008','009','010','004') THEN 1 ELSE 0 END) AS proximos_3dias,
-                    SUM(CASE WHEN pedprevi IS NOT NULL AND NULLIF(TRIM(CAST(pedoflote AS TEXT)), '') IS NOT NULL THEN 1 ELSE 0 END) AS em_of_vinculo,
-                    SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) IN ('A', '') THEN 1 ELSE 0 END) AS situacao_a,
-                    SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) = 'P' THEN 1 ELSE 0 END) AS situacao_p,
-                    SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) = 'C' THEN 1 ELSE 0 END) AS situacao_c,
-                    SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) = 'I' THEN 1 ELSE 0 END) AS situacao_i,
+                    SUM(CASE WHEN pedprevi >= CURRENT_DATE AND pedprevi <= (CURRENT_DATE + INTERVAL '3 days') THEN 1 ELSE 0 END) AS proximos_3dias,
+                    SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('007','008','009') THEN 1 ELSE 0 END) AS atendidos,
+                    SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) = '010' THEN 1 ELSE 0 END) AS cancelados,
                     SUM(COALESCE(pedvlrfat, 0)) AS valor_total_faturado
                 FROM public.pedido
                 WHERE peddata >= CURRENT_DATE - INTERVAL '180 days'
-                  AND peddata IS NOT NULL
                   AND TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) NOT IN ('C')
-                  AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) NOT IN ('007','008','009','010','004')
+                  AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) NOT IN ('007','008','009','010')
             """)
             r = resultados[0] if resultados else {}
             return {
                 'total_pedidos': int(r.get('total_pedidos', 0) or 0),
                 'em_aberto': int(r.get('em_aberto', 0) or 0),
                 'em_producao': int(r.get('em_producao', 0) or 0),
-                'vinculados_of': int(r.get('vinculados_of', 0) or 0),
+                'atrasados': int(r.get('atrasados', 0) or 0),
+                'proximos_3dias': int(r.get('proximos_3dias', 0) or 0),
                 'atendidos': int(r.get('atendidos', 0) or 0),
                 'cancelados': int(r.get('cancelados', 0) or 0),
-                'atrasados': int(r.get('atrasados', 0) or 0),
-                'proximos_7dias': int(r.get('proximos_7dias', 0) or 0),
                 'valor_total_faturado': float(r.get('valor_total_faturado', 0) or 0),
-                'situacao_a': int(r.get('situacao_a', 0) or 0),
-                'situacao_p': int(r.get('situacao_p', 0) or 0),
-                'situacao_c': int(r.get('situacao_c', 0) or 0),
-                'situacao_i': int(r.get('situacao_i', 0) or 0),
             }
         except Exception as e:
             print(f"Erro get_resumo_pedidos_erp: {e}")
