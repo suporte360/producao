@@ -19,11 +19,11 @@ class PDF(FPDF):
         self.set_fill_color(200, 220, 255)
         self.set_font('Arial', 'B', 8)
         self.cell(20, 7, 'Pedido', 1, 0, 'C', 1)
+        self.cell(15, 7, 'Loja', 1, 0, 'C', 1)
         self.cell(60, 7, 'Cliente', 1, 0, 'L', 1)
         self.cell(25, 7, 'Previsão', 1, 0, 'C', 1)
-        self.cell(25, 7, 'Status', 1, 0, 'C', 1)
         self.cell(25, 7, 'Situação', 1, 0, 'C', 1)
-        self.cell(35, 7, 'Lote/OF', 1, 1, 'C', 1)
+        self.cell(45, 7, 'Lote/OF', 1, 1, 'C', 1)
 
 def gerar_pdf_pedidos(output_path, dias=180):
     pg = DatabasePostgreSQL()
@@ -36,7 +36,8 @@ def gerar_pdf_pedidos(output_path, dias=180):
             p.pedprevi as previsao, 
             TRIM(CAST(p.pedsitsit AS TEXT)) as status, 
             TRIM(CAST(p.pedsitua AS TEXT)) as situacao,
-            TRIM(CAST(p.pedoflote AS TEXT)) as lote
+            TRIM(CAST(p.pedoflote AS TEXT)) as lote,
+            CAST(p.peddep AS TEXT) as deposito
         FROM public.pedido p
         LEFT JOIN public.empresa e ON p.pedcliente::text = e.empresa::text
         WHERE p.peddata >= CURRENT_DATE - INTERVAL '{dias} days'
@@ -51,15 +52,28 @@ def gerar_pdf_pedidos(output_path, dias=180):
     pdf.set_font('Arial', '', 8)
     
     for p in pedidos:
-        previsao = p['previsao'].strftime('%d/%m/%Y') if p['previsao'] else '-'
+        previsao = p['previsao'].strftime('%d/%m/%Y') if p['previsao'] and hasattr(p['previsao'], 'strftime') else '-'
         cliente = (p['cliente'][:35] + '..') if p['cliente'] and len(p['cliente']) > 35 else (p['cliente'] or '-')
+        deposito = str(p['deposito']) if p['deposito'] else '-'
         
-        pdf.cell(20, 6, str(p['pedido']), 1, 0, 'C')
-        pdf.cell(60, 6, cliente, 1, 0, 'L')
-        pdf.cell(25, 6, previsao, 1, 0, 'C')
-        pdf.cell(25, 6, p['status'] or '-', 1, 0, 'C')
-        pdf.cell(25, 6, p['situacao'] or '-', 1, 0, 'C')
-        pdf.cell(35, 6, p['lote'] or '-', 1, 1, 'C')
+        # Destaque para lojas 2, 3, 4 e 7 (fundo cinza claro para destacar)
+        destaque = p['deposito'] in ['2', '3', '4', '7']
+        if destaque:
+            pdf.set_fill_color(240, 230, 255) # Roxo bem clarinho para o PDF
+            fill = True
+        else:
+            fill = False
+            
+        pdf.cell(20, 6, str(p['pedido']), 1, 0, 'C', fill)
+        
+        # Se for loja de destaque, coloca um asterisco ou algo para marcar no PDF
+        dep_text = f"* {deposito}" if destaque else deposito
+        pdf.cell(15, 6, dep_text, 1, 0, 'C', fill)
+        
+        pdf.cell(60, 6, cliente, 1, 0, 'L', fill)
+        pdf.cell(25, 6, previsao, 1, 0, 'C', fill)
+        pdf.cell(25, 6, p['situacao'] or '-', 1, 0, 'C', fill)
+        pdf.cell(45, 6, p['lote'] or '-', 1, 1, 'C', fill)
         
     pdf.output(output_path)
     return len(pedidos)
