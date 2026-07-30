@@ -1,15 +1,17 @@
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from contextlib import contextmanager
+from config.config import Config
 
 class DatabasePostgreSQL:
     def __init__(self):
+        # Utiliza as configurações centralizadas do config.py
         self.config = {
-            'host': '192.168.1.14',
-            'database': 'logica',
-            'user': 'postgres',
-            'password': '',
-            'port': 5432,
+            'host': Config.PG_HOST,
+            'database': Config.PG_DATABASE,
+            'user': Config.PG_USERNAME,
+            'password': Config.PG_PASSWORD,
+            'port': int(Config.PG_PORT),
             'connect_timeout': 5
         }
         
@@ -35,7 +37,7 @@ class DatabasePostgreSQL:
             if 'UndefinedColumn' in str(e):
                 import re
                 sql_fix = sql
-                # Fallback genérico para colunas que possam não existir em certas versões
+                # Fallback para subquery de ordem_producao se falhar
                 if 'ordem_producao' in str(e) or 'o.ordped' in str(e):
                     sql_fix = re.sub(r'\(SELECT o\.ordem::integer.*?\) AS ordem_producao,?', 'NULL AS ordem_producao,', sql_fix, flags=re.DOTALL)
 
