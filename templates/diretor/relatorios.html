@@ -12,10 +12,16 @@
     <div class="flex items-center gap-2">
       <select id="status_pdf" class="bg-white border border-gray-300 text-gray-700 text-[10px] font-bold rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-1.5 outline-none shadow-sm">
         <option value="Todos">TODOS STATUS</option>
-        <option value="AP">APROVADOS (AP)</option>
-        <option value="NA">NÃO APROVADOS (NA)</option>
-        <option value="PA">PARCIAIS (PA)</option>
-        <option value="IN">INCOMPLETOS (IN)</option>
+        <option value="01">Pedido Não Aprovado</option>
+        <option value="02">Pedido em Aberto</option>
+        <option value="03">Vínculo com OF Estática</option>
+        <option value="04">Vínculo com OF em Processo</option>
+        <option value="05">Vínculo com OF Encerrada</option>
+        <option value="06">Vínculo com OF Com Problema</option>
+        <option value="07">Atendido Parcial</option>
+        <option value="08">Atendido Total</option>
+        <option value="09">Vínculo com Expedição</option>
+        <option value="10">Pedido Cancelado</option>
       </select>
       <a href="javascript:void(0)" onclick="gerarPDF()" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all shadow-sm">
         <i class="fas fa-file-pdf"></i>

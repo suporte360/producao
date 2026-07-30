@@ -22,51 +22,47 @@ class PDF(FPDF):
         self.cell(10, 7, 'Loja', 1, 0, 'C', 1)
         self.cell(55, 7, 'Cliente', 1, 0, 'L', 1)
         self.cell(20, 7, 'Previsão', 1, 0, 'C', 1)
-        self.cell(50, 7, 'Status (Situação)', 1, 0, 'C', 1)
+        self.cell(50, 7, 'Status', 1, 0, 'C', 1)
         self.cell(40, 7, 'Lote/OF', 1, 1, 'C', 1)
+
+# Mapeamento de Status baseado na tabela pestatus do ERP
+STATUS_MAP = {
+    "01": "Pedido Não Aprovado",
+    "02": "Pedido em Aberto",
+    "03": "Vínculo com OF Estática",
+    "04": "Vínculo com OF em Processo",
+    "05": "Vínculo com OF Encerrada",
+    "06": "Vínculo com OF Com Problema",
+    "07": "Atendido Parcial",
+    "08": "Atendido Total",
+    "09": "Vínculo com Expedição",
+    "10": "Pedido Cancelado",
+}
 
 def gerar_pdf_pedidos(output_path, dias=180, status_filtro='Todos'):
     pg = DatabasePostgreSQL()
-    
-    # Mapeamento de Status baseado na legenda da imagem do ERP
-    # 'AP' = Aprovado (que na grade aparece como Atendido Total)
-    # 'NA' = Não Aprovado
-    # 'CA' = Cancelado
-    # 'IN' = Incompleto
-    # 'PA' = Parcial (comum em ERPs para Atendido Parcial)
-    # 'P' = Atendido Parcial
-    # 'A' = Atendido Total
-    SITUACAO_TRADUCAO = {
-        "AP": "Atendido Total",
-        "NA": "Não Aprovado",
-        "CA": "Cancelado",
-        "IN": "Incompleto",
-        "PA": "Atendido Parcial",
-        "P": "Atendido Parcial",
-        "A": "Atendido Total"
-    }
 
     # Construção do filtro SQL
     filtro_status = ""
     if status_filtro and status_filtro != 'Todos':
-        filtro_status = f"AND TRIM(CAST(p.pedsitua AS TEXT)) = '{status_filtro}'"
+        # Filtra pela tabela pestatus usando o código de status
+        filtro_status = f"AND ps.pesstatus = '{status_filtro}'"
 
-    # Busca os pedidos
-    # A coluna pedsitua é a que contém AP, NA, CA, etc.
+    # Busca os pedidos com JOIN na tabela pestatus para obter o status correto
     sql = f"""
         SELECT 
             p.pedido, 
             TRIM(CAST(e.empnome AS TEXT)) as cliente, 
             p.pedprevi as previsao, 
-            TRIM(CAST(p.pedsitua AS TEXT)) as situacao_erp, 
+            TRIM(CAST(ps.pesstatus AS TEXT)) as status_codigo,
             TRIM(CAST(p.pedoflote AS TEXT)) as lote,
             CAST(p.deposito AS TEXT) as deposito
         FROM public.pedido p
         LEFT JOIN public.empresa e ON p.pedcliente::text = e.empresa::text
+        LEFT JOIN public.pestatus ps ON p.pedido::text = ps.pespedido::text
         WHERE p.peddata >= CURRENT_DATE - INTERVAL '{dias} days'
-        AND TRIM(CAST(p.pedsitua AS TEXT)) NOT IN ('CA', 'C')
         {filtro_status}
-        ORDER BY p.pedprevi ASC
+        ORDER BY p.pedprevi ASC, p.pedido DESC
     """
     pedidos = pg.query(sql)
     
@@ -76,9 +72,9 @@ def gerar_pdf_pedidos(output_path, dias=180, status_filtro='Todos'):
     
     # Se houver filtro, adicionar informação no topo
     if status_filtro and status_filtro != 'Todos':
-        status_nome = SITUACAO_TRADUCAO.get(status_filtro, status_filtro)
+        status_nome = STATUS_MAP.get(status_filtro, status_filtro)
         pdf.set_font('Arial', 'B', 10)
-        pdf.cell(0, 10, f'Filtro: Apenas status "{status_nome}"', 0, 1, 'L')
+        pdf.cell(0, 10, f'Filtro: {status_nome}', 0, 1, 'L')
         pdf.set_font('Arial', '', 8)
         pdf.ln(2)
 
@@ -87,9 +83,9 @@ def gerar_pdf_pedidos(output_path, dias=180, status_filtro='Todos'):
         cliente = (p['cliente'][:32] + '..') if p['cliente'] and len(p['cliente']) > 32 else (p['cliente'] or '-')
         deposito = str(p['deposito']) if p['deposito'] else '-'
         
-        # Tradução baseada na coluna Sit. do ERP
-        sit = p['situacao_erp'] or ""
-        status_extenso = SITUACAO_TRADUCAO.get(sit, sit if sit else "EM ABERTO")
+        # Tradução baseada no código de status
+        cod_status = str(p['status_codigo']).strip() if p['status_codigo'] else ""
+        status_extenso = STATUS_MAP.get(cod_status, "Desconhecido")
             
         # Destaque para lojas 2, 3, 4 e 7
         destaque = p['deposito'] in ['2', '3', '4', '7']
