@@ -2,3 +2,9 @@ skills/
 node_modules/
 .env
 venv/
+
+__pycache__/
+*.py[cod]
+*$py.class
+app_5002.log
+static/relatorios/*.pdf

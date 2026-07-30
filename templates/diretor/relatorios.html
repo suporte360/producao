@@ -1,4 +1,7 @@
 {% extends "base.html" %}
+{% set k = dados_ger.kpis %}
+{% set r = resumo_erp %}
+
 {% block title %}Visão Geral da Diretoria — SALUTEM{% endblock %}
 {% block header_title %}
   <div class="flex items-center justify-between w-full">
@@ -20,8 +23,6 @@
 {% endblock %}
 
 {% block content %}
-{% set k = dados_ger.kpis %}
-{% set r = resumo_erp %}
 
 {# ═══════════════ ALERTA DE ATRASOS ERP ═══════════════ #}
 {% if r.atrasados > 0 %}
