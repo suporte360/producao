@@ -37,7 +37,7 @@ def gerar_pdf_pedidos(output_path, dias=180):
             TRIM(CAST(p.pedsitsit AS TEXT)) as status, 
             TRIM(CAST(p.pedsitua AS TEXT)) as situacao,
             TRIM(CAST(p.pedoflote AS TEXT)) as lote,
-            CAST(p.peddep AS TEXT) as deposito
+            CAST(p.pedrep AS TEXT) as deposito
         FROM public.pedido p
         LEFT JOIN public.empresa e ON p.pedcliente::text = e.empresa::text
         WHERE p.peddata >= CURRENT_DATE - INTERVAL '{dias} days'

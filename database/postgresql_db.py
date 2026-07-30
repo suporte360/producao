@@ -64,17 +64,28 @@ class DatabasePostgreSQL:
                     results = cursor.fetchall()
                     return [{k: (v.replace('\\','') if isinstance(v,str) else v) for k,v in dict(row).items()} for row in results]
         except Exception as e:
-            # Se der erro de coluna, tenta uma versão simplificada sem o vínculo de ordem
-            if 'UndefinedColumn' in str(e) and 'ordem_producao' in sql:
+            # Tratamento resiliente para colunas ausentes (peddep ou ordem_producao)
+            if 'UndefinedColumn' in str(e):
                 import re
-                # Remove a subquery de ordem_producao
-                sql_limpo = re.sub(r'\(SELECT o\.ordem::integer.*?\) AS ordem_producao,?', '', sql, flags=re.DOTALL)
-                # Tenta novamente sem a subquery problematica
-                with self.get_connection() as conn:
-                    with conn.cursor(cursor_factory=RealDictCursor) as cursor:
-                        cursor.execute(sql_limpo, params or ())
-                        results = cursor.fetchall()
-                        return [{k: (v.replace('\\','') if isinstance(v,str) else v) for k,v in dict(row).items()} for row in results]
+                sql_fix = sql
+                # Se o erro for peddep, substitui por NULL
+                if 'peddep' in str(e):
+                    sql_fix = re.sub(r'p\.peddep', 'NULL', sql_fix, flags=re.IGNORECASE)
+                    sql_fix = re.sub(r'CAST\(p\.peddep AS TEXT\)', 'NULL', sql_fix, flags=re.IGNORECASE)
+                
+                # Se o erro for na subquery de ordem_producao
+                if 'ordem_producao' in str(e) or 'o.ordped' in str(e):
+                    sql_fix = re.sub(r'\(SELECT o\.ordem::integer.*?\) AS ordem_producao,?', 'NULL AS ordem_producao,', sql_fix, flags=re.DOTALL)
+
+                # Tenta executar a query corrigida
+                try:
+                    with self.get_connection() as conn:
+                        with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                            cursor.execute(sql_fix, params or ())
+                            results = cursor.fetchall()
+                            return [{k: (v.replace('\\','') if isinstance(v,str) else v) for k,v in dict(row).items()} for row in results]
+                except Exception:
+                    raise e
             raise e
 
     def query_one(self, sql, params=None):
@@ -584,9 +595,7 @@ class DatabasePostgreSQL:
 
     def get_pedidos_erp_para_tv(self, limite=50):
         """
-        Retorna pedidos relevantes para a TV da diretoria.
-        Filtra pedidos ativos (não cancelados) dos últimos 180 dias.
-        Prioriza: Atrasados -> Em Produção -> Próximos Vencimentos.
+        Retorna pedidos relevantes para a TV da diretoria com tratamento de erro.
         """
         sql = """
             SELECT
@@ -599,37 +608,26 @@ class DatabasePostgreSQL:
                 p.pedvlrfat AS valor_faturado,
                 p.pedoflote,
                 CAST(p.pedrepres AS TEXT) AS vendedor,
-                CAST(p.peddep AS TEXT) AS deposito,
-                -- Buscar OP vinculada (vínculo via lotcod ou ordped)
-                (SELECT o.ordem::integer FROM public.ordem o
-                 WHERE o.ordped = p.pedido 
-                    OR (NULLIF(TRIM(CAST(p.pedoflote AS TEXT)), '') IS NOT NULL 
-                        AND (o.lotcod = TRIM(CAST(p.pedoflote AS TEXT)) OR o.lotcod = REPLACE(TRIM(CAST(p.pedoflote AS TEXT)), 'LOTE ', '')))
-                 LIMIT 1) AS ordem_producao
+                CAST(p.pedrep AS TEXT) AS deposito
             FROM public.pedido p
             LEFT JOIN public.empresa e ON p.pedcliente::TEXT = e.empresa::TEXT
-            WHERE p.peddata >= CURRENT_DATE - INTERVAL '120 days'
+            WHERE p.peddata >= CURRENT_DATE - INTERVAL '180 days'
               AND p.peddata IS NOT NULL
-              -- Apenas Aprovados (A), Parciais (P) ou Sem Situação (vazio)
               AND (TRIM(CAST(COALESCE(p.pedsitua, '') AS TEXT)) IN ('A', 'P', ''))
-              -- Remove Cancelados (010) e Atendidos Totais (007,008,009) para focar no que falta
               AND TRIM(CAST(COALESCE(p.pedsitsit, '') AS TEXT)) NOT IN ('007', '008', '009', '010')
             ORDER BY
-                -- 1. Atrasados (em aberto ou em produção)
                 CASE WHEN p.pedprevi < CURRENT_DATE THEN 0 ELSE 1 END,
-                -- 2. Em produção (status 003, 004)
-                CASE WHEN TRIM(CAST(COALESCE(p.pedsitsit, '') AS TEXT)) IN ('003','004') THEN 0 ELSE 1 END,
-                -- 3. Data de previsão mais próxima
-                p.pedprevi ASC,
-                p.pedido DESC
+                p.pedprevi ASC
             LIMIT %s
         """
-        resultados = self.query(sql, (limite,))
-
-        for r in resultados:
-            r['status_descricao'] = self.STATUS_MAP.get(r.get('status_codigo') or '', 'Desconhecido')
-
-        return resultados
+        try:
+            resultados = self.query(sql, (limite,))
+            for r in resultados:
+                r['status_descricao'] = self.STATUS_MAP.get(r.get('status_codigo') or '', 'Desconhecido')
+            return resultados
+        except Exception as e:
+            print(f"Erro TV: {e}")
+            return []
 
     def get_requisicoes_multiplas_ordens(self, ordens):
         """Busca materiais de varias OFs de uma vez (otimizado para dashboard)."""
