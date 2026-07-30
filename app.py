@@ -484,6 +484,26 @@ def tv_redirect():
     """Alias: /tv redireciona para a TV Inteligente da Diretoria."""
     return redirect(url_for('tv_diretoria'))
 
+@app.route('/diretor/gerar-pdf')
+@login_required
+@role_required('admin', 'gerente', 'diretor')
+def gerar_pdf_relatorio():
+    """Gera um PDF com a lista de pedidos para comparação com o ERP."""
+    try:
+        from utils.gerador_pdf_pedidos import gerar_pdf_pedidos
+        import os
+        filename = f"relatorio_pedidos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        # Garante que a pasta static/relatorios existe
+        rel_dir = os.path.join(app.root_path, 'static', 'relatorios')
+        os.makedirs(rel_dir, exist_ok=True)
+        filepath = os.path.join(rel_dir, filename)
+        
+        count = gerar_pdf_pedidos(filepath)
+        return redirect(url_for('static', filename=f'relatorios/{filename}'))
+    except Exception as e:
+        logger.error(f"Erro ao gerar PDF: {e}")
+        return f"Erro ao gerar relatório: {e}", 500
+
 @app.route('/tv/diretoria')
 def tv_diretoria():
     """TV Inteligente da Diretoria — rotação automática com gráficos."""
