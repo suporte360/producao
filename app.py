@@ -492,13 +492,16 @@ def gerar_pdf_relatorio():
     try:
         from utils.gerador_pdf_pedidos import gerar_pdf_pedidos
         import os
+        
+        status_filtro = request.args.get('status', 'Todos')
+        
         filename = f"relatorio_pedidos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
         # Garante que a pasta static/relatorios existe
         rel_dir = os.path.join(app.root_path, 'static', 'relatorios')
         os.makedirs(rel_dir, exist_ok=True)
         filepath = os.path.join(rel_dir, filename)
         
-        count = gerar_pdf_pedidos(filepath)
+        count = gerar_pdf_pedidos(filepath, status_filtro=status_filtro)
         return redirect(url_for('static', filename=f'relatorios/{filename}'))
     except Exception as e:
         logger.error(f"Erro ao gerar PDF: {e}")

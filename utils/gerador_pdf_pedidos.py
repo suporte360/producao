@@ -25,7 +25,7 @@ class PDF(FPDF):
         self.cell(50, 7, 'Status (Situação)', 1, 0, 'C', 1)
         self.cell(40, 7, 'Lote/OF', 1, 1, 'C', 1)
 
-def gerar_pdf_pedidos(output_path, dias=180):
+def gerar_pdf_pedidos(output_path, dias=180, status_filtro='Todos'):
     pg = DatabasePostgreSQL()
     
     # Mapeamento de Status baseado na legenda da imagem do ERP
@@ -34,6 +34,8 @@ def gerar_pdf_pedidos(output_path, dias=180):
     # 'CA' = Cancelado
     # 'IN' = Incompleto
     # 'PA' = Parcial (comum em ERPs para Atendido Parcial)
+    # 'P' = Atendido Parcial
+    # 'A' = Atendido Total
     SITUACAO_TRADUCAO = {
         "AP": "Atendido Total",
         "NA": "Não Aprovado",
@@ -43,6 +45,11 @@ def gerar_pdf_pedidos(output_path, dias=180):
         "P": "Atendido Parcial",
         "A": "Atendido Total"
     }
+
+    # Construção do filtro SQL
+    filtro_status = ""
+    if status_filtro and status_filtro != 'Todos':
+        filtro_status = f"AND TRIM(CAST(p.pedsitua AS TEXT)) = '{status_filtro}'"
 
     # Busca os pedidos
     # A coluna pedsitua é a que contém AP, NA, CA, etc.
@@ -58,6 +65,7 @@ def gerar_pdf_pedidos(output_path, dias=180):
         LEFT JOIN public.empresa e ON p.pedcliente::text = e.empresa::text
         WHERE p.peddata >= CURRENT_DATE - INTERVAL '{dias} days'
         AND TRIM(CAST(p.pedsitua AS TEXT)) NOT IN ('CA', 'C')
+        {filtro_status}
         ORDER BY p.pedprevi ASC
     """
     pedidos = pg.query(sql)
@@ -66,6 +74,14 @@ def gerar_pdf_pedidos(output_path, dias=180):
     pdf.add_page()
     pdf.set_font('Arial', '', 8)
     
+    # Se houver filtro, adicionar informação no topo
+    if status_filtro and status_filtro != 'Todos':
+        status_nome = SITUACAO_TRADUCAO.get(status_filtro, status_filtro)
+        pdf.set_font('Arial', 'B', 10)
+        pdf.cell(0, 10, f'Filtro: Apenas status "{status_nome}"', 0, 1, 'L')
+        pdf.set_font('Arial', '', 8)
+        pdf.ln(2)
+
     for p in pedidos:
         previsao = p['previsao'].strftime('%d/%m/%Y') if p['previsao'] and hasattr(p['previsao'], 'strftime') else '-'
         cliente = (p['cliente'][:32] + '..') if p['cliente'] and len(p['cliente']) > 32 else (p['cliente'] or '-')
