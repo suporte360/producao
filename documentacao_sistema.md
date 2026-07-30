@@ -32,3 +32,4 @@
 | 2026-07-30 | Implementação de lógica 'blinded' para tratar ausência da coluna peddep no banco. | **Sucesso** |
 | 2026-07-30 | Implementação de `DISTINCT` nos KPIs e listagem do ERP para evitar contagem duplicada de itens e garantir que o total de 180 dias reflita o número de pedidos (458) e não de itens (3804). | **Sucesso** |
 | 2026-07-30 | Refinamento do KPI de Atrasados para ignorar datas de previsão inválidas (vazias ou zeradas) e excluir pedidos atendidos. | **Sucesso** |
+| 2026-07-30 | Ajuste total da lógica de KPIs: Total/Aberto agora somam apenas status 01, 02 e 07 (180 dias). Atendidos (08) e Cancelados (10/C) filtrados para os últimos 30 dias. | **Sucesso** |

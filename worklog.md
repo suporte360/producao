@@ -44,10 +44,10 @@ Task: Corrigir discrepância de KPIs do ERP (Total, Abertos, Atrasados)
 Work Log:
 - Identificada causa raiz: a tabela `public.pedido` no PostgreSQL do ERP contém múltiplos registros por pedido (provavelmente itens ou histórico), fazendo com que `COUNT(*)` retornasse o número de itens (3804) em vez de pedidos (458).
 - Database/postgresql_db.py:
-    - `get_resumo_pedidos_erp`: Alterado para usar `COUNT(DISTINCT pedido)` em todos os KPIs.
-    - `get_pedidos_erp`: Adicionado `DISTINCT ON (p.pedido)` para garantir que a listagem mostre pedidos únicos.
+    - `get_resumo_pedidos_erp`: Total e Aberto agora somam apenas status 01, 02 e 07. Atendidos (08) e Cancelados (10/C) limitados aos últimos 30 dias.
+    - `get_pedidos_erp`: Ajustada a cláusula WHERE principal para incluir apenas os status desejados dentro de seus respectivos períodos (180 dias para abertos, 30 dias para finalizados/cancelados).
+    - `DISTINCT` mantido para evitar contagem duplicada por itens.
     - Filtro de data de previsão: Adicionado `pedprevi > '2000-01-01'` para evitar contagem de datas inválidas como atrasos.
-    - Exclusão de cancelados: Reforçado filtro de situação 'C' e status '010' na query base.
 - Documentacao_sistema.md: Atualizado com o histórico das correções.
 
 Stage Summary:
