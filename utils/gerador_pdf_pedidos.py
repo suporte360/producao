@@ -22,51 +22,42 @@ class PDF(FPDF):
         self.cell(10, 7, 'Loja', 1, 0, 'C', 1)
         self.cell(55, 7, 'Cliente', 1, 0, 'L', 1)
         self.cell(20, 7, 'Previsão', 1, 0, 'C', 1)
-        self.cell(50, 7, 'Status', 1, 0, 'C', 1)
+        self.cell(50, 7, 'Status (Situação)', 1, 0, 'C', 1)
         self.cell(40, 7, 'Lote/OF', 1, 1, 'C', 1)
 
 def gerar_pdf_pedidos(output_path, dias=180):
     pg = DatabasePostgreSQL()
     
-    # Mapeamento de Status conforme solicitado
-    STATUS_MAP = {
-        "01": "Pedido Não Aprovado",
-        "02": "Pedido em Aberto",
-        "03": "Vínculo com OF Estática",
-        "04": "Vínculo com OF em Processo",
-        "05": "Vínculo com OF Encerrada",
-        "06": "Vínculo com OF Com Problema",
-        "07": "Atendido Parcial",
-        "08": "Atendido Total",
-        "09": "Vínculo com Expedição",
-        "10": "Pedido Cancelado",
-        "001": "Pedido Não Aprovado",
-        "002": "Pedido em Aberto",
-        "003": "Vínculo com OF Estática",
-        "004": "Vínculo com OF em Processo",
-        "005": "Vínculo com OF Encerrada",
-        "006": "Vínculo com OF Com Problema",
-        "007": "Atendido Parcial",
-        "008": "Atendido Total",
-        "009": "Vínculo com Expedição",
-        "010": "Pedido Cancelado",
+    # Mapeamento de Status baseado na legenda da imagem do ERP
+    # 'AP' = Aprovado (que na grade aparece como Atendido Total)
+    # 'NA' = Não Aprovado
+    # 'CA' = Cancelado
+    # 'IN' = Incompleto
+    # 'PA' = Parcial (comum em ERPs para Atendido Parcial)
+    SITUACAO_TRADUCAO = {
+        "AP": "Atendido Total",
+        "NA": "Não Aprovado",
+        "CA": "Cancelado",
+        "IN": "Incompleto",
+        "PA": "Atendido Parcial",
+        "P": "Atendido Parcial",
+        "A": "Atendido Total"
     }
 
-    # Busca os pedidos com a mesma lógica do sistema
-    # pedsitsit costuma ser o campo que guarda '01', '02', etc.
+    # Busca os pedidos
+    # A coluna pedsitua é a que contém AP, NA, CA, etc.
     sql = f"""
         SELECT 
             p.pedido, 
             TRIM(CAST(e.empnome AS TEXT)) as cliente, 
             p.pedprevi as previsao, 
-            TRIM(CAST(p.pedsitsit AS TEXT)) as status_cod, 
+            TRIM(CAST(p.pedsitua AS TEXT)) as situacao_erp, 
             TRIM(CAST(p.pedoflote AS TEXT)) as lote,
             CAST(p.deposito AS TEXT) as deposito
         FROM public.pedido p
         LEFT JOIN public.empresa e ON p.pedcliente::text = e.empresa::text
         WHERE p.peddata >= CURRENT_DATE - INTERVAL '{dias} days'
-        AND CAST(p.pedsitua AS TEXT) NOT IN ('C')
-        AND TRIM(CAST(p.pedsitsit AS TEXT)) NOT IN ('007', '008', '009', '010', '004')
+        AND TRIM(CAST(p.pedsitua AS TEXT)) NOT IN ('CA', 'C')
         ORDER BY p.pedprevi ASC
     """
     pedidos = pg.query(sql)
@@ -80,11 +71,9 @@ def gerar_pdf_pedidos(output_path, dias=180):
         cliente = (p['cliente'][:32] + '..') if p['cliente'] and len(p['cliente']) > 32 else (p['cliente'] or '-')
         deposito = str(p['deposito']) if p['deposito'] else '-'
         
-        # Tradução do Status
-        cod = p['status_cod'] or ""
-        status_extenso = STATUS_MAP.get(cod, STATUS_MAP.get(cod.zfill(2), cod))
-        if not status_extenso or status_extenso == "":
-            status_extenso = "EM ABERTO" if not cod else cod
+        # Tradução baseada na coluna Sit. do ERP
+        sit = p['situacao_erp'] or ""
+        status_extenso = SITUACAO_TRADUCAO.get(sit, sit if sit else "EM ABERTO")
             
         # Destaque para lojas 2, 3, 4 e 7
         destaque = p['deposito'] in ['2', '3', '4', '7']
