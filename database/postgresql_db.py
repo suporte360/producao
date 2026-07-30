@@ -79,7 +79,7 @@ class DatabasePostgreSQL:
 
     def get_pedidos_erp(self, status=None, busca=None, limite=100):
         sql = """
-            SELECT 
+            SELECT DISTINCT ON (p.pedido)
                 p.pedido, 
                 p.peddata AS data_emissao,
                 p.pedprevi AS data_previsao,
@@ -127,13 +127,13 @@ class DatabasePostgreSQL:
     def get_resumo_pedidos_erp(self):
         sql = """
             SELECT 
-                COUNT(*) as total,
-                SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('001','002','','007') AND NULLIF(TRIM(CAST(pedoflote AS TEXT)), '') IS NULL THEN 1 ELSE 0 END) as em_aberto,
-                SUM(CASE WHEN NULLIF(TRIM(CAST(pedoflote AS TEXT)), '') IS NOT NULL OR TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('003','004','005','006') THEN 1 ELSE 0 END) as em_producao,
-                SUM(CASE WHEN pedprevi < CURRENT_DATE AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) NOT IN ('007','008','009','010') THEN 1 ELSE 0 END) as atrasados,
-                SUM(CASE WHEN pedprevi >= CURRENT_DATE AND pedprevi <= (CURRENT_DATE + INTERVAL '3 days') AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) NOT IN ('007','008','009','010') THEN 1 ELSE 0 END) as prox_3_dias,
-                SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('008','009') THEN 1 ELSE 0 END) as atendidos,
-                SUM(CASE WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) = 'C' OR TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) = '010' THEN 1 ELSE 0 END) as cancelados
+                COUNT(DISTINCT pedido) as total,
+                COUNT(DISTINCT CASE WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('001','002','','007') AND NULLIF(TRIM(CAST(pedoflote AS TEXT)), '') IS NULL THEN pedido END) as em_aberto,
+                COUNT(DISTINCT CASE WHEN NULLIF(TRIM(CAST(pedoflote AS TEXT)), '') IS NOT NULL OR TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('003','004','005','006') THEN pedido END) as em_producao,
+                COUNT(DISTINCT CASE WHEN pedprevi < CURRENT_DATE AND pedprevi > '2000-01-01' AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) NOT IN ('008','009','010') THEN pedido END) as atrasados,
+                COUNT(DISTINCT CASE WHEN pedprevi >= CURRENT_DATE AND pedprevi <= (CURRENT_DATE + INTERVAL '3 days') AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) NOT IN ('008','009','010') THEN pedido END) as prox_3_dias,
+                COUNT(DISTINCT CASE WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('008','009') THEN pedido END) as atendidos,
+                COUNT(DISTINCT CASE WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) = 'C' OR TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) = '010' THEN pedido END) as cancelados
             FROM public.pedido
             WHERE peddata >= CURRENT_DATE - INTERVAL '180 days'
               AND TRIM(CAST(COALESCE(pedsitua, '') AS TEXT)) NOT IN ('C')

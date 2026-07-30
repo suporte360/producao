@@ -30,3 +30,5 @@
 | 2026-07-30 | Inclusão da coluna de Loja/Depósito com destaque visual (balão roxo) para lojas 2, 3, 4 e 7. | **Sucesso** |
 | 2026-07-30 | Ajuste do KPI de "Próximos 7 dias" para "Próximos 3 dias" em todo o sistema. | **Sucesso** |
 | 2026-07-30 | Implementação de lógica 'blinded' para tratar ausência da coluna peddep no banco. | **Sucesso** |
+| 2026-07-30 | Implementação de `DISTINCT` nos KPIs e listagem do ERP para evitar contagem duplicada de itens e garantir que o total de 180 dias reflita o número de pedidos (458) e não de itens (3804). | **Sucesso** |
+| 2026-07-30 | Refinamento do KPI de Atrasados para ignorar datas de previsão inválidas (vazias ou zeradas) e excluir pedidos atendidos. | **Sucesso** |

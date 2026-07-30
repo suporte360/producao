@@ -36,3 +36,21 @@ Work Log:
 Stage Summary:
 - Todos os totems (5003, 5004, 5005, 5006) agora auto-refresh a cada 30s
 - Lotes liberados pelo PCP aparecem automaticamente nos totems sem reiniciar
+---
+Task ID: 3
+Agent: Manus AI
+Task: Corrigir discrepância de KPIs do ERP (Total, Abertos, Atrasados)
+
+Work Log:
+- Identificada causa raiz: a tabela `public.pedido` no PostgreSQL do ERP contém múltiplos registros por pedido (provavelmente itens ou histórico), fazendo com que `COUNT(*)` retornasse o número de itens (3804) em vez de pedidos (458).
+- Database/postgresql_db.py:
+    - `get_resumo_pedidos_erp`: Alterado para usar `COUNT(DISTINCT pedido)` em todos os KPIs.
+    - `get_pedidos_erp`: Adicionado `DISTINCT ON (p.pedido)` para garantir que a listagem mostre pedidos únicos.
+    - Filtro de data de previsão: Adicionado `pedprevi > '2000-01-01'` para evitar contagem de datas inválidas como atrasos.
+    - Exclusão de cancelados: Reforçado filtro de situação 'C' e status '010' na query base.
+- Documentacao_sistema.md: Atualizado com o histórico das correções.
+
+Stage Summary:
+- Arquivos modificados: database/postgresql_db.py, documentacao_sistema.md, worklog.md
+- Resultado esperado: Total de pedidos ~458, Pedidos em Aberto ~137, Atrasados significativamente reduzidos.
+---
