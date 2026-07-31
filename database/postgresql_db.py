@@ -127,22 +127,85 @@ class DatabasePostgreSQL:
         return resultados
 
     def get_resumo_pedidos_erp(self):
+        """Resumo de KPIs de pedidos do ERP (180 dias).
+
+        Critério de pedidos ATIVOS (entram no total):
+          - pedsitua IN ('A','P','')            (aprovado, parcial ou sem situação)
+          - pedsitsit NOT IN ('008','009','010') (não atendido total / não expedido / não cancelado)
+
+        Esse mesmo critério é usado em get_pedidos_erp_para_tv(), garantindo
+        coerência entre o total exibido nos KPIs e a lista exibida na TV.
+
+        Atendidos e cancelados são contados sobre janela de 30 dias.
+        """
         sql = """
-            SELECT 
-                COUNT(DISTINCT CASE WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('001','002','','007') THEN pedido END) as total,
-                COUNT(DISTINCT CASE WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('001','002','','007') AND NULLIF(TRIM(CAST(pedoflote AS TEXT)), '') IS NULL THEN pedido END) as em_aberto,
-                COUNT(DISTINCT CASE WHEN NULLIF(TRIM(CAST(pedoflote AS TEXT)), '') IS NOT NULL OR TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('003','004','005','006') THEN pedido END) as em_producao,
-                COUNT(DISTINCT CASE WHEN pedprevi < CURRENT_DATE AND pedprevi > '2000-01-01' AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('001','002','','007') THEN pedido END) as atrasados,
-                COUNT(DISTINCT CASE WHEN pedprevi >= CURRENT_DATE AND pedprevi <= (CURRENT_DATE + INTERVAL '3 days') AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('001','002','','007') THEN pedido END) as prox_3_dias,
-                COUNT(DISTINCT CASE WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('008') AND peddata >= CURRENT_DATE - INTERVAL '30 days' THEN pedido END) as atendidos,
-                COUNT(DISTINCT CASE WHEN (TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) = 'C' OR TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) = '010') AND peddata >= CURRENT_DATE - INTERVAL '30 days' THEN pedido END) as cancelados
+            SELECT
+                -- Total de pedidos ATIVOS (não cancelados / não atendidos total / não expedidos)
+                COUNT(DISTINCT CASE
+                    WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) IN ('A','P','')
+                     AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) NOT IN ('008','009','010')
+                    THEN pedido END) as total,
+
+                -- Em aberto: ativos E sem OF vinculada
+                COUNT(DISTINCT CASE
+                    WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) IN ('A','P','')
+                     AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) NOT IN ('008','009','010')
+                     AND NULLIF(TRIM(CAST(pedoflote AS TEXT)), '') IS NULL
+                    THEN pedido END) as em_aberto,
+
+                -- Em produção: ativos E com OF vinculada (inclui atendido parcial 007)
+                COUNT(DISTINCT CASE
+                    WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) IN ('A','P','')
+                     AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) NOT IN ('008','009','010')
+                     AND (
+                         NULLIF(TRIM(CAST(pedoflote AS TEXT)), '') IS NOT NULL
+                         OR TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('003','004','005','006','007')
+                     )
+                    THEN pedido END) as em_producao,
+
+                -- Atrasados: ativos E previsão vencida
+                COUNT(DISTINCT CASE
+                    WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) IN ('A','P','')
+                     AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) NOT IN ('008','009','010')
+                     AND pedprevi < CURRENT_DATE
+                     AND pedprevi > '2000-01-01'
+                    THEN pedido END) as atrasados,
+
+                -- Próximos 3 dias: ativos E previsão nos próximos 3 dias
+                COUNT(DISTINCT CASE
+                    WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) IN ('A','P','')
+                     AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) NOT IN ('008','009','010')
+                     AND pedprevi >= CURRENT_DATE
+                     AND pedprevi <= (CURRENT_DATE + INTERVAL '3 days')
+                    THEN pedido END) as prox_3_dias,
+
+                -- Atendidos: status 008 nos últimos 30 dias
+                COUNT(DISTINCT CASE
+                    WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) = '008'
+                     AND peddata >= CURRENT_DATE - INTERVAL '30 days'
+                    THEN pedido END) as atendidos,
+
+                -- Cancelados: situação C OU status 010 nos últimos 30 dias
+                COUNT(DISTINCT CASE
+                    WHEN (TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) = 'C'
+                          OR TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) = '010')
+                     AND peddata >= CURRENT_DATE - INTERVAL '30 days'
+                    THEN pedido END) as cancelados,
+
+                -- Por situação (pedidos dos últimos 180 dias)
+                COUNT(DISTINCT CASE WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) = 'A' THEN pedido END) as situacao_a,
+                COUNT(DISTINCT CASE WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) = 'P' THEN pedido END) as situacao_p,
+                COUNT(DISTINCT CASE WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) = 'C' THEN pedido END) as situacao_c,
+                COUNT(DISTINCT CASE WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) = 'I' THEN pedido END) as situacao_i
             FROM public.pedido
             WHERE peddata >= CURRENT_DATE - INTERVAL '180 days'
         """
         res = self.query_one(sql)
         if not res:
-            return {'total_pedidos':0, 'em_aberto':0, 'em_producao':0, 'atrasados':0, 'proximos_3dias':0, 'atendidos':0, 'cancelados':0}
-            
+            return {'total_pedidos':0, 'em_aberto':0, 'em_producao':0, 'atrasados':0,
+                    'proximos_3dias':0, 'atendidos':0, 'cancelados':0,
+                    'situacao_a':0, 'situacao_p':0, 'situacao_c':0, 'situacao_i':0}
+
         return {
             'total_pedidos': int(res.get('total') or 0),
             'em_aberto': int(res.get('em_aberto') or 0),
@@ -150,7 +213,11 @@ class DatabasePostgreSQL:
             'atrasados': int(res.get('atrasados') or 0),
             'proximos_3dias': int(res.get('prox_3_dias') or 0),
             'atendidos': int(res.get('atendidos') or 0),
-            'cancelados': int(res.get('cancelados') or 0)
+            'cancelados': int(res.get('cancelados') or 0),
+            'situacao_a': int(res.get('situacao_a') or 0),
+            'situacao_p': int(res.get('situacao_p') or 0),
+            'situacao_c': int(res.get('situacao_c') or 0),
+            'situacao_i': int(res.get('situacao_i') or 0)
         }
 
     def get_pedidos_erp_para_tv(self, limite=50):
