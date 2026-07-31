@@ -129,68 +129,84 @@ class DatabasePostgreSQL:
     def get_resumo_pedidos_erp(self):
         """Resumo de KPIs de pedidos do ERP (180 dias).
 
-        Critério de pedidos ATIVOS (entram no total):
-          - pedsitua IN ('A','P','')            (aprovado, parcial ou sem situação)
-          - pedsitsit NOT IN ('008','009','010') (não atendido total / não expedido / não cancelado)
+        REGRA DE NEGÓCIO (filtro por pedsitsit — status do pedido):
 
-        Esse mesmo critério é usado em get_pedidos_erp_para_tv(), garantindo
-        coerência entre o total exibido nos KPIs e a lista exibida na TV.
+          Status que entram no TOTAL (somam +) e nos cards derivados:
+            001 - Pedido Não Aprovado
+            002 - Pedido em Aberto
+            007 - Atendido Parcial
+            008 - Atendido Total (somente últimos 30 dias)
 
-        Atendidos e cancelados são contados sobre janela de 30 dias.
+          Status que NÃO somam no total (mas aparecem na lista/tabela):
+            003 - Vínculo com OF Estática
+            004 - Vínculo com OF em Processo
+            005 - Vínculo com OF Encerrada
+            006 - Vínculo com OF com Problema
+            009 - Vínculo com Expedição
+
+          Status excluídos:
+            010 - Pedido Cancelado (contado separadamente, últimos 30 dias)
+
+        Cards:
+          total_pedidos   = 001 + 002 + 007 (180d) + 008 (30d)
+          em_aberto       = 001 + 002 (sem OF vinculada)
+          em_producao     = 003 + 004 + 005 + 006 + 007
+          atrasados       = 001 + 002 + 007 com pedprevi < hoje
+          proximos_3dias  = 001 + 002 + 007 com pedprevi entre hoje e hoje+3
+          atendidos       = 008 (30d)
+          cancelados      = 010 (30d)
         """
         sql = """
             SELECT
-                -- Total de pedidos ATIVOS (não cancelados / não atendidos total / não expedidos)
+                -- TOTAL: 001 + 002 + 007 (180d) + 008 (30d)
                 COUNT(DISTINCT CASE
-                    WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) IN ('A','P','')
-                     AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) NOT IN ('008','009','010')
-                    THEN pedido END) as total,
+                    WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('001','002','007') THEN pedido
+                    WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) = '008'
+                     AND peddata >= CURRENT_DATE - INTERVAL '30 days' THEN pedido
+                END) as total,
 
-                -- Em aberto: ativos E sem OF vinculada
+                -- EM ABERTO: 001 + 002 (sem OF vinculada)
                 COUNT(DISTINCT CASE
-                    WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) IN ('A','P','')
-                     AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) NOT IN ('008','009','010')
+                    WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('001','002')
                      AND NULLIF(TRIM(CAST(pedoflote AS TEXT)), '') IS NULL
-                    THEN pedido END) as em_aberto,
+                    THEN pedido
+                END) as em_aberto,
 
-                -- Em produção: ativos E com OF vinculada (inclui atendido parcial 007)
+                -- EM PRODUÇÃO (OF): 003 + 004 + 005 + 006 + 007 (não soma no total)
                 COUNT(DISTINCT CASE
-                    WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) IN ('A','P','')
-                     AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) NOT IN ('008','009','010')
-                     AND (
-                         NULLIF(TRIM(CAST(pedoflote AS TEXT)), '') IS NOT NULL
-                         OR TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('003','004','005','006','007')
-                     )
-                    THEN pedido END) as em_producao,
+                    WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('003','004','005','006','007')
+                    THEN pedido
+                END) as em_producao,
 
-                -- Atrasados: ativos E previsão vencida
+                -- ATRASADOS: 001 + 002 + 007 com pedprevi < hoje
                 COUNT(DISTINCT CASE
-                    WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) IN ('A','P','')
-                     AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) NOT IN ('008','009','010')
+                    WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('001','002','007')
                      AND pedprevi < CURRENT_DATE
                      AND pedprevi > '2000-01-01'
-                    THEN pedido END) as atrasados,
+                    THEN pedido
+                END) as atrasados,
 
-                -- Próximos 3 dias: ativos E previsão nos próximos 3 dias
+                -- PRÓXIMOS 3 DIAS: 001 + 002 + 007 com pedprevi entre hoje e hoje+3
                 COUNT(DISTINCT CASE
-                    WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) IN ('A','P','')
-                     AND TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) NOT IN ('008','009','010')
+                    WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('001','002','007')
                      AND pedprevi >= CURRENT_DATE
                      AND pedprevi <= (CURRENT_DATE + INTERVAL '3 days')
-                    THEN pedido END) as prox_3_dias,
+                    THEN pedido
+                END) as prox_3_dias,
 
-                -- Atendidos: status 008 nos últimos 30 dias
+                -- ATENDIDOS: 008 (30d)
                 COUNT(DISTINCT CASE
                     WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) = '008'
                      AND peddata >= CURRENT_DATE - INTERVAL '30 days'
-                    THEN pedido END) as atendidos,
+                    THEN pedido
+                END) as atendidos,
 
-                -- Cancelados: situação C OU status 010 nos últimos 30 dias
+                -- CANCELADOS: 010 (30d)
                 COUNT(DISTINCT CASE
-                    WHEN (TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) = 'C'
-                          OR TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) = '010')
+                    WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) = '010'
                      AND peddata >= CURRENT_DATE - INTERVAL '30 days'
-                    THEN pedido END) as cancelados,
+                    THEN pedido
+                END) as cancelados,
 
                 -- Por situação (pedidos dos últimos 180 dias)
                 COUNT(DISTINCT CASE WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) = 'A' THEN pedido END) as situacao_a,
