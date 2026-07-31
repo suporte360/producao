@@ -391,7 +391,10 @@ def dashboard():
 
     if role == 'admin':
         return redirect(url_for('admin_dashboard'))
-    elif role in ('gerente', 'diretor'):
+    elif role == 'diretor':
+        # Diretor tem acesso apenas a: /diretor/relatorios, /pedidos, /tv/diretoria
+        return redirect(url_for('diretor_relatorios'))
+    elif role == 'gerente':
         return redirect(url_for('dashboard_gerente'))
     elif role == 'pcp':
         return redirect(url_for('dashboard_pcp'))

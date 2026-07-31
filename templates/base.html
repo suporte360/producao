@@ -53,11 +53,39 @@
             <!-- Navigation -->
             <nav class="flex-1 overflow-y-auto py-3 px-2.5 space-y-0.5">
 
-                <!-- PRINCIPAL -->
-                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 mt-1">Principal</p>
-
                 {% set role = session.get('usuario_role') %}
                 {% set endpoint = request.endpoint %}
+
+                {# ════════════════════════════════════════════════════════════════
+                   DIRETOR — MENU SIMPLIFICADO (apenas 3 telas por enquanto)
+                   - Visão Geral (/diretor/relatorios)
+                   - Pedidos (/pedidos)
+                   - TV Diretoria (/tv/diretoria)
+                ════════════════════════════════════════════════════════════════ #}
+                {% if role == 'diretor' %}
+
+                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 mt-1">Diretoria</p>
+                <a href="{{ url_for('diretor_relatorios') }}" class="nav-item {% if endpoint == 'diretor_relatorios' %}active{% endif %}">
+                    <i class="fa-solid fa-chart-pie text-indigo-400"></i>
+                    <span>Visão Geral</span>
+                </a>
+                <a href="{{ url_for('pedidos_redirect') }}" class="nav-item {% if endpoint == 'pedidos_redirect' %}active{% endif %}">
+                    <i class="fa-solid fa-clipboard-list text-emerald-400"></i>
+                    <span>Pedidos</span>
+                </a>
+                <a href="{{ url_for('tv_diretoria') }}" target="_blank" class="nav-item">
+                    <i class="fa-solid fa-tv text-cyan-400"></i>
+                    <span>TV Diretoria</span>
+                    <i class="fa-solid fa-arrow-up-right-from-square ml-auto text-[10px] text-slate-500"></i>
+                </a>
+
+                {# ════════════════════════════════════════════════════════════════
+                   OUTROS PAPEIS — menu completo original
+                ════════════════════════════════════════════════════════════════ #}
+                {% else %}
+
+                <!-- PRINCIPAL -->
+                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 mt-1">Principal</p>
 
                 <a href="{{ url_for('dashboard') }}" class="nav-item {% if endpoint in ('dashboard','kanban_board') %}active{% endif %}">
                     <i class="fa-solid fa-gauge-high"></i>
@@ -80,8 +108,8 @@
                 </a>
                 {% endif %}
 
-                <!-- PCP (admin, gerente, pcp, diretor) -->
-                {% if role in ['admin', 'gerente', 'pcp', 'diretor'] %}
+                <!-- PCP (admin, gerente, pcp) -->
+                {% if role in ['admin', 'gerente', 'pcp'] %}
                 <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 mt-3">Planejamento</p>
                 <a href="{{ url_for('dashboard_pcp') }}" class="nav-item {% if endpoint == 'dashboard_pcp' %}active{% endif %}">
                     <i class="fa-solid fa-diagram-project"></i>
@@ -93,8 +121,8 @@
                 </a>
                 {% endif %}
 
-                <!-- RELATORIOS (admin, gerente, pcp, diretor) -->
-                {% if role in ['admin', 'gerente', 'pcp', 'diretor'] %}
+                <!-- RELATORIOS (admin, gerente, pcp) -->
+                {% if role in ['admin', 'gerente', 'pcp'] %}
                 <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 mt-3">Relatórios</p>
                 <a href="{{ url_for('admin_relatorios') }}" class="nav-item {% if endpoint == 'admin_relatorios' %}active{% endif %}">
                     <i class="fa-solid fa-chart-pie text-emerald-400"></i>
@@ -102,8 +130,8 @@
                 </a>
                 {% endif %}
 
-                <!-- GERENTE / DIRETOR (admin, gerente, diretor) -->
-                {% if role in ['admin', 'gerente', 'diretor'] %}
+                <!-- GERENTE / DIRETOR (admin, gerente) -->
+                {% if role in ['admin', 'gerente'] %}
                 <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 mt-3">Gestão</p>
                 <a href="{{ url_for('dashboard_gerente') }}" class="nav-item {% if endpoint == 'dashboard_gerente' %}active{% endif %}">
                     <i class="fa-solid fa-chart-line"></i>
@@ -115,8 +143,8 @@
                 </a>
                 {% endif %}
 
-                <!-- DIRETORIA (admin, diretor) -->
-                {% if role in ['admin', 'diretor'] %}
+                <!-- DIRETORIA (admin) -->
+                {% if role == 'admin' %}
                 <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 mt-3">Diretoria</p>
                 <a href="{{ url_for('diretor_relatorios') }}" class="nav-item {% if endpoint == 'diretor_relatorios' %}active{% endif %}">
                     <i class="fa-solid fa-chart-pie text-indigo-400"></i>
@@ -133,8 +161,8 @@
                 </a>
                 {% endif %}
 
-                <!-- ALMOXARIFADO (admin, almoxarifado, gerente, diretor) -->
-                {% if role in ['admin', 'almoxarifado', 'gerente', 'diretor'] %}
+                <!-- ALMOXARIFADO (admin, almoxarifado, gerente) -->
+                {% if role in ['admin', 'almoxarifado', 'gerente'] %}
                 <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 mt-3">Logística</p>
                 <a href="{{ url_for('dashboard_almoxarifado') }}" class="nav-item {% if endpoint == 'dashboard_almoxarifado' %}active{% endif %}">
                     <i class="fa-solid fa-warehouse"></i>
@@ -149,20 +177,22 @@
                 {% endif %}
 
                 <!-- TV / Painéis -->
+                {% if role != 'diretor' %}
                 <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 mt-3">TVs / Painéis</p>
-                {% if role in ['admin', 'gerente', 'pcp', 'encarregado', 'diretor'] %}
+                {% if role in ['admin', 'gerente', 'pcp', 'encarregado'] %}
                 <a href="{{ url_for('kanban_tv') }}" target="_blank" class="nav-item">
                     <i class="fa-solid fa-tv text-blue-400"></i>
                     <span>TV Kanban</span>
                     <i class="fa-solid fa-arrow-up-right-from-square ml-auto text-[10px] text-slate-500"></i>
                 </a>
                 {% endif %}
-                {% if role in ['admin', 'almoxarifado', 'gerente', 'diretor'] %}
+                {% if role in ['admin', 'almoxarifado', 'gerente'] %}
                 <a href="{{ url_for('tv_almoxarifado') }}" target="_blank" class="nav-item">
                     <i class="fa-solid fa-box-open text-cyan-400"></i>
                     <span>TV Almoxarifado</span>
                     <i class="fa-solid fa-arrow-up-right-from-square ml-auto text-[10px] text-slate-500"></i>
                 </a>
+                {% endif %}
                 {% endif %}
 
                 <!-- ADMIN -->
@@ -177,6 +207,8 @@
                     <span>Usuários & Operadores</span>
                 </a>
                 {% endif %}
+
+                {% endif %}{# fim do else (não-diretor) #}
             </nav>
 
             <!-- User Profile -->
