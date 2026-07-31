@@ -56,6 +56,17 @@ class DatabasePostgreSQL:
         return res[0] if res else None
 
     STATUS_MAP = {
+        '01': 'Pedido Não Aprovado',
+        '02': 'Pedido em Aberto',
+        '03': 'Vínculo OF Estática',
+        '04': 'Vínculo OF em Processo',
+        '05': 'Vínculo OF Encerrada',
+        '06': 'Vínculo OF Problema',
+        '07': 'Atendido Parcial',
+        '08': 'Atendido Total',
+        '09': 'Vínculo Expedição',
+        '10': 'Pedido Cancelado',
+        # Compatibilidade com pedsitsit (3 dígitos)
         '001': 'Pedido Não Aprovado',
         '002': 'Pedido em Aberto',
         '003': 'Vínculo OF Estática',
@@ -78,6 +89,7 @@ class DatabasePostgreSQL:
     }
 
     def get_pedidos_erp(self, status=None, busca=None, limite=100):
+        """Lista de pedidos do ERP usando status da tabela pestatus (não pedsitsit)."""
         sql = """
             SELECT DISTINCT ON (p.pedido)
                 p.pedido, 
@@ -85,7 +97,7 @@ class DatabasePostgreSQL:
                 p.pedprevi AS data_previsao,
                 p.pedcliente AS codigo_cliente,
                 COALESCE(NULLIF(TRIM(CAST(e.empnome AS TEXT)),''), 'Não identificado') AS razao_social,
-                TRIM(CAST(COALESCE(p.pedsitsit, '') AS TEXT)) AS status_codigo,
+                TRIM(CAST(COALESCE(ps.pesstatus, '') AS TEXT)) AS status_codigo,
                 TRIM(CAST(COALESCE(p.pedsitua, '') AS TEXT)) AS situacao_codigo,
                 p.pedvlrfat AS valor_faturado,
                 p.pedoflote,
@@ -93,24 +105,29 @@ class DatabasePostgreSQL:
                 CAST(p.deposito AS TEXT) AS deposito
             FROM public.pedido p
             LEFT JOIN public.empresa e ON p.pedcliente::TEXT = e.empresa::TEXT
+            LEFT JOIN public.pestatus ps ON p.pedido::TEXT = ps.pespedido::TEXT
             WHERE (
-                (p.peddata >= CURRENT_DATE - INTERVAL '180 days' AND TRIM(CAST(COALESCE(p.pedsitsit, '') AS TEXT)) IN ('001', '002', '007'))
-                OR (p.peddata >= CURRENT_DATE - INTERVAL '30 days' AND TRIM(CAST(COALESCE(p.pedsitsit, '') AS TEXT)) IN ('008', '010'))
-                OR (p.peddata >= CURRENT_DATE - INTERVAL '30 days' AND TRIM(CAST(COALESCE(p.pedsitua, '') AS TEXT)) = 'C')
+                (p.peddata >= CURRENT_DATE - INTERVAL '180 days' AND TRIM(CAST(COALESCE(ps.pesstatus, '') AS TEXT)) IN ('01', '02', '07'))
+                OR (p.peddata >= CURRENT_DATE - INTERVAL '30 days' AND TRIM(CAST(COALESCE(ps.pesstatus, '') AS TEXT)) IN ('08', '10'))
             )
         """
         params = []
         
         if status == 'aberto':
-            sql += " AND TRIM(CAST(COALESCE(p.pedsitsit,'') AS TEXT)) IN ('001','002')"
-            sql += " AND TRIM(CAST(COALESCE(p.pedsitua,'') AS TEXT)) NOT IN ('C')"
+            sql += " AND TRIM(CAST(COALESCE(ps.pesstatus,'') AS TEXT)) = '02'"
+        elif status == 'parcial':
+            sql += " AND TRIM(CAST(COALESCE(ps.pesstatus,'') AS TEXT)) = '07'"
         elif status == 'producao':
-            sql += " AND (NULLIF(TRIM(CAST(p.pedoflote AS TEXT)), '') IS NOT NULL OR TRIM(CAST(COALESCE(p.pedsitsit,'') AS TEXT)) IN ('003','004','005','006','007'))"
-            sql += " AND TRIM(CAST(COALESCE(p.pedsitua,'') AS TEXT)) NOT IN ('C')"
+            sql += " AND TRIM(CAST(COALESCE(ps.pesstatus,'') AS TEXT)) IN ('03','04','05','06','07')"
         elif status == 'atrasado':
             sql += " AND p.pedprevi < CURRENT_DATE"
-            sql += " AND TRIM(CAST(COALESCE(p.pedsitsit,'') AS TEXT)) IN ('001','002','007')"
-            sql += " AND TRIM(CAST(COALESCE(p.pedsitua,'') AS TEXT)) NOT IN ('C')"
+            sql += " AND TRIM(CAST(COALESCE(ps.pesstatus,'') AS TEXT)) IN ('01','02','07')"
+        elif status == 'atendido':
+            sql += " AND TRIM(CAST(COALESCE(ps.pesstatus,'') AS TEXT)) = '08'"
+            sql += " AND p.peddata >= CURRENT_DATE - INTERVAL '30 days'"
+        elif status == 'cancelado':
+            sql += " AND TRIM(CAST(COALESCE(ps.pesstatus,'') AS TEXT)) = '10'"
+            sql += " AND p.peddata >= CURRENT_DATE - INTERVAL '30 days'"
 
         if busca:
             busca_like = f'%{busca}%'
@@ -129,99 +146,106 @@ class DatabasePostgreSQL:
     def get_resumo_pedidos_erp(self):
         """Resumo de KPIs de pedidos do ERP (180 dias).
 
-        REGRA DE NEGÓCIO (filtro por pedsitsit — status do pedido):
+        USA A TABELA pestatus (pesstatus) — não a coluna pedsitsit da tabela pedido.
+        A coluna pedsitsit fica desatualizada no ERP; pestatus é a fonte correta.
 
-          "PDF 1" - Em Aberto (entra no total E nos cards derivados):
-            001 - Pedido Não Aprovado
-          "PDF 2" - Em Produção (NÃO soma no total, mas aparece na lista):
-            003 - Vínculo com OF Estática
-            004 - Vínculo com OF em Processo
-            005 - Vínculo com OF Encerrada
-            006 - Vínculo com OF com Problema
-          "PDF 3" - Atendido Parcial (entra no total):
-            007 - Atendido Parcial
-          "PDF 4" - Atendido Total (NÃO soma em nada, só conta no card Atendidos):
-            008 - Atendido Total (somente últimos 30 dias)
-          "Excluído":
-            010 - Pedido Cancelado (somente últimos 30 dias)
+        REGRA DE NEGÓCIO (filtro por pesstatus — status do pedido):
+
+          "PDF 1" - Em Aberto (entra no total E no card Em Aberto):
+            02 - Pedido em Aberto
+          "PDF 2" - Atendido Parcial (entra no total E tem card próprio):
+            07 - Atendido Parcial
+          "PDF 3" - Atendido Total (NÃO soma em nada, só conta no card Atendidos):
+            08 - Atendido Total (somente últimos 30 dias)
+          "PDF 4" - Pedido Cancelado (NÃO soma em nada, só conta no card Cancelados):
+            10 - Pedido Cancelado (somente últimos 30 dias)
+          Outros status (01, 03, 04, 05, 06, 09) não são listados nos PDFs.
 
         Cards:
-          total_pedidos   = 001 + 002 + 007 (180d)
-          em_aberto       = 001 (sem OF vinculada)
-          em_producao     = 003 + 004 + 005 + 006 + 007
-          atrasados       = 001 com pedprevi < hoje
-          proximos_3dias  = 001 com pedprevi entre hoje e hoje+3
-          atendidos       = 008 (30d) — não soma em nenhum outro card
-          cancelados      = 010 (30d)
+          total_pedidos   = 01 + 02 + 07 (180d)
+          em_aberto       = 02
+          parcial         = 07
+          em_producao     = 03 + 04 + 05 + 06 + 07 (não soma no total)
+          atrasados       = 01 + 02 + 07 com pedprevi < hoje
+          proximos_3dias  = 01 + 02 + 07 com pedprevi entre hoje e hoje+3
+          atendidos       = 08 (30d) — não soma em nenhum outro card
+          cancelados      = 10 (30d)
         """
         sql = """
             SELECT
-                -- TOTAL: 001 + 002 + 007 (180d)
-                -- 008 NÃO soma no total, só conta no card Atendidos
+                -- TOTAL: 01 + 02 + 07 (180d)
+                -- 08 NÃO soma no total, só conta no card Atendidos
                 COUNT(DISTINCT CASE
-                    WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('001','002','007') THEN pedido
+                    WHEN TRIM(CAST(COALESCE(ps.pesstatus,'') AS TEXT)) IN ('01','02','07') THEN p.pedido
                 END) as total,
 
-                -- EM ABERTO: 001 (sem OF vinculada) — "primeiro PDF"
+                -- EM ABERTO: 02 ("primeiro PDF")
                 COUNT(DISTINCT CASE
-                    WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) = '001'
-                     AND NULLIF(TRIM(CAST(pedoflote AS TEXT)), '') IS NULL
-                    THEN pedido
+                    WHEN TRIM(CAST(COALESCE(ps.pesstatus,'') AS TEXT)) = '02'
+                    THEN p.pedido
                 END) as em_aberto,
 
-                -- EM PRODUÇÃO (OF): 003 + 004 + 005 + 006 + 007 (não soma no total)
+                -- PARCIAL: 07 ("segundo PDF")
                 COUNT(DISTINCT CASE
-                    WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('003','004','005','006','007')
-                    THEN pedido
+                    WHEN TRIM(CAST(COALESCE(ps.pesstatus,'') AS TEXT)) = '07'
+                    THEN p.pedido
+                END) as parcial,
+
+                -- EM PRODUÇÃO (OF): 03 + 04 + 05 + 06 + 07 (não soma no total)
+                COUNT(DISTINCT CASE
+                    WHEN TRIM(CAST(COALESCE(ps.pesstatus,'') AS TEXT)) IN ('03','04','05','06','07')
+                    THEN p.pedido
                 END) as em_producao,
 
-                -- ATRASADOS: só Em Aberto (001) com pedprevi < hoje
+                -- ATRASADOS: 01 + 02 + 07 com pedprevi < hoje
                 COUNT(DISTINCT CASE
-                    WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) = '001'
-                     AND pedprevi < CURRENT_DATE
-                     AND pedprevi > '2000-01-01'
-                    THEN pedido
+                    WHEN TRIM(CAST(COALESCE(ps.pesstatus,'') AS TEXT)) IN ('01','02','07')
+                     AND p.pedprevi < CURRENT_DATE
+                     AND p.pedprevi > '2000-01-01'
+                    THEN p.pedido
                 END) as atrasados,
 
-                -- PRÓXIMOS 3 DIAS: só Em Aberto (001) com pedprevi entre hoje e hoje+3
+                -- PRÓXIMOS 3 DIAS: 01 + 02 + 07 com pedprevi entre hoje e hoje+3
                 COUNT(DISTINCT CASE
-                    WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) = '001'
-                     AND pedprevi >= CURRENT_DATE
-                     AND pedprevi <= (CURRENT_DATE + INTERVAL '3 days')
-                    THEN pedido
+                    WHEN TRIM(CAST(COALESCE(ps.pesstatus,'') AS TEXT)) IN ('01','02','07')
+                     AND p.pedprevi >= CURRENT_DATE
+                     AND p.pedprevi <= (CURRENT_DATE + INTERVAL '3 days')
+                    THEN p.pedido
                 END) as prox_3_dias,
 
-                -- ATENDIDOS: 008 (30d) — "quarto PDF", não soma em nenhum outro card
+                -- ATENDIDOS: 08 (30d) — "terceiro PDF", não soma em nenhum outro card
                 COUNT(DISTINCT CASE
-                    WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) = '008'
-                     AND peddata >= CURRENT_DATE - INTERVAL '30 days'
-                    THEN pedido
+                    WHEN TRIM(CAST(COALESCE(ps.pesstatus,'') AS TEXT)) = '08'
+                     AND p.peddata >= CURRENT_DATE - INTERVAL '30 days'
+                    THEN p.pedido
                 END) as atendidos,
 
-                -- CANCELADOS: 010 (30d)
+                -- CANCELADOS: 10 (30d) — "quarto PDF"
                 COUNT(DISTINCT CASE
-                    WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) = '010'
-                     AND peddata >= CURRENT_DATE - INTERVAL '30 days'
-                    THEN pedido
+                    WHEN TRIM(CAST(COALESCE(ps.pesstatus,'') AS TEXT)) = '10'
+                     AND p.peddata >= CURRENT_DATE - INTERVAL '30 days'
+                    THEN p.pedido
                 END) as cancelados,
 
-                -- Por situação (pedidos dos últimos 180 dias)
-                COUNT(DISTINCT CASE WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) = 'A' THEN pedido END) as situacao_a,
-                COUNT(DISTINCT CASE WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) = 'P' THEN pedido END) as situacao_p,
-                COUNT(DISTINCT CASE WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) = 'C' THEN pedido END) as situacao_c,
-                COUNT(DISTINCT CASE WHEN TRIM(CAST(COALESCE(pedsitua,'') AS TEXT)) = 'I' THEN pedido END) as situacao_i
-            FROM public.pedido
-            WHERE peddata >= CURRENT_DATE - INTERVAL '180 days'
+                -- Por situação (pedsitua — situação de aprovação)
+                COUNT(DISTINCT CASE WHEN TRIM(CAST(COALESCE(p.pedsitua,'') AS TEXT)) = 'A' THEN p.pedido END) as situacao_a,
+                COUNT(DISTINCT CASE WHEN TRIM(CAST(COALESCE(p.pedsitua,'') AS TEXT)) = 'P' THEN p.pedido END) as situacao_p,
+                COUNT(DISTINCT CASE WHEN TRIM(CAST(COALESCE(p.pedsitua,'') AS TEXT)) = 'C' THEN p.pedido END) as situacao_c,
+                COUNT(DISTINCT CASE WHEN TRIM(CAST(COALESCE(p.pedsitua,'') AS TEXT)) = 'I' THEN p.pedido END) as situacao_i
+            FROM public.pedido p
+            LEFT JOIN public.pestatus ps ON p.pedido::TEXT = ps.pespedido::TEXT
+            WHERE p.peddata >= CURRENT_DATE - INTERVAL '180 days'
         """
         res = self.query_one(sql)
         if not res:
-            return {'total_pedidos':0, 'em_aberto':0, 'em_producao':0, 'atrasados':0,
-                    'proximos_3dias':0, 'atendidos':0, 'cancelados':0,
+            return {'total_pedidos':0, 'em_aberto':0, 'parcial':0, 'em_producao':0,
+                    'atrasados':0, 'proximos_3dias':0, 'atendidos':0, 'cancelados':0,
                     'situacao_a':0, 'situacao_p':0, 'situacao_c':0, 'situacao_i':0}
 
         return {
             'total_pedidos': int(res.get('total') or 0),
             'em_aberto': int(res.get('em_aberto') or 0),
+            'parcial': int(res.get('parcial') or 0),
             'em_producao': int(res.get('em_producao') or 0),
             'atrasados': int(res.get('atrasados') or 0),
             'proximos_3dias': int(res.get('prox_3_dias') or 0),
@@ -240,7 +264,7 @@ class DatabasePostgreSQL:
                 p.peddata AS data_emissao,
                 p.pedprevi AS data_previsao,
                 COALESCE(NULLIF(TRIM(CAST(e.empnome AS TEXT)),''), 'Não identificado') AS razao_social,
-                TRIM(CAST(COALESCE(p.pedsitsit, '') AS TEXT)) AS status_codigo,
+                TRIM(CAST(COALESCE(ps.pesstatus, '') AS TEXT)) AS status_codigo,
                 TRIM(CAST(COALESCE(p.pedsitua, '') AS TEXT)) AS situacao_codigo,
                 p.pedvlrfat AS valor_faturado,
                 p.pedoflote,
@@ -248,8 +272,9 @@ class DatabasePostgreSQL:
                 CAST(p.deposito AS TEXT) AS deposito
             FROM public.pedido p
             LEFT JOIN public.empresa e ON p.pedcliente::TEXT = e.empresa::TEXT
+            LEFT JOIN public.pestatus ps ON p.pedido::TEXT = ps.pespedido::TEXT
             WHERE p.peddata >= CURRENT_DATE - INTERVAL '180 days'
-              AND TRIM(CAST(COALESCE(p.pedsitsit, '') AS TEXT)) IN ('001', '002', '003', '004', '005', '006')
+              AND TRIM(CAST(COALESCE(ps.pesstatus, '') AS TEXT)) IN ('01', '02', '07')
             ORDER BY 
                 p.pedido,
                 CASE WHEN p.pedprevi < CURRENT_DATE THEN 0 ELSE 1 END,

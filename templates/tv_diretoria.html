@@ -164,6 +164,7 @@
     <div class="kpi-bar">
         <div class="kpi-item"><div class="kpi-num" style="color:#60a5fa">{{ k.total_pedidos|default(0) }}</div><div class="kpi-label">Total</div></div>
         <div class="kpi-item"><div class="kpi-num" style="color:#fbbf24">{{ k.em_aberto|default(0) }}</div><div class="kpi-label">Em Aberto</div></div>
+        <div class="kpi-item"><div class="kpi-num" style="color:#facc15">{{ k.parcial|default(0) }}</div><div class="kpi-label">Parcial</div></div>
         <div class="kpi-item"><div class="kpi-num" style="color:#a78bfa">{{ k.em_producao|default(0) }}</div><div class="kpi-label">Em OF</div></div>
         <div class="kpi-item"><div class="kpi-num" style="color:#ef4444">{{ k.atrasados|default(0) }}</div><div class="kpi-label">Atrasados</div></div>
         <div class="kpi-item"><div class="kpi-num" style="color:#06b6d4">{{ k.proximos_3dias|default(0) }}</div><div class="kpi-label">Próx. 3 Dias Úteis</div></div>
@@ -360,19 +361,19 @@ new Chart(document.getElementById('chartStatus'), {
 
 // Chart de Situação removido conforme solicitado para simplificar o visual.
 
-	// Chart 3: Urgência por Prazo
-	{% set d8plus = (k.total_pedidos|default(0) - k.atrasados|default(0) - k.proximos_3dias|default(0)) %}
-	new Chart(document.getElementById('chartUrgencia'), {
-	    type: 'bar',
-	    data: {
-	        labels: ['Atrasados', 'Próx. 3 Dias', 'No Prazo'],
-	        datasets: [{
-	            data: [
-	                {{ k.atrasados|default(0) }}, 
-	                {{ k.proximos_3dias|default(0) }}, 
-	                {{ d8plus if d8plus > 0 else 0 }}
-	            ],
-	            backgroundColor: [chartColors.red, '#fbbf24', chartColors.blue],
+        // Chart 3: Urgência por Prazo
+        {% set d8plus = (k.total_pedidos|default(0) - k.atrasados|default(0) - k.proximos_3dias|default(0)) %}
+        new Chart(document.getElementById('chartUrgencia'), {
+            type: 'bar',
+            data: {
+                labels: ['Atrasados', 'Próx. 3 Dias', 'No Prazo'],
+                datasets: [{
+                    data: [
+                        {{ k.atrasados|default(0) }}, 
+                        {{ k.proximos_3dias|default(0) }}, 
+                        {{ d8plus if d8plus > 0 else 0 }}
+                    ],
+                    backgroundColor: [chartColors.red, '#fbbf24', chartColors.blue],
             borderRadius: 6,
             barPercentage: 0.7
         }]
