@@ -155,7 +155,7 @@ class DatabasePostgreSQL:
 
     def get_pedidos_erp_para_tv(self, limite=50):
         sql = """
-            SELECT 
+            SELECT DISTINCT ON (p.pedido)
                 p.pedido, 
                 p.peddata AS data_emissao,
                 p.pedprevi AS data_previsao,
@@ -172,6 +172,7 @@ class DatabasePostgreSQL:
               AND (TRIM(CAST(COALESCE(p.pedsitua, '') AS TEXT)) IN ('A', 'P', ''))
               AND TRIM(CAST(COALESCE(p.pedsitsit, '') AS TEXT)) NOT IN ('007', '008', '009', '010')
             ORDER BY 
+                p.pedido,
                 CASE WHEN p.pedprevi < CURRENT_DATE THEN 0 ELSE 1 END,
                 p.pedprevi ASC
             LIMIT %s
