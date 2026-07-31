@@ -131,43 +131,40 @@ class DatabasePostgreSQL:
 
         REGRA DE NEGÓCIO (filtro por pedsitsit — status do pedido):
 
-          Status que entram no TOTAL (somam +) e nos cards derivados:
+          "PDF 1" - Em Aberto (entra no total E nos cards derivados):
             001 - Pedido Não Aprovado
-            002 - Pedido em Aberto
-            007 - Atendido Parcial
-            008 - Atendido Total (somente últimos 30 dias)
-
-          Status que NÃO somam no total (mas aparecem na lista/tabela):
+          "PDF 2" - Em Produção (NÃO soma no total, mas aparece na lista):
             003 - Vínculo com OF Estática
             004 - Vínculo com OF em Processo
             005 - Vínculo com OF Encerrada
             006 - Vínculo com OF com Problema
-            009 - Vínculo com Expedição
-
-          Status excluídos:
-            010 - Pedido Cancelado (contado separadamente, últimos 30 dias)
+          "PDF 3" - Atendido Parcial (entra no total):
+            007 - Atendido Parcial
+          "PDF 4" - Atendido Total (NÃO soma em nada, só conta no card Atendidos):
+            008 - Atendido Total (somente últimos 30 dias)
+          "Excluído":
+            010 - Pedido Cancelado (somente últimos 30 dias)
 
         Cards:
-          total_pedidos   = 001 + 002 + 007 (180d) + 008 (30d)
-          em_aberto       = 001 + 002 (sem OF vinculada)
+          total_pedidos   = 001 + 002 + 007 (180d)
+          em_aberto       = 001 (sem OF vinculada)
           em_producao     = 003 + 004 + 005 + 006 + 007
-          atrasados       = 001 + 002 + 007 com pedprevi < hoje
-          proximos_3dias  = 001 + 002 + 007 com pedprevi entre hoje e hoje+3
-          atendidos       = 008 (30d)
+          atrasados       = 001 com pedprevi < hoje
+          proximos_3dias  = 001 com pedprevi entre hoje e hoje+3
+          atendidos       = 008 (30d) — não soma em nenhum outro card
           cancelados      = 010 (30d)
         """
         sql = """
             SELECT
-                -- TOTAL: 001 + 002 + 007 (180d) + 008 (30d)
+                -- TOTAL: 001 + 002 + 007 (180d)
+                -- 008 NÃO soma no total, só conta no card Atendidos
                 COUNT(DISTINCT CASE
                     WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('001','002','007') THEN pedido
-                    WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) = '008'
-                     AND peddata >= CURRENT_DATE - INTERVAL '30 days' THEN pedido
                 END) as total,
 
-                -- EM ABERTO: 001 + 002 (sem OF vinculada)
+                -- EM ABERTO: 001 (sem OF vinculada) — "primeiro PDF"
                 COUNT(DISTINCT CASE
-                    WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('001','002')
+                    WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) = '001'
                      AND NULLIF(TRIM(CAST(pedoflote AS TEXT)), '') IS NULL
                     THEN pedido
                 END) as em_aberto,
@@ -178,23 +175,23 @@ class DatabasePostgreSQL:
                     THEN pedido
                 END) as em_producao,
 
-                -- ATRASADOS: 001 + 002 + 007 com pedprevi < hoje
+                -- ATRASADOS: só Em Aberto (001) com pedprevi < hoje
                 COUNT(DISTINCT CASE
-                    WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('001','002','007')
+                    WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) = '001'
                      AND pedprevi < CURRENT_DATE
                      AND pedprevi > '2000-01-01'
                     THEN pedido
                 END) as atrasados,
 
-                -- PRÓXIMOS 3 DIAS: 001 + 002 + 007 com pedprevi entre hoje e hoje+3
+                -- PRÓXIMOS 3 DIAS: só Em Aberto (001) com pedprevi entre hoje e hoje+3
                 COUNT(DISTINCT CASE
-                    WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) IN ('001','002','007')
+                    WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) = '001'
                      AND pedprevi >= CURRENT_DATE
                      AND pedprevi <= (CURRENT_DATE + INTERVAL '3 days')
                     THEN pedido
                 END) as prox_3_dias,
 
-                -- ATENDIDOS: 008 (30d)
+                -- ATENDIDOS: 008 (30d) — "quarto PDF", não soma em nenhum outro card
                 COUNT(DISTINCT CASE
                     WHEN TRIM(CAST(COALESCE(pedsitsit,'') AS TEXT)) = '008'
                      AND peddata >= CURRENT_DATE - INTERVAL '30 days'
