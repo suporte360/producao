@@ -94,7 +94,7 @@ class DatabasePostgreSQL:
             FROM public.pedido p
             LEFT JOIN public.empresa e ON p.pedcliente::TEXT = e.empresa::TEXT
             WHERE (
-                (p.peddata >= CURRENT_DATE - INTERVAL '180 days' AND TRIM(CAST(COALESCE(p.pedsitsit, '') AS TEXT)) IN ('001', '002', '', '007'))
+                (p.peddata >= CURRENT_DATE - INTERVAL '180 days' AND TRIM(CAST(COALESCE(p.pedsitsit, '') AS TEXT)) IN ('001', '002', '007'))
                 OR (p.peddata >= CURRENT_DATE - INTERVAL '30 days' AND TRIM(CAST(COALESCE(p.pedsitsit, '') AS TEXT)) IN ('008', '010'))
                 OR (p.peddata >= CURRENT_DATE - INTERVAL '30 days' AND TRIM(CAST(COALESCE(p.pedsitua, '') AS TEXT)) = 'C')
             )
@@ -102,14 +102,14 @@ class DatabasePostgreSQL:
         params = []
         
         if status == 'aberto':
-            sql += " AND TRIM(CAST(COALESCE(p.pedsitsit,'') AS TEXT)) IN ('001','002','')"
+            sql += " AND TRIM(CAST(COALESCE(p.pedsitsit,'') AS TEXT)) IN ('001','002')"
             sql += " AND TRIM(CAST(COALESCE(p.pedsitua,'') AS TEXT)) NOT IN ('C')"
         elif status == 'producao':
-            sql += " AND (NULLIF(TRIM(CAST(p.pedoflote AS TEXT)), '') IS NOT NULL OR TRIM(CAST(COALESCE(p.pedsitsit,'') AS TEXT)) IN ('003','004','005','006'))"
+            sql += " AND (NULLIF(TRIM(CAST(p.pedoflote AS TEXT)), '') IS NOT NULL OR TRIM(CAST(COALESCE(p.pedsitsit,'') AS TEXT)) IN ('003','004','005','006','007'))"
             sql += " AND TRIM(CAST(COALESCE(p.pedsitua,'') AS TEXT)) NOT IN ('C')"
         elif status == 'atrasado':
             sql += " AND p.pedprevi < CURRENT_DATE"
-            sql += " AND TRIM(CAST(COALESCE(p.pedsitsit,'') AS TEXT)) NOT IN ('007','008','009','010')"
+            sql += " AND TRIM(CAST(COALESCE(p.pedsitsit,'') AS TEXT)) IN ('001','002','007')"
             sql += " AND TRIM(CAST(COALESCE(p.pedsitua,'') AS TEXT)) NOT IN ('C')"
 
         if busca:
@@ -249,8 +249,7 @@ class DatabasePostgreSQL:
             FROM public.pedido p
             LEFT JOIN public.empresa e ON p.pedcliente::TEXT = e.empresa::TEXT
             WHERE p.peddata >= CURRENT_DATE - INTERVAL '180 days'
-              AND (TRIM(CAST(COALESCE(p.pedsitua, '') AS TEXT)) IN ('A', 'P', ''))
-              AND TRIM(CAST(COALESCE(p.pedsitsit, '') AS TEXT)) NOT IN ('007', '008', '009', '010')
+              AND TRIM(CAST(COALESCE(p.pedsitsit, '') AS TEXT)) IN ('001', '002', '003', '004', '005', '006')
             ORDER BY 
                 p.pedido,
                 CASE WHEN p.pedprevi < CURRENT_DATE THEN 0 ELSE 1 END,
